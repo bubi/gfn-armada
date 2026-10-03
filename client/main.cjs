@@ -1,0 +1,97 @@
+const {app,BrowserWindow,ipcMain,session,dialog}=require('electron');
+const fs=require('node:fs');
+const path=require('node:path');
+const {paths,loadConfig}=require('../launcher/config.cjs');
+const {parse}=require('../launcher/cli.cjs');
+const {resolveGame,HOME,saveMapping,validatedURL}=require('../launcher/mapping.cjs');
+const root=paths();
+let cfg,request;
+try {
+  cfg=loadConfig();
+  request=parse(process.argv.slice(app.isPackaged?1:2));
+  if(!['launch','login','map'].includes(request.command)) throw new Error('Use the gfn-armada launcher for this command');
+  request.resolved=resolveGame(['login','map'].includes(request.command)?null:request.target);
+}catch(e){console.error(e.message);app.exit(1)}
+if(cfg&&request?.resolved) {
+  for(const dir of [root.data,root.state]) fs.mkdirSync(dir,{recursive:true,mode:0o700});
+  app.setName('gfn-armada');app.setPath('userData',path.join(root.data,'chromium'));
+  if(process.platform==='linux'&&process.env.WAYLAND_DISPLAY) app.commandLine.appendSwitch('ozone-platform','wayland');
+  if(!cfg.hardware_decode) app.commandLine.appendSwitch('disable-accelerated-video-decode');
+  if(process.env.GFN_ARMADA_LOG==='debug') {
+    app.commandLine.appendSwitch('enable-logging','file');
+    app.commandLine.appendSwitch('log-file',path.join(root.state,'chromium.log'));
+    app.commandLine.appendSwitch('vmodule','*video_decoder*=2,*v4l2*=2');
+  }
+  const log=(event,data={})=>console.log(JSON.stringify({timestamp:new Date().toISOString(),event,...data}));
+  let win;let runtime={timestamp:new Date().toISOString(),pid:process.pid,versions:process.versions,
+    hardwareDecoderActive:'unknown',dmabuf:'unknown',requestedOzone:process.env.WAYLAND_DISPLAY?'wayland':'default',
+    source:'page-reported; diagnostic evidence only',active:false};
+  function save() {runtime.timestamp=new Date().toISOString();const f=path.join(root.state,'runtime.json');fs.writeFileSync(f+'.tmp',JSON.stringify(runtime,null,2),{mode:0o600});fs.renameSync(f+'.tmp',f)}
+  function allowed(value) {try{const u=new URL(value);return u.protocol==='https:'&&(u.hostname==='play.geforcenow.com'||u.hostname==='nvidia.com'||u.hostname.endsWith('.nvidia.com')||u.hostname==='nvidia.cn'||u.hostname.endsWith('.nvidia.cn'))}catch{return false}}
+  const prefs={nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true,preload:path.join(__dirname,'preload.cjs'),partition:'persist:gfn'};
+  function secure(window) {
+    window.webContents.on('will-navigate',(event,url)=>{if(!allowed(url)){event.preventDefault();log('navigation-blocked')}});
+    window.webContents.on('will-redirect',(event,url)=>{if(!allowed(url)){event.preventDefault();log('redirect-blocked')}});
+    window.webContents.setWindowOpenHandler(({url})=>allowed(url)?{action:'allow',overrideBrowserWindowOptions:{webPreferences:prefs}}:{action:'deny'});
+    window.webContents.on('will-attach-webview',e=>e.preventDefault());
+  }
+  if(!app.requestSingleInstanceLock()) app.quit();
+  else {
+    app.on('second-instance',(_e,argv)=>{
+      try{const next=parse(argv.slice(app.isPackaged?1:2));if(!['login','launch','map'].includes(next.command)) return;
+        const target=resolveGame(['login','map'].includes(next.command)?null:next.target);
+        request= {...next,resolved:target};
+        if(win&&!win.isDestroyed()){win.loadURL(target.url).catch(()=>log('load-failed'));win.show();win.focus()}
+      }catch(e){log('launch-error',{message:e.message})}
+    });
+    app.whenReady().then(async()=>{
+      const ses=session.fromPartition('persist:gfn');
+      ses.setPermissionRequestHandler((_wc,permission,callback)=>callback(['fullscreen','pointerLock'].includes(permission)));
+      ses.setPermissionCheckHandler((_wc,permission)=>['fullscreen','pointerLock'].includes(permission));
+      if(cfg.compatibility_user_agent) {
+        const ua=`Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${process.versions.chrome} Safari/537.36`;
+        ses.setUserAgent(ua);
+      }
+      app.on('browser-window-created',(_e,w)=>secure(w));
+      win=new BrowserWindow({width:1280,height:720,title:'gfn-armada',backgroundColor:'#111111',fullscreen:cfg.fullscreen&&request.command==='launch',webPreferences:prefs});
+      win.setMenu(null);
+      let capturing=false;
+      async function captureMapping() {
+        if(request.command!=='map' || capturing) return;
+        capturing=true;
+        try {
+          const mappingRequest={...request};
+          const url=validatedURL(win.webContents.getURL());
+          const answer=await dialog.showMessageBox(win,{type:'question',buttons:['Save mapping','Cancel'],defaultId:1,cancelId:1,title:'GFN game mapping',message:`Save the currently opened GFN stream as ${mappingRequest.name} (${mappingRequest.target})?`,detail:'Check that this is the correct game and Steam store in GFN. Existing mappings are backed up.'});
+          if(answer.response===0) {saveMapping({steamAppId:mappingRequest.target.slice(6),name:mappingRequest.name,launchURL:url});log('mapping-saved',{steamAppId:mappingRequest.target.slice(6)})}
+        }catch(e){dialog.showErrorBox('Mapping not saved',e.message)}finally{capturing=false}
+      }
+      win.webContents.on('before-input-event',(event,input)=>{
+        if(input.type!=='keyDown') return;
+        if(input.control&&input.shift&&input.key.toLowerCase()==='p'){event.preventDefault();void captureMapping()}
+        if(input.control&&input.shift&&input.key.toLowerCase()==='i'){event.preventDefault();win.webContents.toggleDevTools()}
+        if(input.key==='F11'){event.preventDefault();win.setFullScreen(!win.isFullScreen())}
+        if(input.control&&input.shift&&input.key.toLowerCase()==='d'){
+          event.preventDefault();const d=new BrowserWindow({width:1000,height:800,webPreferences:{sandbox:true,contextIsolation:true,nodeIntegration:false}});
+          d.loadURL('chrome://gpu');
+        }
+      });
+      ipcMain.on('rtc-observation',(event,data)=>{
+        if(event.sender!==win.webContents||event.senderFrame?.url.startsWith(HOME)!==true) return;
+        if(!data || !Array.isArray(data.streams)||!Array.isArray(data.codecs)||!Array.isArray(data.controllers)) return;
+        runtime.observation=data;runtime.active=true;save();
+        if(process.env.GFN_ARMADA_LOG==='debug') log('rtc-observation',data);
+      });
+      win.webContents.on('did-fail-load',(_e,code,_description,_url,isMain)=>{if(isMain)log('load-failed',{code})});
+      win.webContents.on('did-start-navigation',(_e,_url,_inPlace,isMain)=>{if(isMain){runtime.observation=null;runtime.active=false;save()}});
+      log('start',{architecture:process.arch,versions:process.versions,game:request.resolved.game,streamPreferencesApplied:false});
+      runtime.gpuFeatures=app.getGPUFeatureStatus();save();
+      await win.loadURL(request.resolved.url);
+      if(request.command==='map') await dialog.showMessageBox(win,{type:'info',message:`Open ${request.name} with the Steam store in GFN, then press Ctrl+Shift+P to capture its current launch URL.`,detail:'No ID is guessed. The URL must match the upstream-observed streamer route.'});
+      app.getGPUInfo('complete').then(gpu=>{runtime.gpu=gpu;save()}).catch(()=>{});
+    }).catch(e=>{log('startup-failed',{message:e.message});app.quit()});
+    app.on('child-process-gone',(_e,details)=>log('child-process-gone',{type:details.type,reason:details.reason}));
+    app.on('window-all-closed',()=>app.quit());
+    app.on('before-quit',()=>{runtime.active=false;save()});
+  }
+}
