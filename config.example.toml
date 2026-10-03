@@ -1,0 +1,12 @@
+# Local preferences; only hardware_decode/fullscreen affect Chromium today.
+# Select stream settings in the GFN UI. No undocumented NVIDIA API is called.
+codec = "auto"
+resolution = "native"
+fps = 120
+bitrate = "auto"
+hardware_decode = true
+steam_integration = true
+fullscreen = true
+# Optional compatibility UA: Linux Chrome matching the bundled Chromium.
+# This changes browser identity, not decoder capabilities.
+compatibility_user_agent = true

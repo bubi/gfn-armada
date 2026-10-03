@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=GFN Armada
+Comment=GeForce NOW for ArmadaOS
+Exec=gfn-armada launch
+Terminal=false
+Categories=Game;Network;
+StartupWMClass=gfn-armada
