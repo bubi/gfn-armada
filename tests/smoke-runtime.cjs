@@ -1,6 +1,6 @@
 // Optional real Electron GUI/network smoke test. Not part of npm test.
 // Set all XDG roots to disposable directories when invoking this script.
-const {app}=require('electron');
+const {app,ipcMain}=require('electron');
 const assert=require('node:assert/strict');
 const path=require('node:path');
 process.argv=[process.argv[0],path.resolve(__dirname,'..'),'login'];
@@ -13,7 +13,12 @@ app.on('browser-window-created',(_event,win)=>{
       const prefs=win.webContents.getLastWebPreferences();
       assert.equal(prefs.sandbox,true);assert.equal(prefs.contextIsolation,true);assert.equal(prefs.nodeIntegration,false);
       console.log('SMOKE: GFN main document loaded, renderer sandboxed, profile='+app.getPath('userData'));
-      clearTimeout(timer);app.quit();
+      ipcMain.once('rtc-observation',(_event,data)=>{
+        try {assert.ok(Array.isArray(data.codecs));assert.ok(Array.isArray(data.controllers));
+          console.log('SMOKE: isolated preload/main-world observation received, codecs='+data.codecs.join(','));
+          clearTimeout(timer);app.quit();
+        }catch(e){console.error(e);app.exit(1)}
+      });
     }catch(e){console.error(e);app.exit(1)}
   });
 });

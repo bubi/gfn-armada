@@ -41,7 +41,9 @@ gfn-armada sync --output shortcuts-review.json
 
 Steam: Non-Steam-Game hinzufügen, absolute Bundle-Wrapper-Datei als Executable,
 Bundleverzeichnis als Startverzeichnis, Launch Options `launch steam:1091500`.
-Steam Input auf ein Gamepad-Layout setzen. Steam/FEX startet hier ein natives
+Steam Input auf ein Gamepad-Layout setzen. Vor dem Steam-Test einen bereits
+laufenden Client schließen: weitere Starts verwenden derzeit dieselbe Instanz;
+Steam kann den kurzlebigen zweiten Launcher sonst nicht zuverlässig verfolgen. Steam/FEX startet hier ein natives
 ARM64-Shell-/Electron-Programm; dies muss im Gaming Mode verifiziert werden.
 
 Unbekannte ID: klarer Fehler. Geänderte GFN-Route: Hauptclient mit

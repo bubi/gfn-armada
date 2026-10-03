@@ -47,7 +47,7 @@ controller mapping/counts, frame drops and mean decode time where available.
 last client snapshot. Ctrl+Shift+D opens `chrome://gpu`, Ctrl+Shift+I opens DevTools; F11 toggles fullscreen.
 Logs can contain Chromium diagnostics; keep them private and inspect before sharing.
 
-[Architecture](docs/architecture.md) · [Hardware decoding](docs/hardware-decoding.md)
+[Architecture](docs/architecture.md) · [Hardware decoding](docs/hardware-decoding.md) · [Validation](docs/validation.md)
 
 Target-device tests, authentication, controller input, direct launch, HEVC and
 DMABUF remain unverified until tested on an Odin 2 Portal. Browser capability

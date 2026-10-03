@@ -11,7 +11,9 @@
 
 Der Container baut keine eigene Chromium-Version: er paketiert offizielle
 Electron-Linux-ARM64-Binaries und die JS-Anwendung. Downloadverifikation erfolgt
-über den Electron-Downloader und Upstream-SHASUMS. Netzwerk wird beim ersten
+über den Electron-Downloader mit den Prüfsummen aus dem exakt gepinnten
+Electron-npm-Paket. Ein Cachetreffer wird damit ohne erneuten, potenziell
+hängenden SHASUMS-Netzwerkabruf geprüft. Netzwerk wird beim ersten
 Build benötigt. Input-Reproduzierbarkeit ist vorbereitet; Byte-identische
 Output-Reproduzierbarkeit über zwei kalte Builds ist noch nicht geprüft.
 
@@ -34,7 +36,12 @@ melden. Deshalb zunächst hostseitige Cross-Paketierung:
 ./scripts/package
 ```
 
-Diese baut dasselbe Architekturziel, führt den Linux-Client auf macOS aber nicht
+Optional `./scripts/archive` erzeugt mit Python 3.11+ ein transportierbares
+`dist/gfn-armada-0.1.0-linux-arm64.tar.gz` plus SHA256-Datei. Die Archivmetadaten
+sind normalisiert; vollständige Byte-Reproduzierbarkeit der gesamten Buildkette
+ist damit noch nicht nachgewiesen.
+
+Diese Cross-Paketierung baut dasselbe Architekturziel, führt den Linux-Client auf macOS aber nicht
 aus und ersetzt keinen erfolgreichen Linux-Containerlauf. Die Packager-Tests
 laufen auf Node; Electron-GUI-Tests sind separat. Kein Containerdaemon wird
 unaufgefordert gestartet oder umkonfiguriert.

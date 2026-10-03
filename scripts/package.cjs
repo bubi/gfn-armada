@@ -3,6 +3,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 async function run(){
   const output=await packager({dir:path.resolve(__dirname,'..'),out:'dist',name:'gfn-armada',platform:'linux',arch:'arm64',electronVersion:require('../package.json').devDependencies.electron,overwrite:true,asar:false,prune:true,
+    download:{checksums:require('electron/checksums.json')},
     ignore:[/^\/(dist|tests|build|scripts|\.git|\.artifacts)(\/|$)/]});
   const bundle=output[0];
   fs.renameSync(path.join(bundle,'gfn-armada'),path.join(bundle,'gfn-armada-electron'));

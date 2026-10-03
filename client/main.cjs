@@ -14,7 +14,9 @@ try {
 }catch(e){console.error(e.message);app.exit(1)}
 if(cfg&&request?.resolved) {
   for(const dir of [root.data,root.state]) fs.mkdirSync(dir,{recursive:true,mode:0o700});
-  app.setName('gfn-armada');app.setPath('userData',path.join(root.data,'chromium'));
+  const profile=path.join(root.data,'chromium');
+  fs.mkdirSync(profile,{recursive:true,mode:0o700});
+  app.setName('gfn-armada');app.setPath('userData',profile);app.setPath('sessionData',profile);
   if(process.platform==='linux'&&process.env.WAYLAND_DISPLAY) app.commandLine.appendSwitch('ozone-platform','wayland');
   if(!cfg.hardware_decode) app.commandLine.appendSwitch('disable-accelerated-video-decode');
   if(process.env.GFN_ARMADA_LOG==='debug') {
