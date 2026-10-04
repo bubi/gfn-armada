@@ -1,5 +1,10 @@
 # Hardware-Decoding: Evidenz, Lücken und Prüfplan
 
+Die versionsgenaue Electron-/Chromium-Untersuchung steht in
+[electron-decoder-investigation.md](electron-decoder-investigation.md).
+Sie identifiziert den standardmäßig ausgeschalteten V4L2-Buildpfad und die
+explizite HEVC-Ablehnung im stateful Decoder von Chromium 152 und aktuellem main.
+
 Stand: 2026-10-04. HEVC-VPU-Decoding mit DMA-BUF-Ausgang ist auf dem Portal
 für einen synthetischen GStreamer-Testclip nachgewiesen. AV1, der GPU-/Wayland-
 Import und Hardwaredecodierung im GFN-Client bleiben unbestätigt.

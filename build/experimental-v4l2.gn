@@ -1,0 +1,11 @@
+# EXPERIMENT ONLY: fragment for an existing Chromium/Electron source checkout.
+# Not used by scripts/build; no source compilation or device validation yet.
+# Chromium 152.0.7977.130 still rejects HEVC in V4L2StatefulVideoDecoder::Decode.
+# First validate the H.264 stateful Iris path. This fragment does NOT fix HEVC.
+target_os = "linux"
+target_cpu = "arm64"
+proprietary_codecs = true
+ffmpeg_branding = "Chrome"
+use_v4l2_codec = true
+use_vaapi = false
+enable_hevc_parser_and_hw_decoder = true
