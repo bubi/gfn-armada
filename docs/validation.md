@@ -70,3 +70,40 @@ und Controller-Telemetrie. Die 60-Sekunden-Geräteprobe beobachtet GPU-Zugriffe,
 aber keinen Iris-Zugriff; native Decodermetadaten fehlen weiterhin.
 Die konkrete GFN-Decoderinstanz bleibt unbestätigt.
 Quellbefunde: [electron-decoder-investigation.md](electron-decoder-investigation.md).
+
+## Native WebRTC-Diagnose und Decoderadapter-Versuch
+
+21/21 lokale Unit-Tests bestehen. `GFN_ARMADA_MEDIA_DIAGNOSTICS=1` aktiviert
+zusätzlich einen gefilterten Reader für `chrome://webrtc-internals`.
+Der gesonderte synthetische H.264-Smoke-Test besteht auf Mac (VideoToolbox) und
+Portal (FFmpeg); das ist noch kein GFN-Test der neuen Integration.
+Fedora-Chromium .57 liefert im gleichen lokalen Vergleich ebenfalls FFmpeg.
+Der neue Reader wurde wegen erneut unterbrochenem SSH noch nicht bestätigt
+in das laufende Portal-GFN-Bundle integriert.
+
+Die lokalen optionalen GUI-Tests ohne Login oder externe Streamserver:
+
+```sh
+./node_modules/.bin/electron tests/smoke-webrtc-internals.cjs
+./node_modules/.bin/electron tests/smoke-encoded-transform.cjs
+```
+
+Der Encoded-Transform-Test besteht am Mac mit 30 durchgereichten H.264-Frames
+und Annex-B-Startcodes. Er untersucht nur den komprimierten Framezugriff; kein
+nativer Decoder, DMA-BUF-Import oder HEVC darin implementiert.
+Die Begrenzungen und nächste Versuchsarchitektur sind in
+[streamer-options.md](streamer-options.md) dokumentiert.
+
+Der Linux-ARM64-Containerbuild wurde mit diesen Änderungen erneut erfolgreich
+ausgeführt: 21/21 Tests, Packaging für Electron 44.5.1. Bundle-Export erfolgreich.
+Ein zu früh parallel zum Export begonnener Archivversuch scheiterte an einem
+Datei-Timeout; nach beendetem Export wurde das Archiv erfolgreich neu erzeugt.
+Aktuelles unversioniertes `dist/gfn-armada-0.1.0-linux-arm64.tar.gz`:
+
+```text
+d022d019c042c7c0370c280a58b7fabeb0313fed1c0c6a31857d966728489f2b
+```
+
+Das Archiv enthält den neuen Reader; das installierte Portal-Bundle ist nicht
+auf diesen Archivstand aktualisiert. Keine HEVC- oder Hardwaredecode-Fähigkeit
+wird durch erfolgreiches Packaging behauptet.

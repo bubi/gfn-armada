@@ -23,8 +23,10 @@ Die jeweiligen Dateien sind genaue Quellbelege, keine Messungen des installierte
 - [Config overrides](https://github.com/armada-os/armada/blob/43c0cca880cefbb963d5fdc1554816ffd0a5691f/packages/kernel/config/armada-kernel.config.overrides) setzen SM8550-Videoclocks. Sie werden über ARM64-defconfig gemerged; das Fehlen eines Iris-Overrides bedeutet weder enabled noch disabled im fertigen Kernel.
 - [Basis-Pakete](https://github.com/armada-os/armada/blob/43c0cca880cefbb963d5fdc1554816ffd0a5691f/build_files/10-base-packages.sh) umfassen FFmpeg und GStreamer-Plugins.
 
-Die ausgelieferte Version, finale `.config`, Firmware, Treiberbindung und
-Device-Permissions sind auf dem konkreten Gerät offen. Das Pinning ist kein
+Aus Quellen allein lassen sich ausgelieferte Version, finale `.config`, Firmware,
+Treiberbindung und Device-Permissions nicht ableiten. Der inzwischen gemessene
+Gerätestand ist in [odin-device-validation.md](odin-device-validation.md)
+dokumentiert. Das Pinning ist kein
 Beweis, dass das genannte Kernel-Tarball alle untersuchten Mainline-Änderungen
 enthält oder derzeit extern abrufbar ist. Eine angefragte Upstream-v7.2-Quelldatei
 war nicht abrufbar; aktuelle Iris-Quellen wurden separat auf `master` gelesen.
@@ -61,7 +63,7 @@ verbindet Electron daher nicht automatisch mit Iris.
 
 Aktuelles Chromium hat bereits:
 
-- [V4L2StatefulVideoDecoder](https://chromium.googlesource.com/chromium/src/+/main/media/gpu/v4l2/v4l2_stateful_video_decoder.cc): stateful Codec-/Queue-Verwaltung, HEVC-Sonderbehandlung und DMA-BUF/MMAP-Pfade.
+- [V4L2StatefulVideoDecoder](https://chromium.googlesource.com/chromium/src/+/main/media/gpu/v4l2/v4l2_stateful_video_decoder.cc): stateful Codec-/Queue-Verwaltung und DMA-BUF/MMAP-Pfade; HEVC wird im untersuchten Stand ausdrücklich abgelehnt.
 - [VideoDecoderPipeline](https://chromium.googlesource.com/chromium/src/+/main/media/gpu/chromeos/video_decoder_pipeline.cc): V4L2-Backend-Auswahl mit Linux-spezifischer Frameallokation. Der Verzeichnisname `chromeos` ist kein Beweis einer ausschließlich ChromeOS-basierten Ausführung.
 - [PlatformVideoFrameUtils](https://chromium.googlesource.com/chromium/src/+/main/media/gpu/chromeos/platform_video_frame_utils.cc): Linux/V4L2-spezifischer Zugriff auf Rendernodes für GBM.
 - [PlatformVideoFramePool](https://chromium.googlesource.com/chromium/src/+/main/media/gpu/chromeos/platform_video_frame_pool.cc): DMA-BUF-basierte Frame-Ressourcen.
