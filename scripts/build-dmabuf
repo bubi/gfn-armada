@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+cd "$(dirname "$0")/.."
+docker build --platform linux/arm64 -f build/Containerfile.dmabuf -t gfn-armada-dmabuf-builder .
+mkdir -p .artifacts/dmabuf
+container=$(docker create gfn-armada-dmabuf-builder)
+trap 'docker rm "$container" >/dev/null' EXIT HUP INT TERM
+docker cp "$container:/work/bridge.node" .artifacts/dmabuf/bridge.node
+docker cp "$container:/work/build-packages.txt" .artifacts/dmabuf/build-packages.txt
+shasum -a 256 .artifacts/dmabuf/bridge.node
