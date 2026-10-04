@@ -188,3 +188,10 @@ noch offen. Kein neuer Client auf dem Portal installiert oder aktives Spiel
 für dieses Experiment beendet. Globale GFN-Hardwareklassifikation bleibt
 unverändert, Shadow-Hardwarestatus `unknown`.
 Aktivierung und Grenzen: [native-bridge.md](native-bridge.md).
+
+Abschließendes ARM64-Bundle inklusive finaler Preload-Typprüfung:
+`gfn-armada-0.1.0-linux-arm64.tar.gz`, SHA-256
+`835e7dcbc6d8469dc97343ef5eac51556c71cb0d41c69a494cda7edfa37b57c9`.
+Der erneute Paketbuild verwendete nach einem stockenden Build den bereits
+vorhandenen, checksum-geprüften Electron-44.5.1-ARM64-Download als Cache.
+Alle Clientdateien im exportierten Bundle stimmen mit den Quellen überein.
