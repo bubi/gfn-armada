@@ -11,8 +11,10 @@
 | Linux-ARM64-Paketierung auf macOS | bestanden | Linux-Binary nicht auf dem Mac ausführbar |
 | `file` des gepackten Runtime-Binary | ELF 64-bit ARM aarch64 | kein Linux-Laufzeittest |
 | Linux-ARM64-Containerbau und Export | am 2026-10-04 bestanden; 14/14 Tests im Container | kein Armada-GUI-/Decoder-Test |
-| persistenter NVIDIA-Login | offen | isoliertes Testprofil, keine Anmeldung |
-| Steam Gaming Mode / Controller | offen | Gerät erreichbar; Test in KDE Wayland, keine Gamepads gemeldet |
+| NVIDIA-Login und Wiederverwendung des Profils | Gerätetest bestanden | Apple-Passwortlogin durch Nutzer; Profil beim Backend-Neustart wiederverwendet |
+| Controller | Spiel erkennt Xbox-Controller; Standard-Gamepad gemeldet | GFN-Overlay-Shortcut noch zu testen |
+| Steam Gaming Mode | offen | Spieltest in KDE unter XWayland |
+| GFN-Spielstream unter XWayland | Gerätetest bestanden | H.264, 19.334 Frames, 0 gemeldete Drops; Decoder unknown |
 | HEVC auf Qualcomm VPU | synthetischer 720p-Test bestanden | GStreamer Iris / DMA-BUF, kein GFN-Stream |
 | AV1 auf Qualcomm VPU | unknown | Element vorhanden, kein Decodiertest |
 | Electron auf ArmadaOS | startet und lädt GFN | H.265 fehlt im WebRTC-Angebot; Login/Stream offen |

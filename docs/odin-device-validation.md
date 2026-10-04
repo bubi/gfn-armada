@@ -104,11 +104,26 @@ Damit ist weder ein VPU-Fehler noch ein spezifischer Wayland-Bug bewiesen.
 Für einen kontrollierten Vergleich wurde dieselbe Profilsitzung mit
 `GFN_ARMADA_OZONE=x11`, `DISPLAY=:0` und dem vorhandenen Sitzungs-`XAUTHORITY`
 neu gestartet. Der Renderer meldet dort Freedreno FD740 / OpenGL 4.6;
-GFN lädt. Das Ergebnis eines erneuten Spielstarts steht aus.
+GFN lädt. Der Nutzer bestätigt einen erfolgreichen Spielstart und einen als
+Xbox-Controller erkannten eingebauten Controller. Im letzten Stream-Snapshot
+wurden 19.334 H.264-Frames, 0 gemeldete Drops und ca. 5,32 ms durchschnittliche
+Decode-Zeit gemeldet. Gamepad: Standard-Mapping, 17 Buttons, 4 Achsen.
+Der Prozess blieb nach diesem Test am Leben. Das belegt diesen erfolgreichen
+XWayland-Test, keine langfristige Stabilität oder genaue Wayland-Absturzursache.
 Der Standard bleibt natives Wayland. `GFN_ARMADA_OZONE` akzeptiert nur `x11`
 oder `wayland` und verändert weder NVIDIA-Streamparameter noch Sandbox.
 Der Launcher protokolliert jetzt auch Exit-Code/Signal des GUI-Prozesses.
 18/18 lokale Tests bestehen. Keine Debuggerpakete ins Basissystem installiert.
+
+## GFN-Overlay mit Controller
+
+NVIDIA dokumentiert langes Halten der START-/Menütaste als Standardshortcut.
+Im Overlay kann die Kombination unter Einstellungen → Shortcuts → Gamepad
+geändert werden. Der Shortcut wird seit GFN 2.0.83 auch auf Linux und den
+meisten Browserplattformen angeboten. Quelle:
+[NVIDIA Support](https://nvidia.custhelp.com/app/answers/detail/a_id/5827).
+Noch nicht auf diesem Gerät bestätigt; deshalb keine zweite Belegung injiziert,
+die den vorhandenen GFN-Shortcut doppelt auslösen könnte.
 
 Lokales unversioniertes VPU-Testlog: `.artifacts/odin/hevc-v4l2.log`.
 Geräteseitige Testdaten: `~/.local/share/gfn-armada-tests/`.
