@@ -11,8 +11,11 @@ let shadow,window,encoded=0,finishing=false,overflow=false,originalFrames=0;
 const native=Boolean(process.env.GFN_ARMADA_NATIVE_BRIDGE);
 const backpressure=process.env.GFN_ARMADA_TEST_BACKPRESSURE==='1';
 const blockedWorker=process.env.GFN_ARMADA_TEST_BLOCK_WORKER==='1';
+const durationMs=Number(process.env.GFN_ARMADA_TEST_DURATION_MS||0);
+if(!Number.isSafeInteger(durationMs)||durationMs<0||durationMs>60000) throw new Error('Invalid test duration');
+const fixedResolution=process.env.GFN_ARMADA_TEST_FIXED_RESOLUTION==='1';
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-const deadline=setTimeout(()=>finish(new Error('Bridge deadline exceeded')),30000);
+const deadline=setTimeout(()=>finish(new Error('Bridge deadline exceeded')),durationMs+30000);
 async function finish(error,extra={}){
   if(finishing) return;finishing=true;clearTimeout(deadline);
   shadow?.stop('test-finished');
@@ -52,16 +55,18 @@ app.whenReady().then(async()=>{
     if(await window.webContents.executeJavaScript('Boolean(window.__gfnArmadaEncodedTap)')) break;
     await sleep(100);
   }
-  await window.webContents.executeJavaScript(`(${loopback.toString()})({width:1280,height:720,pattern:'bars'})`);
+  await window.webContents.executeJavaScript(`(${loopback.toString()})({width:1280,height:720,pattern:'bars',fixedResolution:${fixedResolution}})`);
+  const started=Date.now();
   while(!finishing){
     await sleep(250);
     originalFrames=await window.webContents.executeJavaScript('document.querySelector("video")?.getVideoPlaybackQuality().totalVideoFrames||0');
     const state=shadow?.snapshot();
     if(state?.stopped) throw new Error('Native shadow stopped');
-    if(originalFrames>=((backpressure||blockedWorker)?60:30) && (native?state.decoded>=30&&state.draws>=30:blockedWorker?encoded===0:backpressure?encoded>0&&encoded<=4:encoded>=30)){
+    if(Date.now()-started>=durationMs && originalFrames>=((backpressure||blockedWorker)?60:30) && (native?state.decoded>=30&&state.draws>=30:blockedWorker?encoded===0:backpressure?encoded>0&&encoded<=4:encoded>=30)){
       const pixels=native?await shadow.inspectTestOutput():undefined;
       if(pixels && pixels.distinctColors<4) throw new Error('Native output has no test pattern');
-      await finish(null,{originalFrames,...(backpressure?{backpressureFallback:true,overflow}:{}),...(blockedWorker?{cspFallback:true}:{}),...(pixels?{pixels}:{})});return;
+      if(pixels && fixedResolution && (pixels.width!==1280 || pixels.height!==720)) throw new Error('Native output resolution is not 1280x720');
+      await finish(null,{originalFrames,elapsedMs:Date.now()-started,...(backpressure?{backpressureFallback:true,overflow}:{}),...(blockedWorker?{cspFallback:true}:{}),...(pixels?{pixels}:{})});return;
     }
   }
 }).catch(error=>finish(error));

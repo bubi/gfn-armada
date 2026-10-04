@@ -86,8 +86,9 @@ ist kein fertiger Gaming-Mode-Ausgabemodus.
 
 Farbraum/Import zunächst auf lineares NV12 und begrenztes BT.709 beschränkt.
 Auflösungswechsel werden nicht als unterstützter Produktionspfad behauptet.
-Die zugrundeliegende Iris→Electron-Ausgabe ist mit dem früheren HEVC-Clip
-validiert; H264 über appsrc und ein echter GFN-Stream benötigen eigene Tests.
+Die Iris→Electron-Ausgabe ist mit dem früheren HEVC-Clip und inzwischen
+auch mit lokalem H264-WebRTC über appsrc validiert. Ein echter GFN-Stream
+benötigt weiterhin einen eigenen Test.
 
 ## Diagnose und Tests
 
@@ -120,9 +121,13 @@ Die gepackte Testlaufzeit braucht eine eigene `resources/app`-Zuordnung,
 wie bei [der lokalen HEVC-Probe](../experiments/dmabuf/README.md).
 
 Die neue H264-Schnittstelle kompiliert mit `-Wall -Wextra -Werror`; 24 Unit-
-Tests bestehen. Portal-SSH war nur kurz erreichbar und fiel dann erneut aus:
-die H264-appsrc-/GFN-Laufzeitprobe ist deshalb noch offen, Hardwarestatus
-**unknown**. Nach erfolgreichem Doppelpfad folgen Audio-Sync, Framezeitmessung,
+Tests bestehen. Nach Wiederherstellung des SSH-Zugangs bestand die lokale
+H264-Brücke auf Iris auch bei 1280×720 über 30 Sekunden. WebRTC hatte die
+erste Probe auf 320×180 reduziert; die zweite Probe erhält die Auflösung
+über die Einstellungen des synthetischen Senders, keine NVIDIA-Parameter.
+Evidenz: [validation-h264-odin.json](../experiments/dmabuf/validation-h264-odin.json).
+Der Hardwarestatus eines echten GFN-Streams bleibt **unknown**.
+Nach erfolgreichem GFN-Doppelpfad folgen Audio-Sync, Framezeitmessung,
 Keyframe-Recovery und erst dann ein experimenteller Ersatz der Browserausgabe.
 
 Quellen: [W3C Encoded Transform](https://www.w3.org/TR/webrtc-encoded-transform/),

@@ -14,6 +14,7 @@ function loopback(options={}) {
   receiver.onicecandidate=e=>{if(e.candidate) sender.addIceCandidate(e.candidate)};
   receiver.ontrack=e=>{options.onVideoReceiver?.(e.receiver);const v=document.createElement('video');v.autoplay=true;v.muted=true;v.srcObject=e.streams[0];document.body.appendChild(v)};
   const track=canvas.captureStream(30).getVideoTracks()[0];
+  if(options.fixedResolution) track.contentHint='detail';
   sender.addTrack(track,new MediaStream([track]));
   const codecs=RTCRtpSender.getCapabilities('video').codecs.filter(c=>c.mimeType==='video/H264');
   if(!codecs.length) throw new Error('H264 unavailable');
@@ -23,6 +24,13 @@ function loopback(options={}) {
     await receiver.setRemoteDescription(sender.localDescription);
     await receiver.setLocalDescription(await receiver.createAnswer());
     await sender.setRemoteDescription(receiver.localDescription);
+    if(options.fixedResolution){
+      const videoSender=sender.getSenders().find(s=>s.track?.kind==='video');
+      const parameters=videoSender.getParameters();
+      parameters.degradationPreference='maintain-resolution';
+      for(const encoding of parameters.encodings){encoding.scaleResolutionDownBy=1;encoding.maxBitrate=8000000;}
+      await videoSender.setParameters(parameters);
+    }
   })();
 }
 module.exports={loopback};

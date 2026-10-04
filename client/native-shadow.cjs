@@ -4,7 +4,7 @@ const {installEncodedTap}=require('./encoded-tap.cjs');
 const {packet,rtpDelta}=require('./encoded-packet.cjs');
 function attachNativeShadow({app,BrowserWindow,ipcMain,sharedTexture,source,addon,report,localTest=false}) {
   if(process.platform!=='linux' || process.arch!=='arm64' || !path.isAbsolute(addon)) throw new Error('Native shadow requires Linux ARM64 and an absolute addon path');
-  let worker,window,stopped=false,generation,sequence=0,inflight=0,previous,pts=0,decoded=0,draws=0,released=0,lastFrameAt=null;
+  let worker,window,closeTimer,stopped=false,generation,sequence=0,inflight=0,previous,pts=0,decoded=0,draws=0,released=0,lastFrameAt=null;
   const leases=new Set(),acknowledgements=new Map();
   const trusted=event=>{
     try{return event.sender===source && event.senderFrame===source.mainFrame &&
@@ -13,10 +13,13 @@ function attachNativeShadow({app,BrowserWindow,ipcMain,sharedTexture,source,addo
   const evidence=(status,reason)=>report({status,reason,timestamp:new Date().toISOString(),lastFrameAt,mode:'parallel-shadow',codec:'H264',
     encodedFrames:sequence,decodedTransfers:decoded,rendererDraws:draws,releasedSamples:released,outstanding:leases.size,
     originalBrowserDecodeEnabled:true,hardwareDecoderActive:'unknown'});
+  const closeWindow=()=>{clearTimeout(closeTimer);if(window&&!window.isDestroyed()) window.destroy();};
   function stop(reason='stopped') {
     if(stopped) return; stopped=true;
     for(const resolve of acknowledgements.values()) resolve(false);acknowledgements.clear();
-    if(window&&!window.isDestroyed()) window.destroy();
+    // Let a transfer already in flight finish its renderer release before closing.
+    // A stalled renderer still has a bounded shutdown via Electron's cleanup.
+    if(leases.size) closeTimer=setTimeout(closeWindow,1000);else closeWindow();
     worker?.postMessage({kind:'stop'});evidence('stopped',reason);
   }
   async function start() {
@@ -51,7 +54,7 @@ function attachNativeShadow({app,BrowserWindow,ipcMain,sharedTexture,source,addo
       else if(message.kind==='frame') {
         leases.add(message.leaseId);
         let imported;
-        const release=()=>{if(leases.delete(message.leaseId)){worker.postMessage({kind:'release',id:message.leaseId});released++;}};
+        const release=()=>{if(leases.delete(message.leaseId)){worker.postMessage({kind:'release',id:message.leaseId});released++;if(stopped&&!leases.size) closeWindow();}};
         if(stopped){release();return;}
         try{
           imported=sharedTexture.importSharedTexture({textureInfo:message.textureInfo,allReferencesReleased:release});

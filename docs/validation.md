@@ -195,3 +195,28 @@ Abschließendes ARM64-Bundle inklusive finaler Preload-Typprüfung:
 Der erneute Paketbuild verwendete nach einem stockenden Build den bereits
 vorhandenen, checksum-geprüften Electron-44.5.1-ARM64-Download als Cache.
 Alle Clientdateien im exportierten Bundle stimmen mit den Quellen überein.
+
+## H264-WebRTC-Brücke auf dem Portal, nach wiederhergestelltem SSH-Zugang
+
+Der gesamte lokale Pfad RTCRtpScriptTransform → produktiver Preload →
+Node-Worker → appsrc/h264parse/v4l2h264dec → DMA-BUF → Electron SharedTexture
+bestand bei 1280×720 über 30.228 Sekunden: 882 komprimierte Pakete, 881
+Transfers und Draw-Aufrufe, 881 freigegebene Samples, null offene Samples.
+Ein Pixelcheck fand alle sechs Farbbalken. `/dev/video0` wurde als Iris
+Decoder geöffnet; sysfs bestätigt `qcom-iris` und `qcom,sm8550-iris`.
+Der Test verwendet Wayland und die Renderer-Sandbox.
+
+Die erste Probe wurde von WebRTC auf 320×180 reduziert. Für den 720p-Test
+erhält der synthetische Sender seine Auflösung über `maintain-resolution`
+und eine lokale Bitratenbegrenzung. Dies sind keine GFN-Konfigurationsoptionen.
+Ein weiterer 720p-Lauf deckte einen beim Schließen noch laufenden Transfer
+auf. Der Client lässt dessen Lease jetzt vor dem Fensterschließen auslaufen;
+nach spätestens einer Sekunde bleibt ein erzwungenes Schließen als Fallback.
+Die finale Probe enthält keine Warnung über eine hängende Renderer-Referenz.
+
+Evidenz und getestete Quellhashes:
+[validation-h264-odin.json](../experiments/dmabuf/validation-h264-odin.json).
+24 Unit-Tests bestehen. Dies bestätigt den lokalen H264-Hardwarepfad,
+keinen echten GFN-Stream, keine CPU-Ersparnis, keine gemessene Latenz oder
+Zero-Copy im Compositor. Der bestehende GFN-Client wurde nicht beendet;
+kein Basispaket wurde installiert. HEVC-Aushandlung bleibt offen.

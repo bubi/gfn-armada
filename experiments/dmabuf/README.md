@@ -79,7 +79,8 @@ Ende-zu-Ende-Latenz und kein Zero-Copy innerhalb von Chromium/Gamescope.
   GFN-Anbindung braucht es einen asynchronen Worker, Sessiongenerationen,
   Auflösungswechsel, Synchronisation mit Audio und Fehler-/Keyframe-Recovery.
   Ein separater Node-Worker und begrenztes H264-appsrc sind inzwischen
-  implementiert; deren Laufzeittest auf Iris ist noch offen.
+  implementiert und mit lokalem H264-WebRTC auf Iris bei 720p über 30 Sekunden
+  geprüft. Ein echter GFN-Stream bleibt separat zu validieren.
 * Dieser Test nutzt die experimentelle Electron-44.5.1-SharedTexture-API.
   Import-/GPUfehler dürfen nicht als funktionierende Ausgabe gelten.
 
