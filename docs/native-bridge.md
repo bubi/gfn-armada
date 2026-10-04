@@ -57,6 +57,11 @@ ist kein fertiger Gaming-Mode-Ausgabemodus.
   Track-Handler ausführen. Ein vorhandener Transform wird erhalten. Bereits
   existierende Peers, andere Frames/Worker oder spätere GFN-Transformwechsel
   können unsichtbar bleiben. Die echte GFN-CSP/Hook-Kompatibilität ist offen.
+  Framefreie Prüfempfänger vor dem Spielstart verbrauchen den Anschluss nicht
+  dauerhaft: nach ihrem Ende wird ein neuer Worker vorbereitet. Sobald echte
+  Frames übernommen wurden, bleibt ein Empfängerwechsel ein Abbruchgrund.
+  Anbindung erst bei `connectionState=connected` wurde verworfen: die lokale
+  Probe lieferte dabei keine Encoded-Frames trotz weiterlaufendem Browservideo.
 * Codec anhand `getMetadata().mimeType` beziehungsweise Payload-Type und
   ausgehandelten Receiver-Parametern bestimmen. Nur H264 zulassen. Kein
   Umdeuten von VP9/AV1/HEVC-Bytes als H264.

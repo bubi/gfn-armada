@@ -45,31 +45,44 @@ function installEncodedTap() {
           }
         } catch {enabled=false;report('tap-copy-failed');}
         finally {controller.enqueue(frame);}
-      }})).pipeTo(transformer.writable).catch(()=>report('transform-ended'));
+      }})).pipeTo(transformer.writable).catch(()=>report(observed?'transform-ended':'transform-ended-before-stream'));
     };
   }
   function report(reason) {window.postMessage({type:'gfn-armada-encoded-status',reason},location.origin);}
   function attach(receiver) {
-    if(state.attached || receiver.track?.kind!=='video') return;
+    if(state.attached || receiver.track?.kind!=='video' || receiver.track.readyState==='ended') return;
     if(!workerReady){pendingReceiver ||= receiver;return;}
     if(receiver.transform) {report('existing-transform-preserved');return;}
     try {
       const generation=crypto.randomUUID();
       const codecs=Object.fromEntries((receiver.getParameters().codecs||[]).map(c=>[c.payloadType,c.mimeType]));
       const url=preparedURL,worker=preparedWorker;
-      let transform;
+      let transform,seenFrame=false;
       worker.onerror=()=>{
         if(receiver.transform===transform) receiver.transform=null;
         worker.terminate();URL.revokeObjectURL(url);report('worker-unavailable-or-csp-blocked');
       };
-      worker.onmessage=e=>{URL.revokeObjectURL(url);window.postMessage({type:'gfn-armada-encoded',...e.data},location.origin,e.data.bytes?[e.data.bytes]:[]);};
+      const resetProbe=()=>{
+        if(preparedWorker!==worker) return;
+        worker.terminate();URL.revokeObjectURL(url);window.removeEventListener('message',feedback);
+        state.attached=false;workerReady=false;pendingReceiver=undefined;
+        report('probe-receiver-ended');prepareWorker();
+      };
+      worker.onmessage=e=>{
+        if(e.data.kind==='status' && e.data.reason==='transform-ended-before-stream'){resetProbe();return;}
+        if(e.data.kind==='frame' || (e.data.kind==='status'&&e.data.reason==='encoded-frame-observed')) seenFrame=true;
+        URL.revokeObjectURL(url);window.postMessage({type:'gfn-armada-encoded',...e.data},location.origin,e.data.bytes?[e.data.bytes]:[]);
+      };
       const feedback=e=>{
         if(e.source===window && e.origin===location.origin && e.data?.type==='gfn-armada-encoded-feedback' && e.data.generation===generation)
           worker.postMessage({kind:e.data.accepted?'ack':'disable'});
       };
       window.addEventListener('message',feedback);
       transform=new RTCRtpScriptTransform(worker,{generation,codecs});receiver.transform=transform;state.attached=true;
-      receiver.track.addEventListener('ended',()=>{worker.terminate();URL.revokeObjectURL(url);window.removeEventListener('message',feedback);report('track-ended')},{once:true});
+      receiver.track.addEventListener('ended',()=>{
+        if(!seenFrame){resetProbe();return;}
+        worker.terminate();URL.revokeObjectURL(url);window.removeEventListener('message',feedback);report('track-ended');
+      },{once:true});
       report('attached-encoded-shadow');
     }catch{report('encoded-transform-unavailable');}
   }
@@ -77,7 +90,7 @@ function installEncodedTap() {
   const Native=window.RTCPeerConnection;
   if(!Native || !window.RTCRtpScriptTransform){report('encoded-transform-unavailable');return;}
   // Verify worker loading/CSP before inserting it into a live decoder path.
-  try {
+  function prepareWorker(){try {
     preparedURL=URL.createObjectURL(new Blob([`(${workerSource.toString()})()`],{type:'text/javascript'}));
     preparedWorker=new Worker(preparedURL);
     preparedWorker.onerror=()=>{URL.revokeObjectURL(preparedURL);preparedWorker.terminate();report('worker-unavailable-or-csp-blocked');};
@@ -87,7 +100,8 @@ function installEncodedTap() {
         if(pendingReceiver) attach(pendingReceiver);
       }
     };
-  }catch{report('worker-unavailable-or-csp-blocked');return;}
+  }catch{report('worker-unavailable-or-csp-blocked');}}
+  prepareWorker();
   window.RTCPeerConnection=new Proxy(Native,{construct(target,args,newTarget){
     const pc=Reflect.construct(target,args,newTarget);
     // Let GFN's synchronous track handler install its own transform first.

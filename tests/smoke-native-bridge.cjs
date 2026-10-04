@@ -55,6 +55,15 @@ app.whenReady().then(async()=>{
     if(await window.webContents.executeJavaScript('Boolean(window.__gfnArmadaEncodedTap)')) break;
     await sleep(100);
   }
+  if(process.env.GFN_ARMADA_TEST_PROBE_RECEIVER==='1'){
+    await window.webContents.executeJavaScript(`(async()=>{
+      const a=new RTCPeerConnection(),b=new RTCPeerConnection();
+      a.addTransceiver('video',{direction:'sendonly'});
+      await b.setRemoteDescription(await a.createOffer());
+      await new Promise(resolve=>setTimeout(resolve,200));b.close();a.close();
+      await new Promise(resolve=>setTimeout(resolve,200));
+    })()`);
+  }
   await window.webContents.executeJavaScript(`(${loopback.toString()})({width:1280,height:720,pattern:'bars',fixedResolution:${fixedResolution}})`);
   const started=Date.now();
   while(!finishing){

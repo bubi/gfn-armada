@@ -99,6 +99,10 @@ function attachNativeShadow({app,BrowserWindow,ipcMain,sharedTexture,source,addo
     if(window&&!window.isDestroyed() && event.sender===window.webContents && Number.isSafeInteger(data?.frames)) draws=data.frames;
   };
   const onStatus=(event,reason)=>{
+    if(trusted(event)&&reason==='probe-receiver-ended'){
+      if(sequence) stop('track-ended');else report({status:reason,hardwareDecoderActive:'unknown'});
+      return;
+    }
     if(trusted(event) && ['negotiated-codec-not-h264','encoded-transform-unavailable','worker-unavailable-or-csp-blocked'].includes(reason)){stop(reason);return;}
     if(trusted(event) && ['hook-installed','attached-encoded-shadow','negotiated-h264','encoded-frame-observed','waiting-inband-parameter-sets','negotiated-codec-not-h264','existing-transform-preserved','encoded-transform-unavailable','worker-unavailable-or-csp-blocked','keyframe-request-unavailable'].includes(reason)) report({status:reason,hardwareDecoderActive:'unknown'});
     else if(trusted(event)) stop('encoded-tap-ended-or-overloaded');

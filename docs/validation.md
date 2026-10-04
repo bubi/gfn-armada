@@ -220,3 +220,20 @@ Evidenz und getestete Quellhashes:
 keinen echten GFN-Stream, keine CPU-Ersparnis, keine gemessene Latenz oder
 Zero-Copy im Compositor. Der bestehende GFN-Client wurde nicht beendet;
 kein Basispaket wurde installiert. HEVC-Aushandlung bleibt offen.
+
+## Start des neuen GFN-Clients und Wiederanschluss nach Prüfempfänger
+
+Der aktualisierte Client wurde auf ausdrücklichen Wunsch mit dem bisherigen
+Chromium-Profil unter Wayland gestartet. GFN erzeugte schon auf der Startseite
+einen kurzen Video-Prüfempfänger ohne Frames; dessen Ende schaltete zunächst
+die Brücke ab. Der Hook bereitet nun nach einem framefreien Empfängerende
+einen neuen Worker vor, und Main erhält den nativen Decoderanschluss. Ein
+Wechsel nach tatsächlich übernommenen Frames bleibt ein Abbruchgrund.
+
+Regression: erst einen Prüfempfänger ohne ICE/Frames erzeugen und schließen,
+danach den realen lokalen WebRTC-Stream starten. Mac: 33 Encoded-Pakete und
+32 Browserframes. Portal: 35 DMA-BUF-Transfers, Draw-Aufrufe und Freigaben
+bei 1280×720, null offene Samples, sechs Farbbalken. Eine alternative späte
+Anbindung bei `connectionState=connected` scheiterte dagegen auf Mac und
+Portal: keine Encoded-Frames trotz weiterlaufendem Browservideo. Sie wurde
+verworfen. Keine Hardwareaussage über einen echten GFN-Spielstream.
