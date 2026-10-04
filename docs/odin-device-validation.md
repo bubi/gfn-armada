@@ -87,7 +87,8 @@ für Hybrid-Passkeys, würde aber ein eigenes persistentes Profil benötigen.
 Ein Login im externen Browser überträgt nicht automatisch eine Sitzung an
 Electron; keine Cookies oder Auth-Tokens kopieren oder einen Callback erfinden.
 Controller-Liste war leer: es gab noch keinen bestätigten Gamepad-Test.
-Noch kein aktiver Stream und keine ausgehandelten Streamcodecs oder Decoder.
+Bei diesem ersten Login-Test noch kein aktiver Stream; der spätere
+Spielstart ist im folgenden Abschnitt dokumentiert.
 Hardwaredecoder und DMA-BUF im GFN-Client bleiben `unknown`.
 
 ## Erster Spielstream und Absturz
