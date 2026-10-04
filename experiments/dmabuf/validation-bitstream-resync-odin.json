@@ -356,7 +356,377 @@
       "packetsDuring": 64
     }
   },
-  "correctedGfnTested": false,
+  "correctedGfnTested": true,
   "actualBitstreamFormatOfRejectedPacket": "unknown",
-  "limitation": "Worker VM tests prove filtering until a parameter-set keyframe and preservation of original frames. Main-port resync test uses a mock decoder. Local Iris test contains no gap. Actual Iris recovery after the observed GFN framing change, request support and time until a suitable keyframe remain unverified."
+  "limitation": "The actual GFN H264 parallel Iris path remained active across a 150.71-second observation with two reported keyframe resumptions and six omitted native copies. Reported 47/64 ms resumption intervals measure control events, not decoder or presentation latency. Browser FFmpeg decoding remains enabled; HEVC, CPU savings, compositor presentation, artifact-free resync, and long-term production stability remain unverified.",
+  "gfnResyncRecoveryObserved": true,
+  "bounded150SecondGfnHardwareRunObserved": true,
+  "productionStabilityValidated": false,
+  "gfnHevcValidated": false,
+  "gfnEvidence": {
+    "firstTransfer": {
+      "timestamp": "2026-10-04T18:40:19.879Z",
+      "event": "native-shadow",
+      "status": "transferring",
+      "lastFrameAt": "2026-10-04T18:40:19.830Z",
+      "mode": "isolated-parallel-shadow",
+      "codec": "H264",
+      "helperPid": 190788,
+      "helperExited": false,
+      "helperExitSignal": null,
+      "helperExitCode": null,
+      "lastNativeError": null,
+      "negotiatedColorSpace": {
+        "matrix": "bt709",
+        "primaries": "bt709",
+        "transfer": "bt709",
+        "range": "full"
+      },
+      "encodedFrames": 1,
+      "decodedTransfers": 1,
+      "rendererDraws": 1,
+      "releasedSamples": 0,
+      "outstanding": 1,
+      "queueMetrics": {
+        "helper-worker": {
+          "stage": "helper-worker",
+          "pending": 0,
+          "pendingBytes": 0,
+          "highWater": 1,
+          "ackCount": 1,
+          "ackMaxMs": 3.913779999995313,
+          "oldestMs": 0,
+          "nativePushMaxMs": 0.32774999999674037
+        },
+        "tap": {
+          "stage": "tap",
+          "pending": 0,
+          "pendingBytes": 0,
+          "highWater": 1,
+          "ackCount": 1,
+          "ackMaxMs": 8.199999999254942,
+          "oldestMs": 0,
+          "yieldCount": 0,
+          "yieldMaxMs": 0,
+          "accessUnitBytes": 11759,
+          "annexB": 1,
+          "dropped": 0,
+          "resyncCount": 0,
+          "resyncing": 0
+        },
+        "helper-pipe": {
+          "stage": "helper-pipe",
+          "pending": 0,
+          "pendingBytes": 0,
+          "highWater": 1,
+          "ackCount": 1,
+          "ackMaxMs": 11.630041000003985,
+          "oldestMs": 0
+        },
+        "supervisor": {
+          "pending": 0,
+          "pendingBytes": 0,
+          "highWater": 1
+        }
+      },
+      "originalBrowserDecodeEnabled": true,
+      "hardwareDecoderActive": "unknown"
+    },
+    "lastTransfer": {
+      "timestamp": "2026-10-04T18:42:50.589Z",
+      "event": "native-shadow",
+      "status": "transferring",
+      "lastFrameAt": "2026-10-04T18:42:50.585Z",
+      "mode": "isolated-parallel-shadow",
+      "codec": "H264",
+      "helperPid": 190788,
+      "helperExited": false,
+      "helperExitSignal": null,
+      "helperExitCode": null,
+      "lastNativeError": null,
+      "negotiatedColorSpace": {
+        "matrix": "bt709",
+        "primaries": "bt709",
+        "transfer": "bt709",
+        "range": "full"
+      },
+      "encodedFrames": 9068,
+      "decodedTransfers": 9036,
+      "rendererDraws": 9036,
+      "releasedSamples": 9036,
+      "outstanding": 0,
+      "queueMetrics": {
+        "helper-worker": {
+          "stage": "helper-worker",
+          "pending": 0,
+          "pendingBytes": 0,
+          "highWater": 6,
+          "ackCount": 9067,
+          "ackMaxMs": 7.408250999986194,
+          "oldestMs": 0,
+          "nativePushMaxMs": 1.8623349999979837
+        },
+        "tap": {
+          "stage": "tap",
+          "pending": 0,
+          "pendingBytes": 0,
+          "highWater": 8,
+          "ackCount": 9047,
+          "ackMaxMs": 19.300000000745058,
+          "oldestMs": 0,
+          "yieldCount": 51,
+          "yieldMaxMs": 4.699999999254942,
+          "accessUnitBytes": 48063,
+          "annexB": 1,
+          "dropped": 6,
+          "resyncCount": 2,
+          "resyncing": 0
+        },
+        "helper-pipe": {
+          "stage": "helper-pipe",
+          "pending": 1,
+          "pendingBytes": 48314,
+          "highWater": 8,
+          "ackCount": 9067,
+          "ackMaxMs": 11.630041000003985,
+          "oldestMs": 0.4826930000272114
+        },
+        "supervisor": {
+          "pending": 1,
+          "pendingBytes": 0,
+          "highWater": 1
+        }
+      },
+      "originalBrowserDecodeEnabled": true,
+      "hardwareDecoderActive": "unknown"
+    },
+    "observedSeconds": 150.71,
+    "resyncEvents": [
+      {
+        "timestamp": "2026-10-04T18:41:31.886Z",
+        "event": "native-shadow",
+        "status": "non-annexb-access-unit",
+        "queueMetrics": {
+          "helper-worker": {
+            "stage": "helper-worker",
+            "pending": 0,
+            "pendingBytes": 0,
+            "highWater": 6,
+            "ackCount": 4337,
+            "ackMaxMs": 5.153531000003568,
+            "oldestMs": 0,
+            "nativePushMaxMs": 1.8623349999979837
+          },
+          "tap": {
+            "stage": "tap",
+            "pending": 1,
+            "pendingBytes": 5466,
+            "highWater": 8,
+            "ackCount": 4339,
+            "ackMaxMs": 19.300000000745058,
+            "oldestMs": 0.4000000022351742,
+            "yieldCount": 29,
+            "yieldMaxMs": 4,
+            "accessUnitBytes": 909,
+            "annexB": 0,
+            "dropped": 1,
+            "resyncCount": 1,
+            "resyncing": 1
+          },
+          "helper-pipe": {
+            "stage": "helper-pipe",
+            "pending": 1,
+            "pendingBytes": 5466,
+            "highWater": 8,
+            "ackCount": 4339,
+            "ackMaxMs": 11.630041000003985,
+            "oldestMs": 0.2828040000022156
+          },
+          "supervisor": {
+            "pending": 1,
+            "pendingBytes": 0,
+            "highWater": 1
+          }
+        },
+        "hardwareDecoderActive": "unknown"
+      },
+      {
+        "timestamp": "2026-10-04T18:41:31.933Z",
+        "event": "native-shadow",
+        "status": "queue-resync-resumed",
+        "queueMetrics": {
+          "helper-worker": {
+            "stage": "helper-worker",
+            "pending": 0,
+            "pendingBytes": 0,
+            "highWater": 6,
+            "ackCount": 4340,
+            "ackMaxMs": 5.153531000003568,
+            "oldestMs": 0,
+            "nativePushMaxMs": 1.8623349999979837
+          },
+          "tap": {
+            "stage": "tap",
+            "pending": 0,
+            "pendingBytes": 0,
+            "highWater": 8,
+            "ackCount": 4340,
+            "ackMaxMs": 19.300000000745058,
+            "oldestMs": 0,
+            "yieldCount": 29,
+            "yieldMaxMs": 4,
+            "accessUnitBytes": 8450,
+            "annexB": 1,
+            "dropped": 3,
+            "resyncCount": 1,
+            "resyncing": 0
+          },
+          "helper-pipe": {
+            "stage": "helper-pipe",
+            "pending": 0,
+            "pendingBytes": 0,
+            "highWater": 8,
+            "ackCount": 4340,
+            "ackMaxMs": 11.630041000003985,
+            "oldestMs": 0
+          },
+          "supervisor": {
+            "pending": 0,
+            "pendingBytes": 0,
+            "highWater": 1
+          }
+        },
+        "hardwareDecoderActive": "unknown"
+      },
+      {
+        "timestamp": "2026-10-04T18:41:34.808Z",
+        "event": "native-shadow",
+        "status": "non-annexb-access-unit",
+        "queueMetrics": {
+          "helper-worker": {
+            "stage": "helper-worker",
+            "pending": 0,
+            "pendingBytes": 0,
+            "highWater": 6,
+            "ackCount": 4510,
+            "ackMaxMs": 5.153531000003568,
+            "oldestMs": 0,
+            "nativePushMaxMs": 1.8623349999979837
+          },
+          "tap": {
+            "stage": "tap",
+            "pending": 0,
+            "pendingBytes": 0,
+            "highWater": 8,
+            "ackCount": 4514,
+            "ackMaxMs": 19.300000000745058,
+            "oldestMs": 0,
+            "yieldCount": 29,
+            "yieldMaxMs": 4,
+            "accessUnitBytes": 1032,
+            "annexB": 0,
+            "dropped": 4,
+            "resyncCount": 2,
+            "resyncing": 1
+          },
+          "helper-pipe": {
+            "stage": "helper-pipe",
+            "pending": 0,
+            "pendingBytes": 0,
+            "highWater": 8,
+            "ackCount": 4514,
+            "ackMaxMs": 11.630041000003985,
+            "oldestMs": 0
+          },
+          "supervisor": {
+            "pending": 0,
+            "pendingBytes": 0,
+            "highWater": 1
+          }
+        },
+        "hardwareDecoderActive": "unknown"
+      },
+      {
+        "timestamp": "2026-10-04T18:41:34.872Z",
+        "event": "native-shadow",
+        "status": "queue-resync-resumed",
+        "queueMetrics": {
+          "helper-worker": {
+            "stage": "helper-worker",
+            "pending": 0,
+            "pendingBytes": 0,
+            "highWater": 6,
+            "ackCount": 4514,
+            "ackMaxMs": 5.153531000003568,
+            "oldestMs": 0,
+            "nativePushMaxMs": 1.8623349999979837
+          },
+          "tap": {
+            "stage": "tap",
+            "pending": 0,
+            "pendingBytes": 0,
+            "highWater": 8,
+            "ackCount": 4514,
+            "ackMaxMs": 19.300000000745058,
+            "oldestMs": 0,
+            "yieldCount": 29,
+            "yieldMaxMs": 4,
+            "accessUnitBytes": 6326,
+            "annexB": 1,
+            "dropped": 6,
+            "resyncCount": 2,
+            "resyncing": 0
+          },
+          "helper-pipe": {
+            "stage": "helper-pipe",
+            "pending": 0,
+            "pendingBytes": 0,
+            "highWater": 8,
+            "ackCount": 4514,
+            "ackMaxMs": 11.630041000003985,
+            "oldestMs": 0
+          },
+          "supervisor": {
+            "pending": 0,
+            "pendingBytes": 0,
+            "highWater": 1
+          }
+        },
+        "hardwareDecoderActive": "unknown"
+      }
+    ],
+    "resyncTimings": [
+      {
+        "reason": "non-annexb-access-unit",
+        "start": "2026-10-04T18:41:31.886Z",
+        "resumed": "2026-10-04T18:41:31.933Z",
+        "reportedResumeMs": 47.0
+      },
+      {
+        "reason": "non-annexb-access-unit",
+        "start": "2026-10-04T18:41:34.808Z",
+        "resumed": "2026-10-04T18:41:34.872Z",
+        "reportedResumeMs": 64.0
+      }
+    ],
+    "stopEvents": [],
+    "browserStats": {
+      "timestamp": 1791139365810,
+      "event": "native-webrtc-decoder",
+      "status": "sampled",
+      "streams": [
+        {
+          "codec": "video/H264",
+          "decoder": "FFmpeg",
+          "powerEfficientDecoder": false,
+          "framesDecoded": 8717,
+          "framesDropped": 0,
+          "totalDecodeTime": 46.112151,
+          "statsTimestamp": 1791139365239.587
+        }
+      ]
+    },
+    "deviceName": "qcom-iris-decoder",
+    "driver": "/sys/bus/platform/drivers/qcom-iris"
+  }
 }

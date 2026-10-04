@@ -624,3 +624,33 @@ stehen bleiben. GFN-Keyframe-Anforderung, Wartezeit, mögliche Decoder-
 Artefakte ohne Flush und tatsächliche Wiederaufnahme müssen im nächsten
 GFN-Test gemessen werden. HEVC und Decoder-Ersatz bleiben unbestätigt.
 Evidenz: [validation-bitstream-resync-odin.json](../experiments/dmabuf/validation-bitstream-resync-odin.json).
+
+### Echter GFN-Resync-Test erfolgreich (2026-10-04)
+
+Der korrigierte Stand lief in der getrennten Instanz
+`bridge-bitstream-resync-20261004` über **150,710 Sekunden zwischen erster
+und letzter erfasster Transfermeldung**, ohne native Fehlermeldung,
+Abschaltung oder Helper-Exit. Letzte Stichprobe: 9.036 H264-Iris-/NV12-DMA-BUF-
+Transfers, Renderer-Draws und Sample-Freigaben, null offene Leases, volles
+BT.709. Der Decoderpfad und das verifizierte Modul bleiben unverändert.
+
+Zwei Access-Units von 909 bzw. 1.032 Byte hatten nicht den erwarteten
+Startcode. Beide führten zu einer Keyframe-Wiederaufnahme, insgesamt sechs
+gezählte ausgelassene native Kopien. Die Statusintervalle bis zum Resume
+betrugen 47 bzw. 64 ms; das sind **keine** Decode-/Präsentationslatenzen.
+Nach dem zweiten Resume wurden weitere Tausende Frames übertragen,
+gezeichnet und freigegeben. `resyncing=0`, Tap-ACK-Maximum 19,3 ms,
+Helper-Pipe-Maximum 11,63 ms; Queue-Grenzen blieben eingehalten.
+
+Das belegt erstmals einen mehr als zweiminütigen parallelen GFN-H264-
+Hardwarelauf **mit tatsächlich beobachteter Wiederaufnahme nach den
+zuvor terminalen Framing-Ereignissen**. Es belegt keine allgemeine oder
+stundenlange Stabilität und keine artefaktfreie Wiederaufnahme: der
+Compositor, das sichtbare Bild und die Audio-Synchronität wurden nicht
+vermessen. Die konkrete Framing-Struktur der ausgelassenen Pakete bleibt
+unbekannt. Der Originaldecoder läuft weiter mit FFmpeg (letzte Stichprobe:
+8.717 Frames, null gemeldete Drops), deshalb noch keine CPU-Einsparung
+oder vollständiger Hardwaredecoder-Ersatz. GFN-HEVC bleibt unbestätigt.
+Der Client wurde zur Sicherung dieser Stichprobe nicht beendet.
+Aktualisierte Evidenz:
+[validation-bitstream-resync-odin.json](../experiments/dmabuf/validation-bitstream-resync-odin.json).
