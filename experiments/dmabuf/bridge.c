@@ -1,16 +1,18 @@
 /* Isolated Linux experiment. No raw pixel mapping or software decoder fallback. */
 #include <node_api.h>
 #include <gst/app/gstappsink.h>
+#include <gst/app/gstappsrc.h>
 #include <gst/allocators/gstdmabuf.h>
 #include <gst/video/video.h>
 #include <gst/video/video-info-dma.h>
 #include <stdint.h>
 #include <string.h>
+#include <math.h>
 
 #define MAX_LEASES 8
 typedef struct { GstSample *sample; uint32_t id; } Lease;
 typedef struct {
-  GstElement *pipeline, *sink;
+  GstElement *pipeline, *sink, *source;
   Lease leases[MAX_LEASES];
   uint32_t next_id;
 } Bridge;
@@ -35,7 +37,8 @@ static unsigned outstanding(Bridge *b) {
 static void stop(Bridge *b) {
   if (b->pipeline) { gst_element_set_state(b->pipeline, GST_STATE_NULL); gst_object_unref(b->pipeline); }
   if (b->sink) gst_object_unref(b->sink);
-  b->pipeline = b->sink = NULL;
+  if (b->source) gst_object_unref(b->source);
+  b->pipeline = b->sink = b->source = NULL;
 }
 static void cleanup(napi_env env, void *data, void *hint) {
   (void)env; (void)hint; Bridge *b=data;
@@ -50,6 +53,58 @@ static GstPadProbeReturn allocation(GstPad *pad, GstPadProbeInfo *info, gpointer
       !gst_query_find_allocation_meta(query, GST_VIDEO_META_API_TYPE, NULL))
     gst_query_add_allocation_meta(query, GST_VIDEO_META_API_TYPE, NULL);
   return GST_PAD_PROBE_OK;
+}
+static napi_value start_pipeline(napi_env env, Bridge *b) {
+  b->sink=gst_bin_get_by_name(GST_BIN(b->pipeline),"output");
+  GstPad *pad=gst_element_get_static_pad(b->sink,"sink");
+  gst_pad_add_probe(pad,GST_PAD_PROBE_TYPE_QUERY_DOWNSTREAM,allocation,NULL,NULL); gst_object_unref(pad);
+  if (gst_element_set_state(b->pipeline,GST_STATE_PLAYING)==GST_STATE_CHANGE_FAILURE) {
+    stop(b); return fail(env,"V4L2 pipeline failed to start");
+  }
+  GstElement *decoder=gst_bin_get_by_name(GST_BIN(b->pipeline),"decoder");
+  gchar *device=NULL; g_object_get(decoder,"device",&device,NULL); gst_object_unref(decoder);
+  napi_value result=object(env); set(env,result,"device",string(env,device ? device : "unknown"));
+  g_free(device); return result;
+}
+static napi_value open_stream(napi_env env, napi_callback_info info) {
+  (void)info; Bridge *b=context(env);
+  if(b->pipeline || outstanding(b)) return fail(env,"Bridge already open or frames still leased");
+  GError *error=NULL;
+  b->pipeline=gst_parse_launch("appsrc name=input is-live=true format=time block=false max-buffers=8 max-bytes=4194304 "
+    "caps=\"video/x-h264,stream-format=byte-stream,alignment=au\" ! h264parse ! v4l2h264dec name=decoder ! "
+    "appsink name=output caps=\"video/x-raw(memory:DMABuf),format=DMA_DRM,drm-format=NV12\" "
+    "sync=false max-buffers=2 drop=false enable-last-sample=false", &error);
+  if(error || !b->pipeline) {
+    if(error) g_error_free(error);
+    stop(b); return fail(env,"Required explicit v4l2h264dec pipeline unavailable");
+  }
+  b->source=gst_bin_get_by_name(GST_BIN(b->pipeline),"input");
+  return start_pipeline(env,b);
+}
+static napi_value push_frame(napi_env env, napi_callback_info info) {
+  Bridge *b=context(env); size_t argc=3,length; napi_value args[3]; void *bytes;
+  double timestamp; bool key;
+  napi_get_cb_info(env,info,&argc,args,NULL,NULL);
+  if(!b->source) return fail(env,"H264 stream is not open");
+  bool is_buffer=false; if(argc) napi_is_buffer(env,args[0],&is_buffer);
+  if(argc!=3 || !is_buffer || napi_get_buffer_info(env,args[0],&bytes,&length)!=napi_ok ||
+     !length || length>2097152 || napi_get_value_double(env,args[1],&timestamp)!=napi_ok ||
+     !isfinite(timestamp) || timestamp<0 || timestamp>9007199254740.0 ||
+     napi_get_value_bool(env,args[2],&key)!=napi_ok)
+    return fail(env,"Expected bounded Annex-B Buffer, timestamp microseconds, keyframe boolean");
+  unsigned char *data=bytes;
+  if(length<4 || data[0]!=0 || data[1]!=0 || !(data[2]==1 || (data[2]==0 && data[3]==1)))
+    return fail(env,"Only Annex-B access units are supported");
+  gboolean accepted=FALSE;
+  if(gst_app_src_get_current_level_buffers(GST_APP_SRC(b->source))<8 &&
+     gst_app_src_get_current_level_bytes(GST_APP_SRC(b->source))+length<=4194304) {
+    GstBuffer *buffer=gst_buffer_new_allocate(NULL,length,NULL);
+    gst_buffer_fill(buffer,0,bytes,length); // Compressed bytes only; never maps raw decoder output.
+    GST_BUFFER_PTS(buffer)=(GstClockTime)(timestamp*1000.0);
+    if(!key) GST_BUFFER_FLAG_SET(buffer,GST_BUFFER_FLAG_DELTA_UNIT);
+    accepted=gst_app_src_push_buffer(GST_APP_SRC(b->source),buffer)==GST_FLOW_OK;
+  }
+  napi_value result; napi_get_boolean(env,accepted,&result); return result;
 }
 static napi_value open_file(napi_env env, napi_callback_info info) {
   Bridge *b=context(env); size_t argc=1, size; napi_value arg;
@@ -68,16 +123,7 @@ static napi_value open_file(napi_env env, napi_callback_info info) {
   }
   GstElement *src=gst_bin_get_by_name(GST_BIN(b->pipeline),"input");
   g_object_set(src,"location",path,NULL); gst_object_unref(src); g_free(path);
-  b->sink=gst_bin_get_by_name(GST_BIN(b->pipeline),"output");
-  GstPad *pad=gst_element_get_static_pad(b->sink,"sink");
-  gst_pad_add_probe(pad,GST_PAD_PROBE_TYPE_QUERY_DOWNSTREAM,allocation,NULL,NULL); gst_object_unref(pad);
-  if (gst_element_set_state(b->pipeline,GST_STATE_PLAYING)==GST_STATE_CHANGE_FAILURE) {
-    stop(b); return fail(env,"V4L2 HEVC pipeline failed to start");
-  }
-  GstElement *decoder=gst_bin_get_by_name(GST_BIN(b->pipeline),"decoder");
-  gchar *device=NULL; g_object_get(decoder,"device",&device,NULL); gst_object_unref(decoder);
-  napi_value result=object(env); set(env,result,"device",string(env,device ? device : "unknown"));
-  g_free(device); return result;
+  return start_pipeline(env,b);
 }
 static napi_value pull_frame(napi_env env, napi_callback_info info) {
   Bridge *b=context(env); size_t argc=1; napi_value arg; uint32_t timeout=0;
@@ -178,11 +224,13 @@ static napi_value init(napi_env env, napi_value exports) {
   gst_init(NULL,NULL); Bridge *b=g_new0(Bridge,1);
   napi_set_instance_data(env,b,cleanup,NULL);
   napi_property_descriptor methods[]={
+    {"openStream",NULL,open_stream,NULL,NULL,NULL,napi_default,NULL},
+    {"pushFrame",NULL,push_frame,NULL,NULL,NULL,napi_default,NULL},
     {"openFile",NULL,open_file,NULL,NULL,NULL,napi_default,NULL},
     {"pullFrame",NULL,pull_frame,NULL,NULL,NULL,napi_default,NULL},
     {"releaseFrame",NULL,release_frame,NULL,NULL,NULL,napi_default,NULL},
     {"close",NULL,close_bridge,NULL,NULL,NULL,napi_default,NULL}
   };
-  napi_define_properties(env,exports,4,methods); return exports;
+  napi_define_properties(env,exports,6,methods); return exports;
 }
 NAPI_MODULE(NODE_GYP_MODULE_NAME,init)
