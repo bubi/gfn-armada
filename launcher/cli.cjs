@@ -47,14 +47,23 @@ function run(args=process.argv.slice(2)) {
   const env={...process.env};delete env.ELECTRON_RUN_AS_NODE;
   const appRoot=path.resolve(__dirname,'..');
   const launchArgs=[req.command,...(req.target?[req.target]:[]),...(req.name?['--name',req.name]:[])];
-  const platformArgs=process.platform==='linux'&&env.WAYLAND_DISPLAY?['--ozone-platform=wayland']:[];
+  const backend=ozonePlatform(env);
+  const platformArgs=backend?[`--ozone-platform=${backend}`]:[];
   const child=spawn(executable,[...platformArgs,...(process.env.GFN_ARMADA_ELECTRON?launchArgs:[appRoot,...launchArgs])],{stdio:'inherit',env});
   child.on('error',e=>{console.error(e.message);process.exitCode=1});
-  child.on('exit',(code,signal)=>{process.exitCode=code ?? (signal?1:0)});
+  child.on('exit',(code,signal)=>{
+    if(signal||code) console.error(JSON.stringify({timestamp:new Date().toISOString(),event:'client-exit',code,signal}));
+    process.exitCode=code ?? (signal?1:0);
+  });
   for(const signal of ['SIGINT','SIGTERM']) process.on(signal,()=>child.kill(signal));
 }
 if(require.main===module) {try{run()}catch(e){console.error(`gfn-armada: ${e.message}`);process.exitCode=1}}
 function clientArgs(argv,packaged) {
-  return argv.slice(packaged?1:2).filter(arg=>arg!=='--ozone-platform=wayland');
+  return argv.slice(packaged?1:2).filter(arg=>!['--ozone-platform=wayland','--ozone-platform=x11'].includes(arg));
 }
-module.exports={parse,run,clientArgs};
+function ozonePlatform(env=process.env,platform=process.platform) {
+  if(env.GFN_ARMADA_OZONE&&!['wayland','x11'].includes(env.GFN_ARMADA_OZONE)) throw new Error('GFN_ARMADA_OZONE must be wayland or x11');
+  if(platform!=='linux') return null;
+  return env.GFN_ARMADA_OZONE||(env.WAYLAND_DISPLAY?'wayland':null);
+}
+module.exports={parse,run,clientArgs,ozonePlatform};

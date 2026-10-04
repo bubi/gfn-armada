@@ -2,7 +2,7 @@ const {app,BrowserWindow,ipcMain,session,dialog}=require('electron');
 const fs=require('node:fs');
 const path=require('node:path');
 const {paths,loadConfig}=require('../launcher/config.cjs');
-const {parse,clientArgs}=require('../launcher/cli.cjs');
+const {parse,clientArgs,ozonePlatform}=require('../launcher/cli.cjs');
 const {allowed,origin}=require('./navigation.cjs');
 const {resolveGame,HOME,saveMapping,validatedURL}=require('../launcher/mapping.cjs');
 const root=paths();
@@ -18,7 +18,8 @@ if(cfg&&request?.resolved) {
   const profile=path.join(root.data,'chromium');
   fs.mkdirSync(profile,{recursive:true,mode:0o700});
   app.setName('gfn-armada');app.setPath('userData',profile);app.setPath('sessionData',profile);
-  if(process.platform==='linux'&&process.env.WAYLAND_DISPLAY) app.commandLine.appendSwitch('ozone-platform','wayland');
+  const backend=ozonePlatform();
+  if(backend) app.commandLine.appendSwitch('ozone-platform',backend);
   if(!cfg.hardware_decode) app.commandLine.appendSwitch('disable-accelerated-video-decode');
   if(process.env.GFN_ARMADA_LOG==='debug') {
     app.commandLine.appendSwitch('enable-logging','file');
@@ -27,7 +28,7 @@ if(cfg&&request?.resolved) {
   }
   const log=(event,data={})=>console.log(JSON.stringify({timestamp:new Date().toISOString(),event,...data}));
   let win;let runtime={timestamp:new Date().toISOString(),pid:process.pid,versions:process.versions,
-    hardwareDecoderActive:'unknown',dmabuf:'unknown',requestedOzone:process.env.WAYLAND_DISPLAY?'wayland':'default',
+    hardwareDecoderActive:'unknown',dmabuf:'unknown',requestedOzone:backend||'default',
     source:'page-reported; diagnostic evidence only',active:false};
   function save() {runtime.timestamp=new Date().toISOString();const f=path.join(root.state,'runtime.json');fs.writeFileSync(f+'.tmp',JSON.stringify(runtime,null,2),{mode:0o600});fs.renameSync(f+'.tmp',f)}
   const prefs={nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true,preload:path.join(__dirname,'preload.cjs'),partition:'persist:gfn'};

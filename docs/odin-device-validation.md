@@ -90,6 +90,25 @@ Controller-Liste war leer: es gab noch keinen bestätigten Gamepad-Test.
 Noch kein aktiver Stream und keine ausgehandelten Streamcodecs oder Decoder.
 Hardwaredecoder und DMA-BUF im GFN-Client bleiben `unknown`.
 
+## Erster Spielstream und Absturz
+
+Der Nutzer konnte sich anmelden und ein Spiel starten. Am 2026-10-04 um
+09:10 CEST meldete WebRTC `video/H264`, 136 decodierte Frames, 0 gemeldete
+Drops und durchschnittlich ca. 5,45 ms Decode-Zeit (kumulativer kurzer Snapshot).
+Decodername und `powerEfficientDecoder` wurden nicht geliefert.
+Wenige Sekunden später stürzte der Electron-Hauptprozess mit SIGSEGV ab.
+Der System-Core ist abgeschnitten und bietet bisher keinen verwertbaren Stack.
+Damit ist weder ein VPU-Fehler noch ein spezifischer Wayland-Bug bewiesen.
+
+Für einen kontrollierten Vergleich wurde dieselbe Profilsitzung mit
+`GFN_ARMADA_OZONE=x11`, `DISPLAY=:0` und dem vorhandenen Sitzungs-`XAUTHORITY`
+neu gestartet. Der Renderer meldet dort Freedreno FD740 / OpenGL 4.6;
+GFN lädt. Das Ergebnis eines erneuten Spielstarts steht aus.
+Der Standard bleibt natives Wayland. `GFN_ARMADA_OZONE` akzeptiert nur `x11`
+oder `wayland` und verändert weder NVIDIA-Streamparameter noch Sandbox.
+Der Launcher protokolliert jetzt auch Exit-Code/Signal des GUI-Prozesses.
+18/18 lokale Tests bestehen. Keine Debuggerpakete ins Basissystem installiert.
+
 Lokales unversioniertes VPU-Testlog: `.artifacts/odin/hevc-v4l2.log`.
 Geräteseitige Testdaten: `~/.local/share/gfn-armada-tests/`.
 Chromium-Debuglogs können Seitenmeldungen enthalten und müssen vor Weitergabe

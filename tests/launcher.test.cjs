@@ -81,6 +81,14 @@ test('Wayland runtime argument preserves packaged and development launch targets
  ]) assert.deepEqual(parse(clientArgs(argv,packaged)),{command:'launch',target:'steam:1091500'});
  assert.throws(()=>parse(clientArgs(['runtime','--unsupported','login'],true)));
 });
+test('XWayland comparison overrides Wayland without accepting arbitrary runtime flags',()=>{
+ const {ozonePlatform,clientArgs}=require('../launcher/cli.cjs');
+ assert.equal(ozonePlatform({WAYLAND_DISPLAY:'wayland-0'},'linux'),'wayland');
+ assert.equal(ozonePlatform({WAYLAND_DISPLAY:'wayland-0',GFN_ARMADA_OZONE:'x11'},'linux'),'x11');
+ assert.equal(ozonePlatform({},'darwin'),null);
+ assert.throws(()=>ozonePlatform({GFN_ARMADA_OZONE:'--no-sandbox'},'linux'));
+ assert.deepEqual(parse(clientArgs(['runtime','--ozone-platform=x11','login'],true)),{command:'login'});
+});
 test('CLI sync never overwrites an existing review manifest',t=>{
  const {spawnSync}=require('node:child_process');
  const dir=temp(t);const file=path.join(dir,'manifest.json');fs.writeFileSync(file,'keep me');
