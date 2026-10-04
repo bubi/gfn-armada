@@ -112,3 +112,11 @@ Steam-VDF-Import, Hardware-Decoding und nachgewiesene Low-Copy-Ausgabe.
 Wenn NVIDIA die CMS-Route ändert, muss der Nutzer den Titel in der GFN-Oberfläche
 suchen und die Zuordnung neu erfassen. Dieser manuelle Rückweg ist verfügbar;
 eine automatische DOM-Suche ist noch nicht implementiert.
+# Nativer Vergleichskandidat: OpenNOW (2026-10-04)
+
+Die aktuelle OpenNOW-Qt/Rust-Version ist eine Alternative zur Chromium-
+Streamingarchitektur. Sie wird vor einem eigenen Chromium-Sourcebuild als
+nativer Vergleichskandidat priorisiert. HEVC-stateful auf Iris und DMA-BUF-
+Ausgabe dieses Decoderpfads sind auch dort noch zu ergänzen und zu validieren.
+Der bestehende Electron-Client bleibt die funktionierende H.264-Vergleichsbasis.
+Quellbewertung und Testplan: [opennow-evaluation.md](opennow-evaluation.md).
