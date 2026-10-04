@@ -6,18 +6,22 @@ Implementierter Anschluss, noch kein validierter GFN-Hardwarestream:
 wurde ein nicht unterstützter Farbraum abgelehnt; wenige Sekunden später
 stürzte der Client mit SIGSEGV ab. Die Ursache ist noch nicht zugeordnet.
 Ein Node-Worker ist ein Thread im selben Prozess und isoliert native
-Speicherfehler nicht. Vor weiteren Live-Tests muss der native Pfad in einen
-separaten Prozess oder zunächst unabhängig vom GFN-Client reproduziert
-werden. Der Portal-Client wurde auf den bisherigen XWayland-Modus ohne
-Brücke zurückgesetzt. Die lokalen Hardwaretests bleiben auf ihren Scope
-beschränkt.
+Speicherfehler nicht. Der native Pfad ist jetzt in einen separaten Electron-
+Helper verlegt. Gezielt ausgelöste Helper-SIGSEGVs am Mac und auf dem Portal
+ließen das Browservideo weiterlaufen. Die lokale Iris-/DMA-BUF-Ausgabe im
+separaten Helper ist bei 720p über 30 Sekunden bestätigt; ein echter
+GFN-Stream mit der neuen Prozessgrenze bleibt noch zu prüfen.
+Der stabile Portal-Client bleibt vorerst im bisherigen XWayland-Modus ohne
+Brücke. Die ursprüngliche Farbraum-/SIGSEGV-Ursache bleibt ungelöst.
 
 ```text
 GFN RTCRtpReceiver → RTCRtpScriptTransform (unveränderte Frames weiterreichen)
                          ↓ Kopie der komprimierten H264-Access-Units
-sandboxed Preload → begrenztes IPC → Node-Worker → GStreamer appsrc
-  → h264parse → v4l2h264dec → appsink → NV12 DMA-BUF
-  → Electron SharedTexture → sandboxed Diagnose-Canvas
+sandboxed Preload → begrenztes IPC → Supervisor im GFN-Prozess
+  → binär gerahmte Pipe (nur komprimierte Bytes und Status)
+  → separater Electron-Helper / temporäres Profil / eigener GPU-Prozess
+      → Node-Worker → GStreamer appsrc → h264parse → v4l2h264dec → appsink
+      → NV12 DMA-BUF → SharedTexture → sandboxed Diagnose-Canvas
 ```
 
 Die Originaloberfläche, Login, WebRTC-Transport, Audio, Controller und das
@@ -39,7 +43,7 @@ und das ARM64-Clientbundle auf das Gerät übertragen, keine Basispakete
 installieren. Beispielsweise das Modul im eigenen Datenverzeichnis ablegen:
 
 ```sh
-GFN_ARMADA_OZONE=wayland \
+GFN_ARMADA_OZONE=x11 \
 GFN_ARMADA_NATIVE_SHADOW=1 \
 GFN_ARMADA_NATIVE_BRIDGE="$HOME/.local/share/gfn-armada/native/bridge.node" \
 GFN_ARMADA_LOG=debug gfn-armada launch steam:1091500
@@ -51,8 +55,10 @@ geladen und kein Transform eingesetzt. Die normale GFN-Sitzung bleibt im
 bisherigen Profil. Login vor dem experimentellen Streamtest erledigen.
 
 Natives Wayland ist der bisher bestätigte Electron-DMA-BUF-Ausgabepfad.
-Original-GFN plus neue H264-Brücke unter Wayland ist **noch nicht geprüft**;
-frühere Stabilitätsprobleme des GFN-Clients unter Wayland bleiben relevant.
+Der Linux-Helper verwendet Wayland unabhängig vom Frontend. Das ursprüngliche
+GFN-Frontend kann beim bisherigen XWayland-Modus bleiben; seine früheren
+Stabilitätsprobleme unter nativem Wayland bleiben relevant. Der neue getrennte
+Hardwarepfad ist mit lokalem H264-WebRTC auf dem Portal bestätigt.
 XWayland-SharedTexture-Import funktionierte im lokalen Vergleich nicht.
 Das zusätzliche Diagnosefenster kann Fokus/Steam-Input beeinflussen; dies
 ist kein fertiger Gaming-Mode-Ausgabemodus.
@@ -89,10 +95,23 @@ ist kein fertiger Gaming-Mode-Ausgabemodus.
   Native appsrc maximal acht Frames / 4 MiB, Appsink zwei Frames, höchstens
   vier ausstehende DMA-BUF-Leases im Worker. Bei Overflow den Diagnosepfad
   stoppen; keine Delta-Frames unbemerkt verwerfen und trotzdem Erfolg melden.
-* GStreamer-Aufrufe und Decoder-Close laufen im Node-Worker. Main importiert
-  nur die FDs. Der Sample-Lease bleibt im Worker bis zur prozessübergreifenden
+* GStreamer-Aufrufe und Decoder-Close laufen im Node-Worker **des Helpers**.
+  Nur dessen Main importiert FDs; der GFN-Main-Prozess lädt kein natives Modul.
+  Der Sample-Lease bleibt im Worker bis zur prozessübergreifenden
   `allReferencesReleased`-Bestätigung. Es werden komprimierte Bytes kopiert,
   keine Rohpixel im Addon gemappt.
+* Der Helper besitzt ein separates temporäres Profil ohne NVIDIA-Session,
+  blockiert Netzwerkrequests und Berechtigungen und erlaubt nur das lokale
+  Diagnosefenster. Die Prozessgrenze isoliert native Abstürze, ist keine
+  zusätzliche OS-Berechtigungsgrenze: der Helper läuft als derselbe Benutzer.
+  Parent und Helper tauschen keine numerischen FDs aus; dadurch ist kein
+  SCM_RIGHTS-Adapter nötig. Nur komprimierte Access-Units werden kopiert.
+* Supervisor: maximal acht Pakete / 4 MiB; Paketbestätigung spätestens nach
+  zwei Sekunden, Bereitschaft nach höchstens 15 Sekunden. Fehler verwerfen
+  offene Anfragen mit `false`. Stop wartet begrenzt auf den Helper und beendet
+  ihn nach drei Sekunden nötigenfalls mit SIGKILL. Keine automatische
+  Wiederholung eines abgestürzten Helpers. Dessen Exit-Code/Signal und PID
+  werden protokolliert, der ursprüngliche Browserpfad bleibt aktiv.
 * Paketablehnung oder native Decoder-/Importfehler deaktivieren die Kopie,
   während der Encoded-Worker die Originalframes weiterreicht. Ein Worker-
   Absturz **nach** erfolgreicher Anbindung ist ein eigener, noch nicht
@@ -120,6 +139,8 @@ Mac, reale lokale WebRTC-Sitzung mit dem produktiven Preload:
 
 ```sh
 ./node_modules/.bin/electron tests/smoke-native-bridge.cjs
+GFN_ARMADA_TEST_HELPER_CRASH=1 ./node_modules/.bin/electron tests/smoke-native-bridge.cjs
+GFN_ARMADA_TEST_HELPER_REJECT=1 ./node_modules/.bin/electron tests/smoke-native-bridge.cjs
 GFN_ARMADA_TEST_BACKPRESSURE=1 ./node_modules/.bin/electron tests/smoke-native-bridge.cjs
 GFN_ARMADA_TEST_BLOCK_WORKER=1 ./node_modules/.bin/electron tests/smoke-native-bridge.cjs
 ```
@@ -137,6 +158,19 @@ ausführen. Er prüft zusätzlich mindestens 30 DMA-BUF-Transfers/Draw-Aufrufe,
 Farbinhalt per einmaligem Pixelreadback und vollständige Lease-Freigabe.
 Die gepackte Testlaufzeit braucht eine eigene `resources/app`-Zuordnung,
 wie bei [der lokalen HEVC-Probe](../experiments/dmabuf/README.md).
+
+Der gepackte Testentrypoint muss bei `--gfn-armada-native-helper` zuerst
+`client/native-helper.cjs` laden; die produktive `client/main.cjs`-Bootstrapdatei
+übernimmt diese Auswahl automatisch. Der lokale Hardwaretest kann das
+Frontend mit `GFN_ARMADA_TEST_FRONTEND_OZONE=x11` und den Helper weiterhin
+unter Wayland ausführen. Die finale Portal-Probe lieferte in 30.204 Sekunden
+896 Transfers/Draws/Freigaben bei 1280×720 und einen sauberen Helper-Exit.
+Der anschließende SIGSEGV-Test lieferte zunächst 35 native Frames; das
+Browservideo lief von 36 auf 66 Frames weiter. Danach bestand ein neuer
+Helper mit 36 Transfers und vollständigem Abschluss.
+Evidenz: [validation-isolated-helper-odin.json](../experiments/dmabuf/validation-isolated-helper-odin.json).
+29 Unit-Tests bestehen. Die zusätzliche Farbraumdiagnose enthält nur
+Range-/Matrix-/Transfer-/Primaries-Enumwerte, keine Videobytes.
 
 Die neue H264-Schnittstelle kompiliert mit `-Wall -Wextra -Werror`; 24 Unit-
 Tests bestehen. Nach Wiederherstellung des SSH-Zugangs bestand die lokale

@@ -146,7 +146,14 @@ Aushandlung ist weiterhin separat ungelöst. Details und Einschränkungen:
 [Testanwendung](../experiments/dmabuf/README.md).
 
 Der H264-Anschluss ist inzwischen opt-in implementiert: Encoded-Transform,
-validiertes und begrenztes IPC, Node-Decoderthread, appsrc/V4L2 und DMA-BUF-
-Diagnosefenster. Der originale Browserstream bleibt aktiv. Mac-Tap und
-Fallbacks geprüft; Portal/GFN-H264-Hardwareprobe noch offen.
+validiertes und begrenztes IPC, appsrc/V4L2 und DMA-BUF-Diagnosefenster.
+Nach einem Live-Absturz laufen Decoderthread, natives Modul, FD-Import und
+Diagnosefenster in einem separaten Electron-Helper mit eigenem temporären
+Profil. Der GFN-Prozess erhält nur Status und sendet komprimierte Frames.
+Der originale Browserstream bleibt aktiv. Helper-SIGSEGV-Isolation am Mac
+und Portal geprüft; lokaler Hardwarepfad im neuen Prozess bei 720p über
+30 Sekunden nachgewiesen. Ein echter GFN-Stream bleibt separat zu prüfen.
+Farbraumfehler und ursprüngliche Absturzursache sind
+dadurch nicht behoben. Der Helper nutzt Wayland, das GFN-Frontend kann bei
+XWayland bleiben.
 [Brückenarchitektur und Aktivierung](native-bridge.md).

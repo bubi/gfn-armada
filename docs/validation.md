@@ -287,3 +287,41 @@ Node-Worker teilen den Prozess; ein SIGSEGV darin kann die GFN-Oberfläche
 mit beenden. Numerische DMA-BUF-FDs dürfen bei einer Prozessaufteilung
 nicht einfach als normale IPC-Zahlen verwendet werden; FD-Transfer oder
 Import/Ausgabe im Decoder-Hilfsprozess sind erforderlich.
+
+## Separater Electron-Helper und Fehlerisolation
+
+`client/main.cjs` wählt den normalen Client oder den Helper. Nur der Helper
+lädt das native Modul, besitzt den Node-Worker und importiert DMA-BUFs in
+seinen eigenen Renderer. Der GFN-Prozess sendet binär gerahmte komprimierte
+Access-Units und erhält Bestätigungen/Status; keine FD-Zahlen überschreiten
+die Prozessgrenze. Der Helper verwendet ein temporäres Profil ohne Login,
+blockiert Netzwerkrequests und läuft unter Wayland unabhängig vom Frontend.
+Maximal acht Pakete / 4 MiB, zwei Sekunden Ack-Frist, 15 Sekunden Startup-
+Frist und begrenztes Stop mit SIGKILL-Fallback. Kein automatischer Neustart.
+
+Mac: Helper-SIGSEGV bei weiterlaufendem Browservideo (30 → 67 Frames).
+Separat simulierter Farbraumfehler: nur der Helper beendet sich mit Code 0,
+Browservideo läuft weiter. Beide Tests verwenden ein ausdrücklich falsches
+Decoder-Testmodul, `nativeTested:false`; sie behaupten keine Mac-Hardwareprobe.
+
+Portal, tatsächliches Node-API-/Iris-Modul, Browser XWayland / Helper Wayland:
+
+| Probe | Ergebnis |
+|---|---|
+| Gesunder 720p-Stream, 30.204 Sekunden | 896 Transfers, Draws und Freigaben; null offene Samples; sechs Farbbalken; Helper Exit 0 |
+| SIGSEGV nach Hardwareausgabe | 35 native Frames; Browser 36 → 66 Frames; nur Helper beendet |
+| Iris nach dem SIGSEGV neu öffnen | 36 Transfers/Draws/Freigaben; null offene Samples; Helper Exit 0 |
+
+Der bisherige produktive Client-PID 116674 blieb geöffnet. Es wurde keine
+GFN-Sitzung beendet, kein Basispaket installiert und kein neuer Live-GFN-
+Hardwaretest ausgeführt. 29 Unit-Tests bestehen auf Mac und Linux ARM64.
+Compiler weiterhin `-Wall -Wextra -Werror`; neu gebautes Addon SHA-256:
+`2e663ef54f5915140d21d415e8994b036a56c23fba1a832285338c60f4a3426d`.
+Farbraum-Ablehnung protokolliert jetzt die ausgehandelten Enumwerte, ohne
+die bisherige strikte Ausgabeprüfung zu lockern.
+
+Evidenz mit getesteten Quellhashes:
+[validation-isolated-helper-odin.json](../experiments/dmabuf/validation-isolated-helper-odin.json).
+Prozessisolation behebt weder den noch ungeklärten ursprünglichen Fehler
+noch HEVC-Aushandlung. Kein Nachweis von GFN-Hardwareausgabe, CPU-Ersparnis,
+Compositor-Zero-Copy, Ende-zu-Ende-Latenz oder tatsächlich präsentierten Frames.

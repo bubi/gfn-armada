@@ -151,7 +151,7 @@ static napi_value pull_frame(napi_env env, napi_callback_info info) {
   GstVideoInfoDmaDrm drm; gst_video_info_dma_drm_init(&drm);
   GstVideoMeta *meta=gst_buffer_get_video_meta(buffer);
   gsize plane_size[GST_VIDEO_MAX_PLANES]; guint heights[GST_VIDEO_MAX_PLANES];
-  const char *invalid=NULL;
+  const char *invalid=NULL;char color_error[200];
   if(!gst_video_info_dma_drm_from_caps(&drm,gst_sample_get_caps(sample)) ||
      drm.drm_fourcc!=gst_video_dma_drm_fourcc_from_format(GST_VIDEO_FORMAT_NV12) || drm.drm_modifier!=0)
     invalid="Only explicitly negotiated linear NV12 DMA-BUF is supported";
@@ -166,8 +166,12 @@ static napi_value pull_frame(napi_env env, napi_callback_info info) {
   else if(drm.vinfo.colorimetry.matrix!=GST_VIDEO_COLOR_MATRIX_BT709 ||
           drm.vinfo.colorimetry.primaries!=GST_VIDEO_COLOR_PRIMARIES_BT709 ||
           drm.vinfo.colorimetry.transfer!=GST_VIDEO_TRANSFER_BT709 ||
-          drm.vinfo.colorimetry.range!=GST_VIDEO_COLOR_RANGE_16_235)
-    invalid="First prototype requires negotiated limited-range BT.709";
+          drm.vinfo.colorimetry.range!=GST_VIDEO_COLOR_RANGE_16_235) {
+    g_snprintf(color_error,sizeof(color_error),"First prototype requires negotiated limited-range BT.709 (range=%u matrix=%u transfer=%u primaries=%u)",
+      (unsigned)drm.vinfo.colorimetry.range,(unsigned)drm.vinfo.colorimetry.matrix,
+      (unsigned)drm.vinfo.colorimetry.transfer,(unsigned)drm.vinfo.colorimetry.primaries);
+    invalid=color_error;
+  }
   napi_value planes; napi_create_array_with_length(env,2,&planes);
   if(!invalid) for(unsigned p=0;p<2;p++) {
     guint idx,length; gsize skip,offset,maxsize;
