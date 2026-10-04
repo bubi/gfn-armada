@@ -1,7 +1,7 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm');
 const {webcrypto}=require('node:crypto');
 const {installEncodedTap}=require('../client/encoded-tap.cjs');
-async function burst(acknowledge){
+async function burst(acknowledge,invalidData){
   // Capture the actual serialized worker through its page bootstrap.
   let source;
   const window={RTCPeerConnection:function(){},RTCRtpScriptTransform:function(){},postMessage(){}};
@@ -23,7 +23,7 @@ async function burst(acknowledge){
   let resolveDone;const done=new Promise(resolve=>{resolveDone=resolve;});
   const readable=new ReadableStream({start(controller){
     for(let i=0;i<40;i++){
-      const data=Uint8Array.from(i===0?[0,0,0,1,0x67,1,0,0,0,1,0x68,1,0,0,0,1,0x65,1]:[0,0,0,1,0x41,1]).buffer;
+      const data=i===3&&invalidData?invalidData.buffer:Uint8Array.from(i===0?[0,0,0,1,0x67,1,0,0,0,1,0x68,1,0,0,0,1,0x65,1]:[0,0,0,1,0x41,1]).buffer;
       const frame={data,type:i===0?'key':'delta',getMetadata:()=>({mimeType:'video/H264',rtpTimestamp:i*1500})};
       frames.push(frame);controller.enqueue(frame);
     }
@@ -46,4 +46,16 @@ test('tap still fails closed after eight unacknowledged packets and forwards eve
   const {messages,highWater}=await burst(false);
   assert.equal(messages.filter(m=>m.kind==='frame').length,8);assert.equal(highWater,8);
   assert.equal(messages.find(m=>m.reason==='compressed-queue-overflow').metrics.pending,8);
+});
+
+for(const [reason,bytes,annexB] of [
+  ['empty-access-unit',new Uint8Array(0),0],
+  ['non-annexb-access-unit',Uint8Array.from([0x41,1]),0],
+  ['oversized-access-unit',new Uint8Array(2097153),0]
+]) test(`tap identifies ${reason} without exporting payload bytes`,async()=>{
+  const {messages}=await burst(false,bytes);
+  const status=messages.find(m=>m.reason===reason);
+  assert.ok(status);assert.equal(status.metrics.accessUnitBytes,bytes.length);
+  assert.equal(status.metrics.annexB,annexB);assert.equal(status.bytes,undefined);
+  assert.equal(messages.filter(m=>m.kind==='frame').length,3);
 });

@@ -409,3 +409,29 @@ Yield aus und validiert somit noch nicht dessen Verhalten bei echten
 GFN-Bursts. Der Electron-Backpressure-Test bestätigte erneut die Grenze
 von acht Kopien bei weiterlaufender Originalausgabe.
 Evidenz: [validation-yield-odin.json](../experiments/dmabuf/validation-yield-odin.json).
+
+### Access-Unit-Fehler getrennt erfassen (2026-10-04)
+
+Der folgende echte GFN-Test stoppte nach drei Paketen mit
+`unsupported-access-unit`, ohne einen Yield oder DMA-BUF-Transfer.
+Die alte Meldung fasste leere, nicht mit Annex-B beginnende und über
+2 MiB große Frames zusammen; deshalb ist die konkrete Ursache dieses
+Versuchs unbekannt. Helper-Exit 0, keine Leases; der Browser streamte
+weiter H264 mit FFmpeg und null gemeldeten Drops. Dieser Versuch erlaubt
+keine Bewertung der Burst-Korrektur.
+
+Die Fehler heißen nun `empty-access-unit`, `non-annexb-access-unit` oder
+`oversized-access-unit`. Tap-Snapshots enthalten `accessUnitBytes` und
+`annexB` (0/1), ausschließlich aggregierte Größen-/Framing-Metadaten,
+keine Payloads oder Bildinhalte. Ablehnung und Queue-Grenzen bleiben
+unverändert. Neue Tests provozieren alle drei Fälle und prüfen genaue
+Fehlermeldung, Größe sowie Weitergabe sämtlicher Originalframes.
+Es wird noch kein neues Bitstream-Format angenommen oder konvertiert.
+
+Die separate Instanz `bridge-accessunit-20261004` bestand 37 Tests auf
+Mac/ARM64 und den lokalen Iris-H264-Test mit 151 Transfers/Draws/Freigaben,
+null Leases, korrektem Testmuster und Exit 0. Ein weiteres komprimiertes
+Paket war beim Test-Stop noch in der Annahme; dies ist kein dekodiertes
+oder präsentiertes Frame. Tap-Metadaten melden das erwartete Annex-B-
+Format. Der präzise GFN-Ablehnungsgrund wird erst im nächsten Versuch
+erfasst; dessen Hardwarestatus bleibt bis dahin unbestätigt.

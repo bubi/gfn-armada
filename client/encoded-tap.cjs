@@ -9,8 +9,8 @@ function installEncodedTap() {
       const transformer=event.transformer, generation=transformer.options.generation,port=transformer.options.port;
       let pendingBytes=0, enabled=true, started=false, sequence=0,observed=0,codecReported=false;
       const pending=new Map();
-      let highWater=0,ackCount=0,ackMaxMs=0,lastMetrics=0,yieldCount=0,yieldMaxMs=0;
-      const metrics=()=>({stage:"tap",pending:pending.size,pendingBytes,highWater,ackCount,ackMaxMs,yieldCount,yieldMaxMs,oldestMs:pending.size?performance.now()-pending.values().next().value.at:0});
+      let highWater=0,ackCount=0,ackMaxMs=0,lastMetrics=0,yieldCount=0,yieldMaxMs=0,accessUnitBytes=0,annexB=0;
+      const metrics=()=>({stage:"tap",pending:pending.size,pendingBytes,highWater,ackCount,ackMaxMs,yieldCount,yieldMaxMs,accessUnitBytes,annexB,oldestMs:pending.size?performance.now()-pending.values().next().value.at:0});
       const report=reason=>{port.postMessage({kind:'status',generation,reason,metrics:metrics()});
         if(['encoded-frame-observed','transform-ended-before-stream'].includes(reason)) postMessage({kind:'lifecycle',reason});};
       port.onmessage=e=>{
@@ -26,13 +26,14 @@ function installEncodedTap() {
         // Always forward the original frame unchanged, including after bridge failure.
         try {
           if(enabled) {
-            const bytes=new Uint8Array(frame.data);
+            const bytes=new Uint8Array(frame.data);accessUnitBytes=bytes.length;
             if(!observed++) report('encoded-frame-observed');
             const metadata=frame.getMetadata();
             const mime=metadata.mimeType || transformer.options.codecs[metadata.payloadType];
             if(mime!=='video/H264'){enabled=false;report('negotiated-codec-not-h264');return;}
             if(!codecReported){codecReported=true;report('negotiated-h264');}
             const annex=bytes.length>=4 && bytes[0]===0 && bytes[1]===0 && (bytes[2]===1 || (bytes[2]===0 && bytes[3]===1));
+            annexB=annex?1:0;
             let sps=false,pps=false;
             if(!started && frame.type==='key' && annex) {
               for(let i=0;i<bytes.length-4;i++) if(bytes[i]===0 && bytes[i+1]===0) {
@@ -45,7 +46,7 @@ function installEncodedTap() {
             if(started) {
               const full=pending.size>=8 || pendingBytes+bytes.length>4194304;
               if(!annex || bytes.length>2097152 || full) {
-                enabled=false; report(full?'compressed-queue-overflow':'unsupported-access-unit');
+                enabled=false; report(full?'compressed-queue-overflow':bytes.length===0?'empty-access-unit':bytes.length>2097152?'oversized-access-unit':'non-annexb-access-unit');
               } else {
                 pending.set(++sequence,{bytes:bytes.length,at:performance.now()});highWater=Math.max(highWater,pending.size);pendingBytes+=bytes.length;const copy=frame.data.slice(0);
                 port.postMessage({kind:'frame',generation,sequence,timestamp:metadata.rtpTimestamp??frame.timestamp,key:frame.type==='key',bytes:copy},[copy]);

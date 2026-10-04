@@ -134,7 +134,200 @@
       "overflow": true
     }
   },
-  "actualGfnTested": false,
+  "actualGfnTested": true,
   "gfnHevcValidated": false,
-  "limitation": "The synthetic 30-second test remained at one pending packet and did not trigger a yield. VM stream tests exercise 40-frame bursts and task-delivered ACKs. Actual GFN burst handling and timer delay remain unverified."
+  "limitation": "The synthetic 30-second test remained at one pending packet and did not trigger a yield. VM stream tests exercise 40-frame bursts and task-delivered ACKs. Actual GFN burst handling and timer delay remain unverified. The following GFN test failed at unsupported-access-unit after three packets, before any yield or decoded transfer. The precise empty/non-Annex-B/oversized cause is not available in this older diagnostic.",
+  "gfnEvidence": {
+    "stop": {
+      "timestamp": "2026-10-04T17:48:10.713Z",
+      "event": "native-shadow",
+      "status": "stopped",
+      "reason": "unsupported-access-unit",
+      "lastFrameAt": null,
+      "mode": "isolated-parallel-shadow",
+      "codec": "H264",
+      "helperPid": 170976,
+      "helperExited": false,
+      "helperExitSignal": null,
+      "helperExitCode": null,
+      "lastNativeError": null,
+      "negotiatedColorSpace": null,
+      "encodedFrames": 3,
+      "decodedTransfers": 0,
+      "rendererDraws": 0,
+      "releasedSamples": 0,
+      "outstanding": 0,
+      "queueMetrics": {
+        "helper-worker": {
+          "stage": "helper-worker",
+          "pending": 0,
+          "pendingBytes": 0,
+          "highWater": 0,
+          "ackCount": 0,
+          "ackMaxMs": 0,
+          "oldestMs": 0,
+          "nativePushMaxMs": 0
+        },
+        "tap": {
+          "stage": "tap",
+          "pending": 3,
+          "pendingBytes": 12562,
+          "highWater": 3,
+          "ackCount": 0,
+          "ackMaxMs": 0,
+          "oldestMs": 7.299999997019768,
+          "yieldCount": 0,
+          "yieldMaxMs": 0
+        },
+        "helper-pipe": {
+          "stage": "helper-pipe",
+          "pending": 3,
+          "pendingBytes": 12562,
+          "highWater": 3,
+          "ackCount": 0,
+          "ackMaxMs": 0,
+          "oldestMs": 7.385325000002922
+        },
+        "supervisor": {
+          "pending": 3,
+          "pendingBytes": 12562
+        }
+      },
+      "originalBrowserDecodeEnabled": true,
+      "hardwareDecoderActive": "unknown"
+    },
+    "closed": {
+      "timestamp": "2026-10-04T17:48:10.765Z",
+      "event": "native-shadow",
+      "status": "closed",
+      "lastFrameAt": null,
+      "mode": "isolated-parallel-shadow",
+      "codec": "H264",
+      "helperPid": 170976,
+      "helperExited": false,
+      "helperExitSignal": null,
+      "helperExitCode": null,
+      "lastNativeError": null,
+      "negotiatedColorSpace": null,
+      "encodedFrames": 3,
+      "decodedTransfers": 0,
+      "rendererDraws": 0,
+      "releasedSamples": 0,
+      "outstanding": 0,
+      "queueMetrics": {
+        "helper-worker": {
+          "stage": "helper-worker",
+          "pending": 0,
+          "pendingBytes": 0,
+          "highWater": 0,
+          "ackCount": 0,
+          "ackMaxMs": 0,
+          "oldestMs": 0,
+          "nativePushMaxMs": 0
+        },
+        "tap": {
+          "stage": "tap",
+          "pending": 3,
+          "pendingBytes": 12562,
+          "highWater": 3,
+          "ackCount": 0,
+          "ackMaxMs": 0,
+          "oldestMs": 7.299999997019768,
+          "yieldCount": 0,
+          "yieldMaxMs": 0
+        },
+        "helper-pipe": {
+          "stage": "helper-pipe",
+          "pending": 3,
+          "pendingBytes": 12562,
+          "highWater": 3,
+          "ackCount": 0,
+          "ackMaxMs": 0,
+          "oldestMs": 7.385325000002922
+        },
+        "supervisor": {
+          "pending": 3,
+          "pendingBytes": 12562
+        }
+      },
+      "originalBrowserDecodeEnabled": true,
+      "hardwareDecoderActive": "unknown"
+    },
+    "exit": {
+      "timestamp": "2026-10-04T17:48:10.835Z",
+      "event": "native-shadow",
+      "status": "helper-exited",
+      "reason": "0",
+      "lastFrameAt": null,
+      "mode": "isolated-parallel-shadow",
+      "codec": "H264",
+      "helperPid": 170976,
+      "helperExited": true,
+      "helperExitSignal": null,
+      "helperExitCode": 0,
+      "lastNativeError": null,
+      "negotiatedColorSpace": null,
+      "encodedFrames": 3,
+      "decodedTransfers": 0,
+      "rendererDraws": 0,
+      "releasedSamples": 0,
+      "outstanding": 0,
+      "queueMetrics": {
+        "helper-worker": {
+          "stage": "helper-worker",
+          "pending": 0,
+          "pendingBytes": 0,
+          "highWater": 0,
+          "ackCount": 0,
+          "ackMaxMs": 0,
+          "oldestMs": 0,
+          "nativePushMaxMs": 0
+        },
+        "tap": {
+          "stage": "tap",
+          "pending": 3,
+          "pendingBytes": 12562,
+          "highWater": 3,
+          "ackCount": 0,
+          "ackMaxMs": 0,
+          "oldestMs": 7.299999997019768,
+          "yieldCount": 0,
+          "yieldMaxMs": 0
+        },
+        "helper-pipe": {
+          "stage": "helper-pipe",
+          "pending": 3,
+          "pendingBytes": 12562,
+          "highWater": 3,
+          "ackCount": 0,
+          "ackMaxMs": 0,
+          "oldestMs": 7.385325000002922
+        },
+        "supervisor": {
+          "pending": 3,
+          "pendingBytes": 12562
+        }
+      },
+      "originalBrowserDecodeEnabled": true,
+      "hardwareDecoderActive": "unknown"
+    },
+    "browserAfterStop": {
+      "timestamp": 1791136106969,
+      "event": "native-webrtc-decoder",
+      "status": "sampled",
+      "streams": [
+        {
+          "codec": "video/H264",
+          "decoder": "FFmpeg",
+          "powerEfficientDecoder": false,
+          "framesDecoded": 939,
+          "framesDropped": 0,
+          "totalDecodeTime": 4.0608249999999995,
+          "statsTimestamp": 1791136106357.413
+        }
+      ]
+    }
+  },
+  "gfnYieldExercised": false,
+  "sustainedGfnPlaybackValidated": false
 }
