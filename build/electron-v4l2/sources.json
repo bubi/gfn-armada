@@ -1,0 +1,11 @@
+{
+  "electronVersion": "44.5.1",
+  "electronCommit": "19c601167d4ae75989938416c18ed81eb21c6020",
+  "chromiumVersion": "152.0.7977.130",
+  "depotToolsCommit": "8a5434051036b32412a2ecb10c213a72e3f3ccb9",
+  "attachmentSHA256": "ddd383145849cf528686ba0bc8be5f2d69b8362bcc7da012ad9d64f6bab151c4",
+  "patches": {
+    "0002-gpu-sandbox-broker-v4l2-nodes-on-desktop-linux.patch": "1ca28a7c457391685fc0e7eb6074a5d70af128647a98a187ed9b9662733d054f",
+    "0001-v4l2-stateful-allow-hevc-passthrough.patch": "8afc33b5ca2929960603a7e1d4370677118a0d649c2fd9bd5402ca01e9642672"
+  }
+}

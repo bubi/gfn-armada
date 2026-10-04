@@ -1,0 +1,14 @@
+# Experimental x86_64 source builder; target is Linux ARM64.
+# This is separate from the small, verified application packaging container.
+FROM --platform=linux/amd64 node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d
+ENV DEBIAN_FRONTEND=noninteractive DEPOT_TOOLS_UPDATE=0
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates git curl python3 python3-setuptools build-essential \
+    pkg-config bison flex gperf ninja-build unzip xz-utils file lsb-release \
+    libglib2.0-dev libnss3-dev libdbus-1-dev libgtk-3-dev libgbm-dev \
+    libdrm-dev libasound2-dev libpulse-dev libxkbcommon-dev libxss-dev \
+    libxshmfence-dev libva-dev libudev-dev libcups2-dev \
+    && dpkg-query -W > /builder-packages.txt \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /checkout
+ENTRYPOINT ["bash", "/recipe/run.sh"]

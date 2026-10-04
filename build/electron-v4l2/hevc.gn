@@ -1,0 +1,16 @@
+import("//electron/build/args/release.gn")
+target_os = "linux"
+target_cpu = "arm64"
+use_v4l2_codec = true
+use_vaapi = false
+proprietary_codecs = true
+ffmpeg_branding = "Chrome"
+# Experimental passthrough patch: codec support has not been validated.
+enable_hevc_parser_and_hw_decoder = true
+enable_platform_hevc = true
+use_av1_hw_decoder = false
+ozone_platform_wayland = true
+ozone_platform_x11 = true
+symbol_level = 1
+blink_symbol_level = 0
+use_remoteexec = false

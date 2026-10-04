@@ -1,5 +1,9 @@
 # Linux ARM64 build
 
+Der separate, noch nicht kompilierte V4L2-Electron-Sourcebuild ist in
+[electron-v4l2-experiment.md](electron-v4l2-experiment.md) dokumentiert.
+Er verändert den hier beschriebenen normalen Bundle-Build nicht.
+
 ## Eingaben
 
 - `package-lock.json` mit exakten npm-Versionen und Integrity-Hashes.

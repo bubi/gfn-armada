@@ -1,0 +1,59 @@
+#!/usr/bin/env python3
+"""Isolated experimental source build. Preflight never downloads or mutates."""
+import argparse
+import json
+import os
+from pathlib import Path
+import platform
+import shutil
+import subprocess
+import sys
+
+repo = Path(__file__).resolve().parents[1]
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('stage', choices=['preflight', 'sync', 'configure', 'build'])
+parser.add_argument('--checkout', type=Path)
+parser.add_argument('--variant', choices=['h264', 'hevc'], default='h264')
+args = parser.parse_args()
+checkout = (args.checkout or repo / ('.artifacts/electron-v4l2-' + args.variant)).expanduser().resolve()
+ancestor = checkout
+while not ancestor.exists():
+    ancestor = ancestor.parent
+free = shutil.disk_usage(ancestor).free
+required_gib = {'preflight': 250, 'sync': 250, 'configure': 20, 'build': 80}[args.stage]
+minimum = required_gib * 1024 ** 3
+engine = os.environ.get('CONTAINER_ENGINE', 'docker')
+recipe = repo / 'build/electron-v4l2'
+report = {'stage': args.stage, 'variant': args.variant, 'checkout': str(checkout),
+          'hostArchitecture': platform.machine(), 'builderPlatform': 'linux/amd64',
+          'targetPlatform': 'linux/arm64', 'freeGiB': round(free / 1024 ** 3, 1),
+          'requiredFreeGiB': required_gib, 'containerEngineFound': bool(shutil.which(engine)),
+          'sourceBuildValidated': False, 'hardwareDecodeValidated': False}
+print(json.dumps(report, indent=2), flush=True)
+if free < minimum:
+    sys.exit('Insufficient free space; no image build or source download started.')
+if not shutil.which(engine):
+    sys.exit('Install or select Docker/Podman first.')
+if args.stage == 'preflight':
+    sys.exit(0)
+if ',' in str(checkout) or ',' in str(recipe):
+    sys.exit('Container mount paths must not contain commas.')
+if checkout == repo or repo.is_relative_to(checkout):
+    sys.exit('Select a dedicated checkout outside the repository root.')
+checkout.mkdir(parents=True, exist_ok=True)
+ownership = checkout / '.gfn-armada-build'
+if not ownership.exists() and any(checkout.iterdir()):
+    sys.exit('Refusing an existing nonempty directory without a GFN build marker.')
+if not ownership.exists() and args.stage != 'sync':
+    sys.exit('Run sync first on a dedicated empty checkout.')
+image = 'gfn-armada-electron-v4l2-builder'
+subprocess.run([engine, 'build', '--platform', 'linux/amd64', '-f',
+                str(recipe / 'Containerfile'), '-t', image, str(recipe)], check=True)
+if not ownership.exists():
+    ownership.write_text('gfn-armada experimental Electron source build\n')
+command = [engine, 'run', '--rm', '--platform', 'linux/amd64',
+           '--mount', f'type=bind,src={recipe},dst=/recipe,readonly',
+           '--mount', f'type=bind,src={checkout},dst=/checkout',
+           '-e', 'GFN_BUILD_JOBS=' + os.environ.get('GFN_BUILD_JOBS', '4'),
+           image, args.stage, args.variant]
+subprocess.run(command, check=True)

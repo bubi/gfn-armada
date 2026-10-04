@@ -1,0 +1,32 @@
+--- a/content/common/gpu_pre_sandbox_hook_linux.cc
++++ b/content/common/gpu_pre_sandbox_hook_linux.cc
+@@ -619,6 +619,19 @@
+   return command_set;
+ }
+ 
++// Desktop Linux: V4L2Device enumerates /dev/video0..255 and
++// /dev/media0..255 (see v4l2_device.cc), so those nodes must be brokered.
++void AddDesktopLinuxV4L2GpuPermissions(
++    std::vector<BrokerFilePermission>* permissions) {
++  static constexpr int kMaxV4L2Nodes = 256;
++  for (int i = 0; i < kMaxV4L2Nodes; ++i) {
++    permissions->push_back(BrokerFilePermission::ReadWrite(
++        base::StringPrintf("/dev/video%d", i)));
++    permissions->push_back(BrokerFilePermission::ReadWrite(
++        base::StringPrintf("/dev/media%d", i)));
++  }
++}
++
+ std::vector<BrokerFilePermission> FilePermissionsForGpu(
+     const sandbox::policy::SandboxSeccompBPF::Options& options) {
+   // All GPU process policies need this file brokered out.
+@@ -669,6 +682,9 @@
+   }
+ 
+   AddStandardGpuPermissions(&permissions);
++  if (UseV4L2Codec(options)) {
++    AddDesktopLinuxV4L2GpuPermissions(&permissions);
++  }
+   return permissions;
+ }
+ 

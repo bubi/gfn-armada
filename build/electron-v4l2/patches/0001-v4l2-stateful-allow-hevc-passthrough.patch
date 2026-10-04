@@ -1,0 +1,18 @@
+--- a/media/gpu/v4l2/v4l2_stateful_video_decoder.cc
++++ b/media/gpu/v4l2/v4l2_stateful_video_decoder.cc
+@@ -510,12 +510,10 @@
+       decoder_buffer_and_callbacks_.push(std::move(a));
+     }
+ 
+-  } else if (VideoCodecProfileToVideoCodec(config_.profile()) ==
+-             VideoCodec::kHEVC) {
+-    NOTIMPLEMENTED();
+-    std::move(decode_cb).Run(DecoderStatus::Codes::kUnsupportedCodec);
+-    return;
+   } else {
++    // HEVC (and AV1/VP9): Qualcomm Venus/Iris accept one whole access unit
++    // per OUTPUT buffer, which is what MSE and WebRTC already hand us.
++    // Pass through like VP9; no reassembly needed on Qualcomm.
+     decoder_buffer_and_callbacks_.emplace(std::move(buffer),
+                                           std::move(decode_cb));
+   }
