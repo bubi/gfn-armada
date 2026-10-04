@@ -1,104 +1,66 @@
-const {Worker}=require('node:worker_threads');
-const path=require('node:path');
+const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
 const {installEncodedTap}=require('./encoded-tap.cjs');
 const {packet,rtpDelta}=require('./encoded-packet.cjs');
-function attachNativeShadow({app,BrowserWindow,ipcMain,sharedTexture,source,addon,report,localTest=false}) {
-  if(process.platform!=='linux' || process.arch!=='arm64' || !path.isAbsolute(addon)) throw new Error('Native shadow requires Linux ARM64 and an absolute addon path');
-  let worker,window,closeTimer,stopped=false,generation,sequence=0,inflight=0,inflightBytes=0,previous,pts=0,decoded=0,draws=0,released=0,lastFrameAt=null;
-  const leases=new Set(),acknowledgements=new Map();
+const {startHelper}=require('./helper-process.cjs');
+function attachNativeShadow({app,ipcMain,source,addon,report,localTest=false}) {
+  if((!localTest&&(process.platform!=='linux'||process.arch!=='arm64'))||!path.isAbsolute(addon)) throw new Error('Native shadow requires Linux ARM64 and an absolute addon path');
+  let helper,starting,stopped=false,generation,sequence=0,inflight=0,inflightBytes=0,previous,pts=0;
+  let decoded=0,draws=0,released=0,outstanding=0,lastFrameAt=null,helperExited=false,helperExitSignal=null,helperExitCode=null;
   const trusted=event=>{
-    try{return event.sender===source && event.senderFrame===source.mainFrame &&
-      (new URL(event.senderFrame.url).origin==='https://play.geforcenow.com');}catch{return false;}
+    try{return event.sender===source&&event.senderFrame===source.mainFrame&&new URL(event.senderFrame.url).origin==='https://play.geforcenow.com';}catch{return false;}
   };
-  const evidence=(status,reason)=>report({status,reason,timestamp:new Date().toISOString(),lastFrameAt,mode:'parallel-shadow',codec:'H264',
-    encodedFrames:sequence,decodedTransfers:decoded,rendererDraws:draws,releasedSamples:released,outstanding:leases.size,
+  const evidence=(status,reason)=>report({status,reason,timestamp:new Date().toISOString(),lastFrameAt,mode:'isolated-parallel-shadow',codec:'H264',
+    helperPid:helper?.pid,helperExited,helperExitSignal,helperExitCode,encodedFrames:sequence,decodedTransfers:decoded,rendererDraws:draws,releasedSamples:released,outstanding,
     originalBrowserDecodeEnabled:true,hardwareDecoderActive:'unknown'});
-  const closeWindow=()=>{clearTimeout(closeTimer);if(window&&!window.isDestroyed()) window.destroy();};
   function stop(reason='stopped') {
-    if(stopped) return; stopped=true;
-    for(const resolve of acknowledgements.values()) resolve(false);acknowledgements.clear();
-    // Let a transfer already in flight finish its renderer release before closing.
-    // A stalled renderer still has a bounded shutdown via Electron's cleanup.
-    if(leases.size) closeTimer=setTimeout(closeWindow,1000);else closeWindow();
-    worker?.postMessage({kind:'stop'});evidence('stopped',reason);
+    if(stopped) return;stopped=true;helper?.stop();evidence('stopped',reason);
   }
-  async function start() {
-    window=new BrowserWindow({width:960,height:600,title:'gfn-armada — native H264 shadow',webPreferences:{
-      sandbox:true,contextIsolation:true,nodeIntegration:false,backgroundThrottling:false,preload:path.join(__dirname,'shadow-preload.cjs')
-    }});
-    window.webContents.setWindowOpenHandler(()=>({action:'deny'}));
-    window.webContents.on('will-navigate',e=>e.preventDefault());
-    window.on('closed',()=>stop('shadow-window-closed'));
-    const ready=new Promise(resolve=>{
-      const handler=event=>{if(event.sender===window.webContents){ipcMain.removeListener('native-shadow-ready',handler);resolve();}};
-      ipcMain.on('native-shadow-ready',handler);
-      window.once('closed',()=>ipcMain.removeListener('native-shadow-ready',handler));
-    });
-    await window.loadFile(path.join(__dirname,'shadow.html'));await ready;
-    await app.getGPUInfo('complete');
-    for(let n=0;n<50 && !stopped;n++){
-      if(app.getGPUFeatureStatus().gpu_compositing==='enabled') break;
-      await new Promise(r=>setTimeout(r,100));
-    }
-    if(stopped) throw new Error('Shadow stopped during startup');
-    if(app.getGPUFeatureStatus().gpu_compositing!=='enabled') throw new Error('Shadow GPU compositing unavailable');
-    worker=new Worker(path.join(__dirname,'native-decoder-worker.cjs'),{workerData:{addon}});
-    worker.on('error',()=>stop('native-worker-failed'));
-    worker.on('exit',code=>{if(!stopped) stop(code?'native-worker-exited':'native-worker-closed')});
-    worker.on('message',async message=>{
-      if(message.kind==='ack'){
-        acknowledgements.get(message.sequence)?.(message.accepted);acknowledgements.delete(message.sequence);
-      } else if(message.kind==='failed') {report({status:'native-error',reason:message.reason});stop('native-decoder-failed');}
-      else if(message.kind==='closed'){evidence('closed');}
-      else if(message.kind==='opened') report({status:'native-opened',codec:'H264',device:message.device,hardwareDecoderActive:'unknown'});
-      else if(message.kind==='frame') {
-        leases.add(message.leaseId);
-        let imported;
-        const release=()=>{if(leases.delete(message.leaseId)){worker.postMessage({kind:'release',id:message.leaseId});released++;if(stopped&&!leases.size) closeWindow();}};
-        if(stopped){release();return;}
-        try{
-          imported=sharedTexture.importSharedTexture({textureInfo:message.textureInfo,allReferencesReleased:release});
-          await sharedTexture.sendSharedTexture({frame:window.webContents.mainFrame,importedSharedTexture:imported});
-          decoded++;lastFrameAt=new Date().toISOString();if(decoded%30===0) evidence('transferring');
-        }catch{if(!imported) release();stop('texture-transfer-failed');}
-        finally{imported?.release();}
+  async function start(){
+    const profile=fs.mkdtempSync(path.join(os.tmpdir(),'gfn-native-helper-'));
+    const env={};
+    for(const key of ['HOME','PATH','TMPDIR','XDG_RUNTIME_DIR','WAYLAND_DISPLAY','DISPLAY','XAUTHORITY','DBUS_SESSION_BUS_ADDRESS','LANG','LC_ALL','LD_LIBRARY_PATH'])
+      if(process.env[key]!==undefined) env[key]=process.env[key];
+    env.GFN_ARMADA_HELPER_PROFILE=profile;env.GFN_ARMADA_NATIVE_BRIDGE=addon;
+    if(localTest) env.GFN_ARMADA_HELPER_LOCAL_TEST='1';
+    const args=[...(!app.isPackaged?[path.resolve(__dirname,'..')]:[]),'--gfn-armada-native-helper',...(process.platform==='linux'?['--ozone-platform=wayland']:[])];
+    helper=startHelper({command:process.execPath,args,env,profile,onEvent:message=>{
+      if(message.kind==='failed'){report({status:'native-error',reason:message.reason});stop('native-helper-failed');}
+      else if(message.kind==='opened') report({status:'native-opened',codec:'H264',device:message.device,helperPid:helper.pid,hardwareDecoderActive:'unknown'});
+      else if(message.kind==='stats'||message.kind==='closed'){
+        if(['decoded','draws','released','outstanding'].some(key=>!Number.isSafeInteger(message[key])||message[key]<0)||message.outstanding>4){stop('invalid-helper-counters');return;}
+        decoded=message.decoded;draws=message.draws;released=message.released;outstanding=message.outstanding;
+        lastFrameAt=typeof message.lastFrameAt==='string'?message.lastFrameAt:null;
+        if(message.kind==='closed') evidence('closed');else if(decoded&&decoded%30===0) evidence('transferring');
+      }else if(message.kind==='exit'){
+        helperExited=true;helperExitSignal=message.signal;helperExitCode=message.code;
+        // OS reclaims the helper's FDs; this does not count as sample release.
+        outstanding=0;if(!stopped) stop('native-helper-exited');
+        evidence('helper-exited',message.signal||String(message.code));
       }
-    });
-    await new Promise((resolve,reject)=>{
-      const timeout=setTimeout(()=>{cleanup();reject(new Error('Native worker readiness timeout'));},5000);
-      const onReady=message=>{if(message.kind==='ready'){cleanup();resolve();}};
-      const onError=()=>{cleanup();reject(new Error('Native addon unavailable'));};
-      const cleanup=()=>{clearTimeout(timeout);worker.removeListener('message',onReady);worker.removeListener('error',onError);};
-      worker.on('message',onReady);worker.once('error',onError);
-    });
+    }});
+    await helper.prepared;if(stopped) throw new Error('Native helper stopped');
+    evidence('helper-ready');
   }
-  let starting;
   ipcMain.handle('native-shadow-bootstrap',async event=>{
-    if(!trusted(event) || stopped) return null;
-    starting ||= start();await starting;
+    if(!trusted(event)||stopped) return null;
+    starting ||=start();await starting;
     return !stopped?`(${installEncodedTap.toString()})()`:null;
   });
   ipcMain.handle('native-shadow-packet',async(event,data)=>{
-    if(!trusted(event) || stopped) return false;
+    if(!trusted(event)||stopped) return false;
     let heldBytes=0;
     try{
       const p=packet(data,sequence+1);
-      if(inflight>=8 || inflightBytes+p.bytes.byteLength>4194304){stop('ipc-queue-overflow');return false;}
-      if(generation && p.generation!==generation) throw new Error('Receiver generation changed');
+      if(inflight>=8||inflightBytes+p.bytes.byteLength>4194304){stop('ipc-queue-overflow');return false;}
+      if(generation&&p.generation!==generation) throw new Error('Receiver generation changed');
       if(!generation){if(!p.key) throw new Error('Initial keyframe required');generation=p.generation;}
       sequence++;inflight++;heldBytes=p.bytes.byteLength;inflightBytes+=heldBytes;
-      starting ||= start();await starting;if(stopped) return false;
+      starting ||=start();await starting;if(stopped) return false;
       if(previous!==undefined) pts+=rtpDelta(previous,p.timestamp);previous=p.timestamp;
-      return await new Promise(resolve=>{
-        acknowledgements.set(p.sequence,resolve);
-        worker.postMessage({kind:'push',sequence:p.sequence,bytes:p.bytes,timestampUs:pts,key:p.key});
-      });
+      return await helper.push({sequence:p.sequence,timestampUs:pts,key:p.key},Buffer.from(p.bytes));
     }catch{stop('invalid-packet-or-startup-failed');return false;}
     finally{if(heldBytes){inflight--;inflightBytes-=heldBytes;}}
   });
-  const onDraw=(event,data)=>{
-    if(window&&!window.isDestroyed() && event.sender===window.webContents && Number.isSafeInteger(data?.frames)) draws=data.frames;
-  };
   const onStatus=(event,reason)=>{
     if(trusted(event)&&['compressed-queue-overflow','unsupported-access-unit','tap-copy-failed','transform-ended','track-ended'].includes(reason)){stop(reason);return;}
     if(trusted(event)&&reason==='probe-receiver-ended'){
@@ -109,25 +71,21 @@ function attachNativeShadow({app,BrowserWindow,ipcMain,sharedTexture,source,addo
     if(trusted(event) && ['hook-installed','attached-encoded-shadow','negotiated-h264','encoded-frame-observed','waiting-inband-parameter-sets','negotiated-codec-not-h264','existing-transform-preserved','encoded-transform-unavailable','worker-unavailable-or-csp-blocked','keyframe-request-unavailable'].includes(reason)) report({status:reason,hardwareDecoderActive:'unknown'});
     else if(trusted(event)) stop('encoded-tap-ended-or-overloaded');
   };
-  ipcMain.on('native-shadow-draw',onDraw);ipcMain.on('native-shadow-status',onStatus);
+  ipcMain.on('native-shadow-status',onStatus);
   let initialNavigation=true;
   const navigation=(_e,_url,inPlace,isMain)=>{
     if(isMain&&!inPlace){if(initialNavigation) initialNavigation=false;else stop('source-navigation');}
   };
-  // Registered after initial load begins by caller; preload installs independently.
-  source.on('render-process-gone',()=>stop('source-renderer-gone'));
-  source.on('did-start-navigation',navigation);source.once('destroyed',()=>stop('source-destroyed'));
-  return {prepare:()=>{starting ||= start();return starting;},stop,snapshot:()=>({sequence,decoded,draws,released,outstanding:leases.size,stopped}),inspectTestOutput:async()=>{
-    if(!localTest) throw new Error('Pixel readback is restricted to the local test');
-    return window.webContents.executeJavaScript(`(()=>{
-      const c=document.querySelector('canvas'),ctx=c.getContext('2d'),colors=[];
-      for(let i=0;i<6;i++) colors.push([...ctx.getImageData(Math.floor((i+.5)*c.width/6),Math.floor(c.height/2),1,1).data].slice(0,3).map(n=>Math.round(n/32)).join(','));
-      return {width:c.width,height:c.height,distinctColors:new Set(colors).size,validationReadback:true};
-    })()`);
-  },dispose:()=>{
-    stop('disposed');ipcMain.removeHandler('native-shadow-bootstrap');ipcMain.removeHandler('native-shadow-packet');
-    ipcMain.removeListener('native-shadow-draw',onDraw);ipcMain.removeListener('native-shadow-status',onStatus);
-    source.removeListener('did-start-navigation',navigation);
-  }};
+  const gone=()=>stop('source-renderer-gone'),destroyed=()=>stop('source-destroyed');
+  source.on('render-process-gone',gone);source.on('did-start-navigation',navigation);source.once('destroyed',destroyed);
+  return {prepare:()=>{starting ||=start();return starting;},stop,
+    snapshot:()=>({sequence,decoded,draws,released,outstanding,stopped,helperPid:helper?.pid,helperExited,helperExitSignal,helperExitCode}),
+    inspectTestOutput:()=>{if(!localTest) throw new Error('Pixel readback is restricted to the local test');return helper.inspect();},
+    crashTestHelper:()=>{if(!localTest) throw new Error('Fault injection is restricted to the local test');helper.killForTest('SIGSEGV');},
+    dispose:()=>{
+      stop('disposed');ipcMain.removeHandler('native-shadow-bootstrap');ipcMain.removeHandler('native-shadow-packet');ipcMain.removeListener('native-shadow-status',onStatus);
+      source.removeListener('did-start-navigation',navigation);source.removeListener('render-process-gone',gone);source.removeListener('destroyed',destroyed);
+    }
+  };
 }
 module.exports={attachNativeShadow};

@@ -1,4 +1,6 @@
 // Real local WebRTC + production preload. Mac tests the tap; ARM64 can test Iris.
+if(process.argv.includes('--gfn-armada-native-helper')) require('../client/native-helper.cjs');
+else {
 const {app,BrowserWindow,ipcMain,session,sharedTexture}=require('electron');
 const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
 const {loopback}=require('./fixtures/local-webrtc.cjs');
@@ -6,9 +8,15 @@ const {installEncodedTap}=require('../client/encoded-tap.cjs');
 const {packet}=require('../client/encoded-packet.cjs');
 const profile=fs.mkdtempSync(path.join(os.tmpdir(),'gfn-native-bridge-'));
 app.setPath('userData',profile);
-if(process.platform==='linux') app.commandLine.appendSwitch('ozone-platform','wayland');
-let shadow,window,encoded=0,finishing=false,overflow=false,originalFrames=0;
-const native=Boolean(process.env.GFN_ARMADA_NATIVE_BRIDGE);
+const frontendOzone=process.env.GFN_ARMADA_TEST_FRONTEND_OZONE||'wayland';
+if(!['wayland','x11'].includes(frontendOzone)) throw new Error('Invalid frontend test backend');
+if(process.platform==='linux') app.commandLine.appendSwitch('ozone-platform',frontendOzone);
+let shadow,window,encoded=0,finishing=false,overflow=false,originalFrames=0,crashAtFrames=null;
+const helperCrash=process.env.GFN_ARMADA_TEST_HELPER_CRASH==='1';
+const helperReject=process.env.GFN_ARMADA_TEST_HELPER_REJECT==='1';
+const mockHelper=(helperCrash||helperReject)&&!process.env.GFN_ARMADA_NATIVE_BRIDGE;
+const native=Boolean(process.env.GFN_ARMADA_NATIVE_BRIDGE)||mockHelper;
+const addon=mockHelper?path.join(__dirname,helperReject?'fixtures/rejecting-decoder.cjs':'fixtures/fake-decoder.cjs'):process.env.GFN_ARMADA_NATIVE_BRIDGE;
 const backpressure=process.env.GFN_ARMADA_TEST_BACKPRESSURE==='1';
 const blockedWorker=process.env.GFN_ARMADA_TEST_BLOCK_WORKER==='1';
 const durationMs=Number(process.env.GFN_ARMADA_TEST_DURATION_MS||0);
@@ -19,11 +27,13 @@ const deadline=setTimeout(()=>finish(new Error('Bridge deadline exceeded')),dura
 async function finish(error,extra={}){
   if(finishing) return;finishing=true;clearTimeout(deadline);
   shadow?.stop('test-finished');
-  for(let n=0;n<100 && shadow?.snapshot().outstanding;n++) await sleep(20);
+  for(let n=0;n<200 && shadow && (!shadow.snapshot().helperExited||shadow.snapshot().outstanding);n++) await sleep(20);
   const state=shadow?.snapshot();
   if(state?.outstanding) error ||=new Error('Samples remain leased');
+  if(state && !state.helperExited) error ||=new Error('Helper remains running');
+  if(state && !helperCrash && state.helperExitCode!==0) error ||=new Error('Helper did not exit cleanly');
   shadow?.dispose();window?.destroy();
-  console.log(JSON.stringify({status:error?'failed':'passed',scope:native?'local-webrtc-h264-iris-shadow':'encoded-tap-only',nativeTested:native,encoded,originalFrames,...state,...extra,...(error?{error:error.message}:{})}));
+  console.log(JSON.stringify({status:error?'failed':'passed',scope:helperReject?'helper-decoder-rejection-fallback':helperCrash?'helper-process-crash-isolation':native?'local-webrtc-h264-iris-shadow':'encoded-tap-only',nativeTested:native&&!mockHelper,encoded,originalFrames,...state,...extra,...(error?{error:error.message}:{})}));
   app.exit(error?1:0);
 }
 app.on('window-all-closed',()=>{});
@@ -38,7 +48,7 @@ app.whenReady().then(async()=>{
   }});
   if(native){
     shadow=require('../client/native-shadow.cjs').attachNativeShadow({app,BrowserWindow,ipcMain,sharedTexture,
-      source:window.webContents,addon:process.env.GFN_ARMADA_NATIVE_BRIDGE,localTest:true,
+      source:window.webContents,addon,localTest:true,
       report:data=>console.log(JSON.stringify({event:'native-shadow-test',...data}))});
     await shadow.prepare();
   }else{
@@ -70,6 +80,26 @@ app.whenReady().then(async()=>{
     await sleep(250);
     originalFrames=await window.webContents.executeJavaScript('document.querySelector("video")?.getVideoPlaybackQuality().totalVideoFrames||0');
     const state=shadow?.snapshot();
+    if(helperReject){
+      if(state.stopped&&crashAtFrames===null) crashAtFrames=originalFrames;
+      if(state.helperExited){
+        if(state.helperExitSignal||state.helperExitCode!==0) throw new Error('Rejecting helper did not exit cleanly');
+        if(originalFrames>=Math.max(30,crashAtFrames+30)){
+          await finish(null,{decoderRejectionContained:true,parentPid:process.pid,browserFramesAtRejection:crashAtFrames,browserFramesAfterRejection:originalFrames});return;
+        }
+      }
+      continue;
+    }
+    if(helperCrash){
+      if(crashAtFrames===null && originalFrames>=30 && (mockHelper?state.sequence>=8:state.decoded>=30&&state.draws>=30)){
+        crashAtFrames=originalFrames;shadow.crashTestHelper();
+      }
+      if(state.helperExited){
+        if(state.helperExitSignal!=='SIGSEGV') throw new Error('Helper exit was not SIGSEGV');
+        if(originalFrames>=crashAtFrames+30){await finish(null,{helperCrashContained:true,parentPid:process.pid,browserFramesBeforeCrash:crashAtFrames,browserFramesAfterCrash:originalFrames,elapsedMs:Date.now()-started});return;}
+      }
+      continue;
+    }
     if(state?.stopped) throw new Error('Native shadow stopped');
     if(Date.now()-started>=durationMs && originalFrames>=((backpressure||blockedWorker)?60:30) && (native?state.decoded>=30&&state.draws>=30:blockedWorker?encoded===0:backpressure?encoded>0&&encoded<=8:encoded>=30)){
       const pixels=native?await shadow.inspectTestOutput():undefined;
@@ -79,3 +109,4 @@ app.whenReady().then(async()=>{
     }
   }
 }).catch(error=>finish(error));
+}
