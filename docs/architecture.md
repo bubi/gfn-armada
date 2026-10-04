@@ -114,9 +114,10 @@ suchen und die Zuordnung neu erfassen. Dieser manuelle Rückweg ist verfügbar;
 eine automatische DOM-Suche ist noch nicht implementiert.
 # Nativer Vergleichskandidat: OpenNOW (2026-10-04)
 
-Die aktuelle OpenNOW-Qt/Rust-Version ist eine Alternative zur Chromium-
-Streamingarchitektur. Sie wird vor einem eigenen Chromium-Sourcebuild als
-nativer Vergleichskandidat priorisiert. HEVC-stateful auf Iris und DMA-BUF-
-Ausgabe dieses Decoderpfads sind auch dort noch zu ergänzen und zu validieren.
-Der bestehende Electron-Client bleibt die funktionierende H.264-Vergleichsbasis.
+Die OpenNOW-Qt/Rust-Alternative wurde untersucht. Der Nutzer hat anschließend
+festgelegt, möglichst nahe am originalen GFN-Webclient zu bleiben. Deshalb
+bleibt Electron/Chromium mit originaler GFN-Weboberfläche die gewählte
+Architektur; OpenNOW wird nicht als Client eingesetzt oder weiter getestet.
+Es wurde lediglich ein Vergleichspaket heruntergeladen und auf dem Portal
+entpackt, nicht gestartet. Die Quellanalyse bleibt als Referenz erhalten.
 Quellbewertung und Testplan: [opennow-evaluation.md](opennow-evaluation.md).

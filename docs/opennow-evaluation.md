@@ -1,5 +1,11 @@
 # OpenNOW als nativer Vergleichskandidat
 
+**Entscheidung des Nutzers am 2026-10-04:** beim originalen GFN-Webclient mit
+Electron/Chromium bleiben. Die unten stehende Empfehlung wurde damit verworfen.
+OpenNOW wurde nur heruntergeladen, auf dem Portal per SHA256 geprüft und im
+Benutzer-Testverzeichnis entpackt; nicht gestartet oder angemeldet. Kein
+OpenNOW-Backend für gfn-armada implementieren. Die Analyse bleibt als Referenz.
+
 Stand: 2026-10-04. Untersucht:
 [OpenCloudGaming/OpenNOW](https://github.com/OpenCloudGaming/OpenNOW),
 Commit `bee18c118dbc89f42319436dcdb172d5b9e15e0c`.
