@@ -4,7 +4,7 @@ const {installEncodedTap}=require('./encoded-tap.cjs');
 const {packet,rtpDelta}=require('./encoded-packet.cjs');
 function attachNativeShadow({app,BrowserWindow,ipcMain,sharedTexture,source,addon,report,localTest=false}) {
   if(process.platform!=='linux' || process.arch!=='arm64' || !path.isAbsolute(addon)) throw new Error('Native shadow requires Linux ARM64 and an absolute addon path');
-  let worker,window,closeTimer,stopped=false,generation,sequence=0,inflight=0,previous,pts=0,decoded=0,draws=0,released=0,lastFrameAt=null;
+  let worker,window,closeTimer,stopped=false,generation,sequence=0,inflight=0,inflightBytes=0,previous,pts=0,decoded=0,draws=0,released=0,lastFrameAt=null;
   const leases=new Set(),acknowledgements=new Map();
   const trusted=event=>{
     try{return event.sender===source && event.senderFrame===source.mainFrame &&
@@ -80,12 +80,13 @@ function attachNativeShadow({app,BrowserWindow,ipcMain,sharedTexture,source,addo
   });
   ipcMain.handle('native-shadow-packet',async(event,data)=>{
     if(!trusted(event) || stopped) return false;
-    if(inflight>=4){stop('ipc-queue-overflow');return false;}
+    let heldBytes=0;
     try{
       const p=packet(data,sequence+1);
+      if(inflight>=8 || inflightBytes+p.bytes.byteLength>4194304){stop('ipc-queue-overflow');return false;}
       if(generation && p.generation!==generation) throw new Error('Receiver generation changed');
       if(!generation){if(!p.key) throw new Error('Initial keyframe required');generation=p.generation;}
-      sequence++;inflight++;
+      sequence++;inflight++;heldBytes=p.bytes.byteLength;inflightBytes+=heldBytes;
       starting ||= start();await starting;if(stopped) return false;
       if(previous!==undefined) pts+=rtpDelta(previous,p.timestamp);previous=p.timestamp;
       return await new Promise(resolve=>{
@@ -93,12 +94,13 @@ function attachNativeShadow({app,BrowserWindow,ipcMain,sharedTexture,source,addo
         worker.postMessage({kind:'push',sequence:p.sequence,bytes:p.bytes,timestampUs:pts,key:p.key});
       });
     }catch{stop('invalid-packet-or-startup-failed');return false;}
-    finally{inflight=Math.max(0,inflight-1);}
+    finally{if(heldBytes){inflight--;inflightBytes-=heldBytes;}}
   });
   const onDraw=(event,data)=>{
     if(window&&!window.isDestroyed() && event.sender===window.webContents && Number.isSafeInteger(data?.frames)) draws=data.frames;
   };
   const onStatus=(event,reason)=>{
+    if(trusted(event)&&['compressed-queue-overflow','unsupported-access-unit','tap-copy-failed','transform-ended','track-ended'].includes(reason)){stop(reason);return;}
     if(trusted(event)&&reason==='probe-receiver-ended'){
       if(sequence) stop('track-ended');else report({status:reason,hardwareDecoderActive:'unknown'});
       return;

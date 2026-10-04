@@ -237,3 +237,27 @@ bei 1280×720, null offene Samples, sechs Farbbalken. Eine alternative späte
 Anbindung bei `connectionState=connected` scheiterte dagegen auf Mac und
 Portal: keine Encoded-Frames trotz weiterlaufendem Browservideo. Sie wurde
 verworfen. Keine Hardwareaussage über einen echten GFN-Spielstream.
+
+## Erster echter GFN-Stream mit Brücke
+
+GFN verhandelte H264. Der Hook erhielt echte Frames und öffnete `/dev/video0`,
+brach aber nach vier Paketen ohne DMA-BUF-Transfer ab. Die damalige Meldung
+`encoded-tap-ended-or-overloaded` unterschied die Fehlerfälle nicht. Ein
+Queue-Overflow beim Start ist eine Hypothese, noch kein bestätigter Befund.
+Das Browservideo lief weiter: native Chromium-Statistik meldete FFmpeg,
+1.884 decodierte Frames und null Drops. GFN-Hardwaredecoding wurde damit
+ausdrücklich nicht bestätigt.
+
+Der nächste Test verwendet acht Paketplätze mit zusammen höchstens 4 MiB
+in Worker, Preload und Main. Credits werden sequenzbezogen freigegeben;
+terminale Tap-Fehler erhalten eindeutige, fest erlaubte Diagnosegründe.
+Lokale Regression vor dem GFN-Neustart: Mac 99 Pakete / 34 Browserframes;
+Portal 128 Transfers, Draw-Aufrufe und Freigaben bei 1280×720, null offene
+Samples, sechs Farbbalken. Beim Testende trat ein abgefangener IPC-Aufruf
+nach Entfernen des Handlers auf; kein Decoder- oder Lease-Fehler. Der Nutzer
+erlaubte den Neustart der aktuellen Spielverbindung für den nächsten Versuch.
+Die verzögerte Ablehnung am Mac ließ 61 Browserframes bei einem kopierten
+Paket weiterlaufen (`overflow:false`); 24 Unit-Tests bestehen. Der aktive
+GFN-Client reagierte nicht auf SIGTERM. Nach dem erlaubten Neustart wurde
+deshalb nur dessen per Executable-Pfad verifizierter Main-Prozess per SIGKILL
+beendet. Das bestehende Profil wurde unverändert weiterverwendet.

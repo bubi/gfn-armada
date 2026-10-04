@@ -72,7 +72,10 @@ ist kein fertiger Gaming-Mode-Ausgabemodus.
   uint32-Rollover wird unterstützt. Große Sprünge, veraltete/umgeordnete
   Pakete und Codec-/Receiverwechsel stoppen diesen ersten Prototyp. Keine
   B-Frame-/Clock-Recovery oder automatische Session-Wiederaufnahme.
-* Maximal vier unbestätigte komprimierte Pakete, je höchstens 2 MiB.
+* Maximal acht unbestätigte komprimierte Pakete, je höchstens 2 MiB und
+  zusammen höchstens 4 MiB, separat in Worker, Preload und Main begrenzt.
+  Bestätigungen enthalten die Sequenz; unbekannte Bestätigungen geben keine
+  zusätzlichen Credits frei.
   Native appsrc maximal acht Frames / 4 MiB, Appsink zwei Frames, höchstens
   vier ausstehende DMA-BUF-Leases im Worker. Bei Overflow den Diagnosepfad
   stoppen; keine Delta-Frames unbemerkt verwerfen und trotzdem Erfolg melden.

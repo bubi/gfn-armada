@@ -7,10 +7,13 @@ function installEncodedTap() {
     postMessage({kind:'ready'});
     onrtctransform=event=>{
       const transformer=event.transformer, generation=transformer.options.generation;
-      let credits=4, enabled=true, started=false, sequence=0,observed=0,codecReported=false;
+      let pendingBytes=0, enabled=true, started=false, sequence=0,observed=0,codecReported=false;
+      const pending=new Map();
       const report=reason=>postMessage({kind:'status',generation,reason});
       onmessage=e=>{
-        if(e.data?.kind==='ack') credits=Math.min(4,credits+1);
+        if(e.data?.kind==='ack' && pending.has(e.data.sequence)){
+          pendingBytes-=pending.get(e.data.sequence);pending.delete(e.data.sequence);
+        }
         if(e.data?.kind==='disable') enabled=false;
       };
       transformer.sendKeyFrameRequest?.().catch(()=>report('keyframe-request-unavailable'));
@@ -35,11 +38,12 @@ function installEncodedTap() {
               else report('waiting-inband-parameter-sets');
             }
             if(started) {
-              if(!annex || bytes.length>2097152 || !credits) {
-                enabled=false; report(!credits?'compressed-queue-overflow':'unsupported-access-unit');
+              const full=pending.size>=8 || pendingBytes+bytes.length>4194304;
+              if(!annex || bytes.length>2097152 || full) {
+                enabled=false; report(full?'compressed-queue-overflow':'unsupported-access-unit');
               } else {
-                credits--; const copy=frame.data.slice(0);
-                postMessage({kind:'frame',generation,sequence:++sequence,timestamp:metadata.rtpTimestamp??frame.timestamp,key:frame.type==='key',bytes:copy},[copy]);
+                pending.set(++sequence,bytes.length);pendingBytes+=bytes.length;const copy=frame.data.slice(0);
+                postMessage({kind:'frame',generation,sequence,timestamp:metadata.rtpTimestamp??frame.timestamp,key:frame.type==='key',bytes:copy},[copy]);
               }
             }
           }
@@ -75,7 +79,7 @@ function installEncodedTap() {
       };
       const feedback=e=>{
         if(e.source===window && e.origin===location.origin && e.data?.type==='gfn-armada-encoded-feedback' && e.data.generation===generation)
-          worker.postMessage({kind:e.data.accepted?'ack':'disable'});
+          worker.postMessage({kind:e.data.accepted?'ack':'disable',sequence:e.data.sequence});
       };
       window.addEventListener('message',feedback);
       transform=new RTCRtpScriptTransform(worker,{generation,codecs});receiver.transform=transform;state.attached=true;

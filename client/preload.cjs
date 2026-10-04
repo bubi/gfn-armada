@@ -38,7 +38,7 @@ if(location.origin==='https://play.geforcenow.com') {
   });
   webFrame.executeJavaScript(`(${observe.toString()})()`).catch(()=>{});
   // Enabled only by Main's explicit native-shadow option. Remote data stays untrusted.
-  let pendingEncoded=0,encodedEnabled=false,statusSecond=0,statusCount=0;
+  let pendingEncoded=0,pendingBytes=0,encodedEnabled=false,statusSecond=0,statusCount=0;
   const bufferLength=Object.getOwnPropertyDescriptor(ArrayBuffer.prototype,'byteLength').get;
   const sendStatus=reason=>{
     const second=Math.floor(Date.now()/1000);
@@ -55,16 +55,17 @@ if(location.origin==='https://play.geforcenow.com') {
     }
     if(data?.type!=='gfn-armada-encoded') return;
     if(data.kind==='status'){sendStatus(data.reason);return;}
-    if(data.kind!=='frame' || pendingEncoded>=4 || typeof data.generation!=='string' || data.generation.length!==36) return;
+    if(data.kind!=='frame' || typeof data.generation!=='string' || data.generation.length!==36) return;
     let byteLength;try{byteLength=bufferLength.call(data.bytes)}catch{return;}
     if(!byteLength || byteLength>2097152) return;
-    pendingEncoded++;
+    if(pendingEncoded>=8 || pendingBytes+byteLength>4194304){sendStatus('compressed-queue-overflow');return;}
+    pendingEncoded++;pendingBytes+=byteLength;
     let accepted=false;
     try{
       accepted=await ipcRenderer.invoke('native-shadow-packet',{generation:data.generation,sequence:data.sequence,
         timestamp:data.timestamp,key:data.key,bytes:new Uint8Array(data.bytes)});
     }catch{}finally{
-      pendingEncoded--;window.postMessage({type:'gfn-armada-encoded-feedback',generation:data.generation,accepted},location.origin);
+      pendingEncoded--;pendingBytes-=byteLength;window.postMessage({type:'gfn-armada-encoded-feedback',generation:data.generation,sequence:data.sequence,accepted},location.origin);
     }
   });
   ipcRenderer.invoke('native-shadow-bootstrap').then(source=>{

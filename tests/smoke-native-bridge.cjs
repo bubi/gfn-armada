@@ -71,7 +71,7 @@ app.whenReady().then(async()=>{
     originalFrames=await window.webContents.executeJavaScript('document.querySelector("video")?.getVideoPlaybackQuality().totalVideoFrames||0');
     const state=shadow?.snapshot();
     if(state?.stopped) throw new Error('Native shadow stopped');
-    if(Date.now()-started>=durationMs && originalFrames>=((backpressure||blockedWorker)?60:30) && (native?state.decoded>=30&&state.draws>=30:blockedWorker?encoded===0:backpressure?encoded>0&&encoded<=4:encoded>=30)){
+    if(Date.now()-started>=durationMs && originalFrames>=((backpressure||blockedWorker)?60:30) && (native?state.decoded>=30&&state.draws>=30:blockedWorker?encoded===0:backpressure?encoded>0&&encoded<=8:encoded>=30)){
       const pixels=native?await shadow.inspectTestOutput():undefined;
       if(pixels && pixels.distinctColors<4) throw new Error('Native output has no test pattern');
       if(pixels && fixedResolution && (pixels.width!==1280 || pixels.height!==720)) throw new Error('Native output resolution is not 1280x720');
