@@ -30,6 +30,7 @@ GFN RTCRtpReceiver → RTCRtpScriptTransform (unveränderte Frames weiterreichen
                          ↓ Kopie der komprimierten H264-Access-Units
 Tap-Worker → begrenzter MessagePortMain → Supervisor im GFN-Prozess
   (sandboxed Preload reicht den Port nur beim Aufbau weiter)
+  → Staging-Queue (64 Pakete / 4 MiB, ACK bei Annahme, Burst-Puffer)
   → binär gerahmte Pipe (nur komprimierte Bytes und Status)
   → separater Electron-Helper / temporäres Profil / eigener GPU-Prozess
       → Node-Worker → GStreamer appsrc → h264parse → v4l2h264dec → appsink
@@ -101,12 +102,19 @@ ist kein fertiger Gaming-Mode-Ausgabemodus.
   Pakete und Codec-/Receiverwechsel stoppen diesen ersten Prototyp. Keine
   B-Frame-/Clock-Recovery oder automatische Session-Wiederaufnahme.
 * Maximal acht unbestätigte komprimierte Pakete, je höchstens 2 MiB und
-  zusammen höchstens 4 MiB, separat in Worker, Preload und Main begrenzt.
-  Bestätigungen enthalten die Sequenz; unbekannte Bestätigungen geben keine
-  zusätzlichen Credits frei.
+  zusammen höchstens 4 MiB, separat in Tap-Worker, Supervisor-Zulauf, Helper-Pipe
+  und Helper begrenzt. Bestätigungen enthalten die Sequenz; unbekannte
+  Bestätigungen geben keine zusätzlichen Credits frei.
   Native appsrc maximal acht Frames / 4 MiB, Appsink zwei Frames, höchstens
-  vier ausstehende DMA-BUF-Leases im Worker. Bei Overflow den Diagnosepfad
-  stoppen; keine Delta-Frames unbemerkt verwerfen und trotzdem Erfolg melden.
+  vier ausstehende DMA-BUF-Leases im Worker.
+  Der Supervisor hält zusätzlich eine eigene Staging-Queue von höchstens
+  64 Paketen / 4 MiB und bestätigt den Tap-Worker bei **Annahme**, nicht nach
+  der nativen Runde. Ein Burst wird dadurch gepuffert, statt die Brücke zu
+  beenden. Läuft das Tap-Fenster trotzdem voll, wird bis zum nächsten
+  Keyframe mit SPS/PPS verworfen und danach weitergemacht; jeder verworfene
+  Frame und jeder Resync wird gezählt und gemeldet. Kein Delta-Frame wird
+  unbemerkt verworfen und trotzdem Erfolg gemeldet. Eine volle Staging-Queue
+  bedeutet dauerhafte Überlast und stoppt den Diagnosepfad weiterhin.
 * GStreamer-Aufrufe und Decoder-Close laufen im Node-Worker **des Helpers**.
   Nur dessen Main importiert FDs; der GFN-Main-Prozess lädt kein natives Modul.
   Der Sample-Lease bleibt im Worker bis zur prozessübergreifenden
@@ -118,7 +126,8 @@ ist kein fertiger Gaming-Mode-Ausgabemodus.
   zusätzliche OS-Berechtigungsgrenze: der Helper läuft als derselbe Benutzer.
   Parent und Helper tauschen keine numerischen FDs aus; dadurch ist kein
   SCM_RIGHTS-Adapter nötig. Nur komprimierte Access-Units werden kopiert.
-* Supervisor: maximal acht Pakete / 4 MiB; Paketbestätigung spätestens nach
+* Supervisor zur Helper-Pipe: maximal acht offene Pakete / 4 MiB, davor die
+  Staging-Queue; Paketbestätigung der Pipe spätestens nach
   zwei Sekunden, Bereitschaft nach höchstens 15 Sekunden. Fehler verwerfen
   offene Anfragen mit `false`. Stop wartet begrenzt auf den Helper und beendet
   ihn nach drei Sekunden nötigenfalls mit SIGKILL. Keine automatische
@@ -482,3 +491,97 @@ nachgewiesen, **kein** Hardware-Decoding durch den Mock und noch keine
 Stabilität des echten GFN-Streams. Sustained GFN, HEVC, CPU-Einsparung,
 Compositorpräsentation und End-to-End-Latenz bleiben unbestätigt.
 Evidenz: [validation-mainport-odin.json](../experiments/dmabuf/validation-mainport-odin.json).
+
+### Burst-Staging und Resync statt Abbruch (2026-10-04)
+
+Der echte GFN-Test mit dem direkten Worker-/Supervisor-Port lief **rund 43 Sekunden mit nativen Transfers**
+und lieferte 2.584 komprimierte Pakete, 2.563 DMA-BUF-Transfers, Renderer-Draws
+und Sample-Freigaben mit vollem BT.709 über `v4l2h264dec` auf `/dev/video0`.
+Gegenüber den vorherigen 375 Transfers in rund zehn Sekunden ist das der
+bisher längste parallele Hardwarepfad. Der Port-Umbau hat die gemessene
+Renderer-Verzögerung beseitigt: Tap-ACK-Maximum 28 ms statt 99,4 ms,
+Tap-Höchststand 4 statt 8, Helper-Pipe 21,8 ms, Helper-Worker 8,6 ms,
+native Paketannahme 0,25 ms.
+
+Danach stoppte die Brücke erneut mit `compressed-queue-overflow`. Das war
+**kein Absturz**: Helper-Exit 0, null offene Leases, 2.564 Freigaben bei
+2.563 Transfers, und der Browser streamte mit FFmpeg weiter (5.841 Frames,
+null gemeldete Drops). Die Brücke hat sich selbst planmäßig abgeschaltet.
+
+Entscheidend ist der Zustand beim Stop: Tap-Belegung 8 Pakete / 125.230 Byte,
+ältestes Paket **2,8 ms** alt, 2.576 ACKs bereits zurück. Die Queue füllte
+sich also in unter drei Millisekunden, während die ACK-Rundlaufzeit bei
+8–28 ms liegt. In 2,8 ms kann kein Credit zurückkommen; das ist keine
+Latenz- und keine Durchsatzgrenze, sondern ein Ankunftsburst von mindestens
+neun Frames, der tiefer ist als das Fenster. Mit 2.563 von 2.584 Paketen
+decodiert hielt die Pipeline im Mittel mühelos mit.
+
+Das Fenster lässt sich nicht einfach vergrößern. `experiments/dmabuf/bridge.c`
+startet `appsrc` mit `max-buffers=8 max-bytes=4194304`, und `pushFrame`
+verweigert ab acht Puffern. Diese Grenze steckt im gepinnten `bridge.node`
+und leert sich nur mit der Decodierrate. Ein größeres Fenster vor dieser
+Stufe hätte den Overflow lediglich in die native Schicht verschoben, wo er
+als `native-compressed-queue-overflow` den Helper beendet. Deshalb zwei
+gezielte Änderungen statt einer größeren Zahl:
+
+* **Staging im Supervisor.** Der Supervisor nimmt den Burst in eine eigene
+  Queue von höchstens 64 Paketen / 4 MiB auf und bestätigt den Tap-Worker
+  sofort bei Annahme, statt erst nach der nativen Runde. Er speist die
+  Helper-Pipe daraus streng in Reihenfolge mit höchstens acht offenen
+  Paketen. Der ACK misst damit nur noch diesen Sprung; die native Grenze
+  bleibt unangetastet und das Modul unverändert.
+* **Resync statt Abbruch.** Läuft das Tap-Fenster trotzdem voll, verwirft
+  der Tap bis zum nächsten Keyframe mit In-Band-SPS/PPS, fordert best effort
+  einen Keyframe an und nimmt dann wieder auf. `dropped` und `resyncCount`
+  zählen das; `queue-overflow-resync` und `queue-resync-resumed` werden
+  gemeldet. Decodieren startet ausschließlich auf einem Keyframe, nie
+  mitten im GOP. Es wird kein appsrc-Flush gesendet, daher können
+  `h264parse`/`v4l2h264dec` nach einer Lücke kurz gestörte Frames liefern.
+  Access-Unit-Fehler, Codec-/Receiverwechsel und eine volle Staging-Queue
+  bleiben unverändert Abbruchgründe.
+
+Der `setTimeout(0)`-Yield im Tap bleibt erhalten. Die frühere Annahme, er sei
+wirkungslos, ist durch diesen Lauf widerlegt: er feuerte sechsmal und die ACKs
+flossen. Er konnte nur die native Rundlaufzeit nicht überbrücken — genau die
+verkürzt das Staging. Ein Yield garantiert weiterhin keinen ACK-Eingang.
+
+`queueMetrics.supervisor` meldet jetzt zusätzlich `highWater`. Seine
+`pendingBytes` zählen ausschließlich noch nicht abgeschickte Pakete; bereits
+an die Pipe übergebene Bytes erscheinen unter `helper-pipe`. Die Bereiche
+überlappen weiterhin und dürfen nicht addiert werden.
+
+38 Unit-Tests bestehen auf dem Mac. Zwei neue Tap-Regressionen fahren den
+tatsächlich serialisierten Worker: ein unbestätigter Burst wird bei acht
+Kopien begrenzt, meldet genau einen Resync samt Keyframe-Anforderung und
+reicht alle 40 Originalframes unverändert und in Reihenfolge weiter; kehrt
+danach Credit zurück, nimmt der Tap bei Frame 20 auf einem Parameter-Set-
+Keyframe wieder auf, mit zwölf gezählten verworfenen Frames. Die neue
+`smoke-supervisor-burst.cjs` nutzt produktiven Preload und Supervisor mit
+ausdrücklichem Mockdecoder und schickt den Burst in einer einzigen Task,
+ohne auf Credit zu warten: 24, 40 und 64 Pakete werden vollständig
+angenommen, erreichen die Helper-Pipe in Reihenfolge und entleeren sich
+restlos; Staging-Höchststand 16 bzw. 56. Gegen den Supervisor vor dieser
+Änderung scheitert derselbe Test mit `ipc-queue-overflow` — die Regression
+ist damit belegt und nicht nur behauptet. Alle sechs Mac-Varianten von
+`smoke-native-bridge.cjs` bestehen weiter, einschließlich Helper-SIGSEGV-
+Isolation, Decoderablehnung, Paketablehnungs- und CSP-Fallback.
+
+Das ist ein Mock- und Transportnachweis, **kein** Hardware-Decoding und keine
+belegte GFN-Stabilität. Ob die beobachteten Bursts damit tatsächlich
+aufgefangen werden, muss der nächste echte GFN-Lauf zeigen; er liefert dann
+statt eines Abbruchs eine Glitch-Rate aus `dropped`/`resyncCount` pro Minute.
+Der ARM64-Iris-Test mit dem unveränderten Modul steht ebenfalls noch aus.
+Sustained Playback, präsentierte Compositorframes, Decode-/End-to-End-Latenz,
+GFN-HEVC, CPU-Einsparung und Audio-Sync bleiben unbestätigt.
+
+
+Deployment des Nutzer-Fixes auf Odin (2026-10-04): Die separate Instanz
+`bridge-staging-20261004` enthält die per SHA256 geprüften aktuellen Quellen
+und das unveränderte Modul. 38 Unit-Tests bestehen auch unter ARM64-Electron.
+Der lokale Iris-H264-Test lieferte 147 Transfers/Draws/Freigaben, null Leases,
+korrektes 1280×720-Testmuster und Helper-Exit 0. Der neue Mock-Burst-Test
+bestätigte alle 24 Pakete, Staging-Höchststand 16, vollständiges Drain und
+Exit 0. Dieser Mock-Test belegt weiterhin keine native Burst-Toleranz.
+Der korrigierte Stand ist für den nächsten echten GFN-Test bereitgestellt;
+Stabilität und Glitch-Rate müssen dabei noch gemessen werden.
+Evidenz: [validation-staging-odin.json](../experiments/dmabuf/validation-staging-odin.json).

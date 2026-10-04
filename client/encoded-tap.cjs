@@ -10,7 +10,8 @@ function installEncodedTap() {
       let pendingBytes=0, enabled=true, started=false, sequence=0,observed=0,codecReported=false;
       const pending=new Map();
       let highWater=0,ackCount=0,ackMaxMs=0,lastMetrics=0,yieldCount=0,yieldMaxMs=0,accessUnitBytes=0,annexB=0;
-      const metrics=()=>({stage:"tap",pending:pending.size,pendingBytes,highWater,ackCount,ackMaxMs,yieldCount,yieldMaxMs,accessUnitBytes,annexB,oldestMs:pending.size?performance.now()-pending.values().next().value.at:0});
+      let resyncing=false,dropped=0,resyncCount=0;
+      const metrics=()=>({stage:"tap",pending:pending.size,pendingBytes,highWater,ackCount,ackMaxMs,yieldCount,yieldMaxMs,accessUnitBytes,annexB,dropped,resyncCount,oldestMs:pending.size?performance.now()-pending.values().next().value.at:0});
       const report=reason=>{port.postMessage({kind:'status',generation,reason,metrics:metrics()});
         if(['encoded-frame-observed','transform-ended-before-stream'].includes(reason)) postMessage({kind:'lifecycle',reason});};
       port.onmessage=e=>{
@@ -34,22 +35,34 @@ function installEncodedTap() {
             if(!codecReported){codecReported=true;report('negotiated-h264');}
             const annex=bytes.length>=4 && bytes[0]===0 && bytes[1]===0 && (bytes[2]===1 || (bytes[2]===0 && bytes[3]===1));
             annexB=annex?1:0;
-            let sps=false,pps=false;
-            if(!started && frame.type==='key' && annex) {
+            const parameterSets=()=>{
+              let sps=false,pps=false;
               for(let i=0;i<bytes.length-4;i++) if(bytes[i]===0 && bytes[i+1]===0) {
                 const n=bytes[i+2]===1?i+3:(bytes[i+2]===0&&bytes[i+3]===1?i+4:-1);
                 if(n>=0){sps ||= (bytes[n]&31)===7;pps ||= (bytes[n]&31)===8;}
               }
-              if(sps&&pps) started=true;
+              return sps&&pps;
+            };
+            if(!started && frame.type==='key' && annex) {
+              if(parameterSets()) started=true;
               else report('waiting-inband-parameter-sets');
             }
             if(started) {
-              const full=pending.size>=8 || pendingBytes+bytes.length>4194304;
-              if(!annex || bytes.length>2097152 || full) {
-                enabled=false; report(full?'compressed-queue-overflow':bytes.length===0?'empty-access-unit':bytes.length>2097152?'oversized-access-unit':'non-annexb-access-unit');
+              if(!annex || bytes.length>2097152) {
+                enabled=false; report(bytes.length===0?'empty-access-unit':bytes.length>2097152?'oversized-access-unit':'non-annexb-access-unit');
               } else {
-                pending.set(++sequence,{bytes:bytes.length,at:performance.now()});highWater=Math.max(highWater,pending.size);pendingBytes+=bytes.length;const copy=frame.data.slice(0);
-                port.postMessage({kind:'frame',generation,sequence,timestamp:metadata.rtpTimestamp??frame.timestamp,key:frame.type==='key',bytes:copy});
+                // Congestion is recoverable. A burst can fill the window faster than any
+                // acknowledgement can return, so resynchronise at the next parameter-set
+                // keyframe instead of ending the bridge. Every dropped frame is counted,
+                // never silently discarded, and the original frame is still forwarded.
+                const full=pending.size>=8 || pendingBytes+bytes.length>4194304;
+                if(full && !resyncing){resyncing=true;resyncCount++;report('queue-overflow-resync');transformer.sendKeyFrameRequest?.().catch(()=>{});}
+                if(full || (resyncing && !(frame.type==='key' && parameterSets()))) dropped++;
+                else {
+                  if(resyncing){resyncing=false;report('queue-resync-resumed');}
+                  pending.set(++sequence,{bytes:bytes.length,at:performance.now()});highWater=Math.max(highWater,pending.size);pendingBytes+=bytes.length;const copy=frame.data.slice(0);
+                  port.postMessage({kind:'frame',generation,sequence,timestamp:metadata.rtpTimestamp??frame.timestamp,key:frame.type==='key',bytes:copy});
+                }
               }
             }
           }

@@ -5,20 +5,21 @@ const {startHelper}=require('./helper-process.cjs');
 const {MessageChannelMain}=require('electron');
 function attachNativeShadow({app,ipcMain,source,addon,report,localTest=false}) {
   if((!localTest&&(process.platform!=='linux'||process.arch!=='arm64'))||!path.isAbsolute(addon)) throw new Error('Native shadow requires Linux ARM64 and an absolute addon path');
-  let helper,starting,stopped=false,generation,sequence=0,inflight=0,inflightBytes=0,previous,pts=0;
+  let helper,starting,stopped=false,generation,sequence=0,previous,pts=0,started=false;
+  const staged=[];let stagedBytes=0,pushing=0,stagedHighWater=0;
   let decoded=0,draws=0,released=0,outstanding=0,lastFrameAt=null,helperExited=false,helperExitSignal=null,helperExitCode=null,lastNativeError=null,colorSpace=null;
   const queueStages={};let stoppedQueues=null,transport;
   function rememberMetrics(m){
     if(!m||!["tap","preload","helper-worker"].includes(m.stage)) return;
     const clean={stage:m.stage};
-    for(const key of ["pending","pendingBytes","highWater","ackCount","ackMaxMs","oldestMs","nativePushMaxMs","yieldCount","yieldMaxMs","accessUnitBytes","annexB"]){
-      if(m[key]===undefined&&["nativePushMaxMs","yieldCount","yieldMaxMs","accessUnitBytes","annexB"].includes(key)) continue;
+    for(const key of ["pending","pendingBytes","highWater","ackCount","ackMaxMs","oldestMs","nativePushMaxMs","yieldCount","yieldMaxMs","accessUnitBytes","annexB","dropped","resyncCount"]){
+      if(m[key]===undefined&&["nativePushMaxMs","yieldCount","yieldMaxMs","accessUnitBytes","annexB","dropped","resyncCount"].includes(key)) continue;
       if(!Number.isFinite(m[key])||m[key]<0||m[key]>1e9) return;clean[key]=m[key];
     }
     if(!Number.isInteger(clean.pending)||clean.pending>8||!Number.isInteger(clean.highWater)||clean.highWater>8||clean.pendingBytes>4194304) return;
     queueStages[m.stage]=clean;
   }
-  const queues=()=>stoppedQueues||({...queueStages,...(helper?{"helper-pipe":helper.metrics()}:{}),supervisor:{pending:inflight,pendingBytes:inflightBytes}});
+  const queues=()=>stoppedQueues||({...queueStages,...(helper?{"helper-pipe":helper.metrics()}:{}),supervisor:{pending:staged.length+pushing,pendingBytes:stagedBytes,highWater:stagedHighWater}});
   let lastProgressReport=0;
   const trusted=event=>{
     try{return event.sender===source&&event.senderFrame===source.mainFrame&&new URL(event.senderFrame.url).origin==='https://play.geforcenow.com';}catch{return false;}
@@ -27,7 +28,7 @@ function attachNativeShadow({app,ipcMain,source,addon,report,localTest=false}) {
     helperPid:helper?.pid,helperExited,helperExitSignal,helperExitCode,lastNativeError,negotiatedColorSpace:colorSpace,encodedFrames:sequence,decodedTransfers:decoded,rendererDraws:draws,releasedSamples:released,outstanding,
     queueMetrics:queues(),originalBrowserDecodeEnabled:true,hardwareDecoderActive:'unknown'});
   function stop(reason='stopped') {
-    if(stopped) return;stoppedQueues=queues();stopped=true;transport?.close();helper?.stop();evidence('stopped',reason);
+    if(stopped) return;stoppedQueues=queues();stopped=true;staged.length=0;stagedBytes=0;transport?.close();helper?.stop();evidence('stopped',reason);
   }
   async function start(){
     const profile=fs.mkdtempSync(path.join(os.tmpdir(),'gfn-native-helper-'));
@@ -62,27 +63,42 @@ function attachNativeShadow({app,ipcMain,source,addon,report,localTest=false}) {
       }
     }});
     await helper.prepared;if(stopped) throw new Error('Native helper stopped');
-    evidence('helper-ready');
+    evidence('helper-ready');started=true;pump();
   }
+  const ensureStarted=()=>{if(!starting){starting=start();starting.catch(()=>{});}return starting;};
   ipcMain.handle('native-shadow-bootstrap',async event=>{
     if(!trusted(event)||stopped) return null;
-    starting ||=start();await starting;
+    await ensureStarted();
     return !stopped?`(${installEncodedTap.toString()})()`:null;
   });
-  async function acceptPacket(data){
+  // The native appsrc holds eight compressed buffers and drains at decode rate, so a
+  // burst of already-available stream frames cannot be absorbed downstream. Staging it
+  // here lets the worker be acknowledged on arrival instead of after the native round
+  // trip; the queue stays bounded by bytes and nothing is silently dropped.
+  function pump(){
+    if(stopped||!started) return;
+    while(staged.length&&pushing<8){
+      const item=staged.shift();stagedBytes-=item.size;pushing++;
+      helper.push({sequence:item.sequence,timestampUs:item.pts,key:item.key},item.buffer)
+        .catch(()=>{}).then(()=>{pushing--;pump();});
+    }
+  }
+  function stage(data){
     if(stopped) return false;
-    let heldBytes=0;
     try{
       const p=packet(data,sequence+1);
-      if(inflight>=8||inflightBytes+p.bytes.byteLength>4194304){stop('ipc-queue-overflow');return false;}
       if(generation&&p.generation!==generation) throw new Error('Receiver generation changed');
       if(!generation){if(!p.key) throw new Error('Initial keyframe required');generation=p.generation;}
-      sequence++;inflight++;heldBytes=p.bytes.byteLength;inflightBytes+=heldBytes;
-      starting ||=start();await starting;if(stopped) return false;
+      const size=p.bytes.byteLength;
+      // Sustained overload, not a burst: the decoder cannot keep up at all.
+      if(staged.length>=64||stagedBytes+size>4194304){stop('supervisor-queue-overflow');return false;}
+      sequence++;
       if(previous!==undefined) pts+=rtpDelta(previous,p.timestamp);previous=p.timestamp;
-      return await helper.push({sequence:p.sequence,timestampUs:pts,key:p.key},Buffer.from(p.bytes));
+      staged.push({sequence:p.sequence,pts,key:p.key,buffer:Buffer.from(p.bytes),size});
+      stagedBytes+=size;stagedHighWater=Math.max(stagedHighWater,staged.length);
+      if(started) pump();else ensureStarted();
+      return true;
     }catch{stop('invalid-packet-or-startup-failed');return false;}
-    finally{if(heldBytes){inflight--;inflightBytes-=heldBytes;}}
   }
   ipcMain.handle('native-shadow-channel',(event,id)=>{
     if(!trusted(event)||stopped||typeof id!=='string'||!/^[0-9a-f-]{36}$/.test(id)) return false;
@@ -90,7 +106,7 @@ function attachNativeShadow({app,ipcMain,source,addon,report,localTest=false}) {
     const binding={sender:event.sender,senderFrame:event.senderFrame};
     const {port1,port2}=new MessageChannelMain();
     const previousPort=transport;transport=port1;previousPort?.close();
-    port1.on('message',async({data})=>{
+    port1.on('message',({data})=>{
       if(transport!==port1||stopped) return;
       if(!trusted(binding)){stop('invalid-transport-source');return;}
       if(data?.generation!==id){stop('invalid-transport-generation');return;}
@@ -100,7 +116,7 @@ function attachNativeShadow({app,ipcMain,source,addon,report,localTest=false}) {
       try{
         const size=Object.getOwnPropertyDescriptor(ArrayBuffer.prototype,'byteLength').get.call(data.bytes);
         if(!size||size>2097152) throw new Error('Invalid encoded buffer');
-        accepted=await acceptPacket({...data,bytes:new Uint8Array(data.bytes)});
+        accepted=stage({...data,bytes:new Uint8Array(data.bytes)});
       }catch{stop('invalid-transport-packet');}
       if(!stopped&&transport===port1) port1.postMessage({kind:accepted?'ack':'disable',sequence:data.sequence});
     });
@@ -116,7 +132,7 @@ function attachNativeShadow({app,ipcMain,source,addon,report,localTest=false}) {
       return;
     }
     if(trusted(event) && ['negotiated-codec-not-h264','encoded-transform-unavailable','worker-unavailable-or-csp-blocked','encoded-channel-unavailable'].includes(reason)){stop(reason);return;}
-    if(trusted(event) && ['hook-installed','attached-encoded-shadow','negotiated-h264','encoded-frame-observed','waiting-inband-parameter-sets','negotiated-codec-not-h264','existing-transform-preserved','encoded-transform-unavailable','worker-unavailable-or-csp-blocked','keyframe-request-unavailable'].includes(reason)) report({status:reason,hardwareDecoderActive:'unknown'});
+    if(trusted(event) && ['hook-installed','attached-encoded-shadow','negotiated-h264','encoded-frame-observed','waiting-inband-parameter-sets','negotiated-codec-not-h264','existing-transform-preserved','encoded-transform-unavailable','worker-unavailable-or-csp-blocked','keyframe-request-unavailable','queue-overflow-resync','queue-resync-resumed'].includes(reason)) report({status:reason,hardwareDecoderActive:'unknown'});
     else if(trusted(event)) stop('encoded-tap-ended-or-overloaded');
   };
   ipcMain.on('native-shadow-status',onStatus);
@@ -126,7 +142,7 @@ function attachNativeShadow({app,ipcMain,source,addon,report,localTest=false}) {
   };
   const gone=()=>stop('source-renderer-gone'),destroyed=()=>stop('source-destroyed');
   source.on('render-process-gone',gone);source.on('did-start-navigation',navigation);source.once('destroyed',destroyed);
-  return {prepare:()=>{starting ||=start();return starting;},stop,
+  return {prepare:()=>ensureStarted(),stop,
     snapshot:()=>({queueMetrics:queues(),sequence,decoded,draws,released,outstanding,stopped,helperPid:helper?.pid,helperExited,helperExitSignal,helperExitCode,lastNativeError,negotiatedColorSpace:colorSpace}),
     inspectTestOutput:()=>{if(!localTest) throw new Error('Pixel readback is restricted to the local test');return helper.inspect();},
     crashTestHelper:()=>{if(!localTest) throw new Error('Fault injection is restricted to the local test');helper.killForTest('SIGSEGV');},
