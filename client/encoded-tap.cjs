@@ -49,7 +49,7 @@ function installEncodedTap() {
                 enabled=false; report(full?'compressed-queue-overflow':bytes.length===0?'empty-access-unit':bytes.length>2097152?'oversized-access-unit':'non-annexb-access-unit');
               } else {
                 pending.set(++sequence,{bytes:bytes.length,at:performance.now()});highWater=Math.max(highWater,pending.size);pendingBytes+=bytes.length;const copy=frame.data.slice(0);
-                port.postMessage({kind:'frame',generation,sequence,timestamp:metadata.rtpTimestamp??frame.timestamp,key:frame.type==='key',bytes:copy},[copy]);
+                port.postMessage({kind:'frame',generation,sequence,timestamp:metadata.rtpTimestamp??frame.timestamp,key:frame.type==='key',bytes:copy});
               }
             }
           }

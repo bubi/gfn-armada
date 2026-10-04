@@ -1,6 +1,6 @@
 # Experimentelle Brücke für den originalen GFN-Webclient
 
-Implementierter Anschluss, noch kein validierter GFN-Hardwarestream:
+Paralleler GFN-H264-Hardwarepfad nachgewiesen; dauerhafte Ausgabe noch nicht validiert:
 
 **Live-GFN-Test wieder aufgenommen:** Beim früheren zweiten echten Streamstart
 wurde ein nicht unterstützter Farbraum abgelehnt; wenige Sekunden später
@@ -28,7 +28,8 @@ der Helper Wayland. Die ursprüngliche SIGSEGV-Ursache ist offen.
 ```text
 GFN RTCRtpReceiver → RTCRtpScriptTransform (unveränderte Frames weiterreichen)
                          ↓ Kopie der komprimierten H264-Access-Units
-sandboxed Preload → begrenztes IPC → Supervisor im GFN-Prozess
+Tap-Worker → begrenzter MessagePortMain → Supervisor im GFN-Prozess
+  (sandboxed Preload reicht den Port nur beim Aufbau weiter)
   → binär gerahmte Pipe (nur komprimierte Bytes und Status)
   → separater Electron-Helper / temporäres Profil / eigener GPU-Prozess
       → Node-Worker → GStreamer appsrc → h264parse → v4l2h264dec → appsink
@@ -435,3 +436,49 @@ Paket war beim Test-Stop noch in der Annahme; dies ist kein dekodiertes
 oder präsentiertes Frame. Tap-Metadaten melden das erwartete Annex-B-
 Format. Der präzise GFN-Ablehnungsgrund wird erst im nächsten Versuch
 erfasst; dessen Hardwarestatus bleibt bis dahin unbestätigt.
+
+
+### Direkter Worker-/Supervisor-Port (2026-10-04)
+
+Im folgenden GFN-Test waren die Pakete gültiges Annex-B-H264. Wieder
+acht offene Pakete, ältestes 122,1 ms, keine Tap-ACKs; gleichzeitig vier
+Helper-Pipe-ACKs bei maximal 8,55 ms. Fünf Worker-Yields waren bereits
+beendet (Maximum 0,4 ms). Das zeigt, dass bloßes Worker-Yielding die
+verzögerte Renderer-/Preload-Rückleitung nicht beseitigt. Kein nativer
+Transfer, Helper-Exit 0; der Browser lief mit FFmpeg und null Drops weiter.
+Der vorherige `unsupported-access-unit`-Fehler wurde nicht reproduziert;
+seine konkrete Ursache bleibt offen.
+
+Die komprimierten Pakete, Tap-Status und ACKs laufen nun über einen
+`MessageChannelMain` direkt zwischen Encoded-Worker und Supervisor.
+Der isolierte Preload prüft beim Aufbau die GFN-Origin und leitet einmalig
+den Port weiter. Main bindet ihn an das originale Hauptframe und die
+Receiver-Generation; Navigation, Framewechsel, fremde Generationen,
+ungültige Pakete und überfüllte Queues schalten weiterhin ab.
+Ein neuer Probe-Port ist nur vor dem ersten akzeptierten Paket erlaubt.
+Die bestehende Pipeline-/Sample-Isolation im separaten Helper bleibt gleich.
+Das entspricht dem dokumentierten
+[Electron-MessagePort-Modell](https://www.electronjs.org/docs/latest/tutorial/message-ports).
+
+Im lokalen Electron-44.5.1-Test kamen Kontrollnachrichten an, aber ein mit
+Transferliste verschobener ArrayBuffer ließ sich auf der Main-Seite nicht
+als gültige Paketnachricht lesen. Komprimierte ArrayBuffers werden deshalb
+per Structured Clone ohne Transferliste geschickt. Dieser Pfad bestand den
+lokalen Iris-Test. Das sind Kopien komprimierter Daten, keine Rohpixelkopien;
+eine Zero-Copy-Behauptung für den komprimierten Transport wäre falsch.
+
+37 Tests bestanden auf Mac/ARM64. Lokale Iris-Ausgabe: 145 Transfers/Draws/
+Freigaben, null Leases und Exit 0. Probe-Receiver-Test: 147 Transfers/Draws,
+148 Freigaben einschließlich eines beim Stop nicht mehr übertragenen Samples,
+null Leases, Exit 0. Backpressure stoppt weiterhin nach acht Kopien;
+CSP-Blockade erhält ebenfalls das ursprüngliche Browservideo.
+
+Die neue Regression `smoke-worker-main-port.cjs` verwendet den echten
+Produktions-Preload und Supervisor mit einem ausdrücklichen Mockdecoder.
+Während die Seite 300 ms per Busy-Loop blockiert war, wurden in den ersten
+150 ms weitere 47 Pakete im Worker/Main-Pfad bestätigt. Damit wurde die
+Unabhängigkeit dieses ACK-Pfads von der Seiten-Ereignisschleife lokal
+nachgewiesen, **kein** Hardware-Decoding durch den Mock und noch keine
+Stabilität des echten GFN-Streams. Sustained GFN, HEVC, CPU-Einsparung,
+Compositorpräsentation und End-to-End-Latenz bleiben unbestätigt.
+Evidenz: [validation-mainport-odin.json](../experiments/dmabuf/validation-mainport-odin.json).

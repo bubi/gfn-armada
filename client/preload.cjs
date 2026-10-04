@@ -38,47 +38,24 @@ if(location.origin==='https://play.geforcenow.com') {
   });
   webFrame.executeJavaScript(`(${observe.toString()})()`).catch(()=>{});
   // Enabled only by Main's explicit native-shadow option. Remote data stays untrusted.
-  let pendingEncoded=0,pendingBytes=0,encodedEnabled=false,statusSecond=0,statusCount=0;
-  const bufferLength=Object.getOwnPropertyDescriptor(ArrayBuffer.prototype,'byteLength').get;
-  let highWater=0,ackCount=0,ackMaxMs=0,lastMetrics=0;
-  const pendingTimes=new Map();
-  const queueMetrics=()=>({stage:"preload",pending:pendingEncoded,pendingBytes,highWater,ackCount,ackMaxMs,oldestMs:pendingTimes.size?performance.now()-pendingTimes.values().next().value:0});
-  const sendStatus=(reason,metrics)=>{
+  let encodedEnabled=false,statusSecond=0,statusCount=0;
+  const sendStatus=reason=>{
     const second=Math.floor(Date.now()/1000);
     if(second!==statusSecond){statusSecond=second;statusCount=0;}
-    if(typeof reason==='string' && reason.length<100 && statusCount++<8) ipcRenderer.send('native-shadow-status',reason,metrics);
+    if(typeof reason==='string'&&reason.length<100&&statusCount++<8) ipcRenderer.send('native-shadow-status',reason);
   };
-  let encodedPort;
-  window.addEventListener('message',event=>{
-    if(event.source!==window||event.origin!==location.origin||!encodedEnabled||event.data?.type!=='gfn-armada-encoded-channel-request') return;
-    const generation=event.data.generation;
-    if(typeof generation!=='string'||generation.length!==36) return;
-    encodedPort?.close();const channel=new MessageChannel();encodedPort=channel.port1;
-    const port=encodedPort;
-    port.onmessage=e=>{if(e.data?.generation===generation) receiveEncoded(e.data,port);};
-    window.postMessage({type:'gfn-armada-encoded-channel',generation},location.origin,[channel.port2]);
+  // Only the setup port crosses the page. Frames/ACKs then bypass its event loop.
+  ipcRenderer.on('native-shadow-channel',(event,data)=>{
+    if(!encodedEnabled||typeof data?.generation!=='string'||event.ports.length!==1) return;
+    window.postMessage({type:'gfn-armada-encoded-channel',generation:data.generation},location.origin,event.ports);
   });
-  async function receiveEncoded(data,port){
-    if(data.kind==='status'){sendStatus(data.reason,data.metrics);return;}
-    if(data.kind!=='frame' || typeof data.generation!=='string' || data.generation.length!==36) return;
-    let byteLength;try{byteLength=bufferLength.call(data.bytes)}catch{return;}
-    if(!byteLength || byteLength>2097152) return;
-    if(pendingEncoded>=8 || pendingBytes+byteLength>4194304){sendStatus('compressed-queue-overflow',queueMetrics());return;}
-    pendingEncoded++;pendingBytes+=byteLength;highWater=Math.max(highWater,pendingEncoded);
-    const started=performance.now(),token={};pendingTimes.set(token,started);
-    let accepted=false;
-    try{
-      accepted=await ipcRenderer.invoke('native-shadow-packet',{generation:data.generation,sequence:data.sequence,
-        timestamp:data.timestamp,key:data.key,bytes:new Uint8Array(data.bytes)});
-    }catch{}finally{
-      ackCount++;ackMaxMs=Math.max(ackMaxMs,performance.now()-started);pendingTimes.delete(token);
-      pendingEncoded--;pendingBytes-=byteLength;
-      if(performance.now()-lastMetrics>=1000){lastMetrics=performance.now();sendStatus("queue-metrics",queueMetrics());}
-      port.postMessage({kind:accepted?'ack':'disable',sequence:data.sequence});
-    }
-  }
   window.addEventListener('message',event=>{
-    if(event.source===window&&event.origin===location.origin&&encodedEnabled&&event.data?.type==='gfn-armada-encoded-status') sendStatus(event.data.reason);
+    if(event.source!==window||event.origin!==location.origin||!encodedEnabled) return;
+    const data=event.data;
+    if(data?.type==='gfn-armada-encoded-channel-request'){
+      if(typeof data.generation!=='string'||!/^[0-9a-f-]{36}$/.test(data.generation)) return;
+      ipcRenderer.invoke('native-shadow-channel',data.generation).then(ok=>{if(!ok) sendStatus('encoded-channel-unavailable');}).catch(()=>sendStatus('encoded-channel-unavailable'));
+    }else if(data?.type==='gfn-armada-encoded-status') sendStatus(data.reason);
   });
   ipcRenderer.invoke('native-shadow-bootstrap').then(source=>{
     if(typeof source==='string' && source.length<32000){encodedEnabled=true;return webFrame.executeJavaScript(source);}

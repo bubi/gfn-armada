@@ -2,11 +2,12 @@ const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
 const {installEncodedTap}=require('./encoded-tap.cjs');
 const {packet,rtpDelta}=require('./encoded-packet.cjs');
 const {startHelper}=require('./helper-process.cjs');
+const {MessageChannelMain}=require('electron');
 function attachNativeShadow({app,ipcMain,source,addon,report,localTest=false}) {
   if((!localTest&&(process.platform!=='linux'||process.arch!=='arm64'))||!path.isAbsolute(addon)) throw new Error('Native shadow requires Linux ARM64 and an absolute addon path');
   let helper,starting,stopped=false,generation,sequence=0,inflight=0,inflightBytes=0,previous,pts=0;
   let decoded=0,draws=0,released=0,outstanding=0,lastFrameAt=null,helperExited=false,helperExitSignal=null,helperExitCode=null,lastNativeError=null,colorSpace=null;
-  const queueStages={};let stoppedQueues=null;
+  const queueStages={};let stoppedQueues=null,transport;
   function rememberMetrics(m){
     if(!m||!["tap","preload","helper-worker"].includes(m.stage)) return;
     const clean={stage:m.stage};
@@ -26,7 +27,7 @@ function attachNativeShadow({app,ipcMain,source,addon,report,localTest=false}) {
     helperPid:helper?.pid,helperExited,helperExitSignal,helperExitCode,lastNativeError,negotiatedColorSpace:colorSpace,encodedFrames:sequence,decodedTransfers:decoded,rendererDraws:draws,releasedSamples:released,outstanding,
     queueMetrics:queues(),originalBrowserDecodeEnabled:true,hardwareDecoderActive:'unknown'});
   function stop(reason='stopped') {
-    if(stopped) return;stoppedQueues=queues();stopped=true;helper?.stop();evidence('stopped',reason);
+    if(stopped) return;stoppedQueues=queues();stopped=true;transport?.close();helper?.stop();evidence('stopped',reason);
   }
   async function start(){
     const profile=fs.mkdtempSync(path.join(os.tmpdir(),'gfn-native-helper-'));
@@ -68,8 +69,8 @@ function attachNativeShadow({app,ipcMain,source,addon,report,localTest=false}) {
     starting ||=start();await starting;
     return !stopped?`(${installEncodedTap.toString()})()`:null;
   });
-  ipcMain.handle('native-shadow-packet',async(event,data)=>{
-    if(!trusted(event)||stopped) return false;
+  async function acceptPacket(data){
+    if(stopped) return false;
     let heldBytes=0;
     try{
       const p=packet(data,sequence+1);
@@ -82,6 +83,29 @@ function attachNativeShadow({app,ipcMain,source,addon,report,localTest=false}) {
       return await helper.push({sequence:p.sequence,timestampUs:pts,key:p.key},Buffer.from(p.bytes));
     }catch{stop('invalid-packet-or-startup-failed');return false;}
     finally{if(heldBytes){inflight--;inflightBytes-=heldBytes;}}
+  }
+  ipcMain.handle('native-shadow-channel',(event,id)=>{
+    if(!trusted(event)||stopped||typeof id!=='string'||!/^[0-9a-f-]{36}$/.test(id)) return false;
+    if(sequence){stop('receiver-generation-changed');return false;}
+    const binding={sender:event.sender,senderFrame:event.senderFrame};
+    const {port1,port2}=new MessageChannelMain();
+    const previousPort=transport;transport=port1;previousPort?.close();
+    port1.on('message',async({data})=>{
+      if(transport!==port1||stopped) return;
+      if(!trusted(binding)){stop('invalid-transport-source');return;}
+      if(data?.generation!==id){stop('invalid-transport-generation');return;}
+      if(data.kind==='status'){onStatus(binding,data.reason,data.metrics);return;}
+      if(data.kind!=='frame'){stop('invalid-transport-message');return;}
+      let accepted=false;
+      try{
+        const size=Object.getOwnPropertyDescriptor(ArrayBuffer.prototype,'byteLength').get.call(data.bytes);
+        if(!size||size>2097152) throw new Error('Invalid encoded buffer');
+        accepted=await acceptPacket({...data,bytes:new Uint8Array(data.bytes)});
+      }catch{stop('invalid-transport-packet');}
+      if(!stopped&&transport===port1) port1.postMessage({kind:accepted?'ack':'disable',sequence:data.sequence});
+    });
+    port1.on('close',()=>{if(transport===port1&&!stopped&&sequence) stop('encoded-channel-closed');});
+    port1.start();event.senderFrame.postMessage('native-shadow-channel',{generation:id},[port2]);return true;
   });
   const onStatus=(event,reason,metrics)=>{
     if(trusted(event)) rememberMetrics(metrics);
@@ -107,7 +131,7 @@ function attachNativeShadow({app,ipcMain,source,addon,report,localTest=false}) {
     inspectTestOutput:()=>{if(!localTest) throw new Error('Pixel readback is restricted to the local test');return helper.inspect();},
     crashTestHelper:()=>{if(!localTest) throw new Error('Fault injection is restricted to the local test');helper.killForTest('SIGSEGV');},
     dispose:()=>{
-      stop('disposed');ipcMain.removeHandler('native-shadow-bootstrap');ipcMain.removeHandler('native-shadow-packet');ipcMain.removeListener('native-shadow-status',onStatus);
+      stop('disposed');ipcMain.removeHandler('native-shadow-bootstrap');ipcMain.removeHandler('native-shadow-channel');ipcMain.removeListener('native-shadow-status',onStatus);
       source.removeListener('did-start-navigation',navigation);source.removeListener('render-process-gone',gone);source.removeListener('destroyed',destroyed);
     }
   };

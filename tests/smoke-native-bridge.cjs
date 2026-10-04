@@ -1,7 +1,7 @@
 // Real local WebRTC + production preload. Mac tests the tap; ARM64 can test Iris.
 if(process.argv.includes('--gfn-armada-native-helper')) require('../client/native-helper.cjs');
 else {
-const {app,BrowserWindow,ipcMain,session,sharedTexture}=require('electron');
+const {app,BrowserWindow,ipcMain,session,sharedTexture,MessageChannelMain}=require('electron');
 const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
 const {loopback}=require('./fixtures/local-webrtc.cjs');
 const {installEncodedTap}=require('../client/encoded-tap.cjs');
@@ -53,10 +53,16 @@ app.whenReady().then(async()=>{
     await shadow.prepare();
   }else{
     ipcMain.handle('native-shadow-bootstrap',()=>`(${installEncodedTap.toString()})()`);
-    ipcMain.handle('native-shadow-packet',async(_event,data)=>{
-      packet(data,encoded+1);encoded++;
-      if(backpressure){await sleep(500);return false;}
-      return true;
+    ipcMain.handle('native-shadow-channel',(event,generation)=>{
+      const {port1,port2}=new MessageChannelMain();
+      port1.on('message',async({data})=>{
+        if(data.kind==='status'){overflow ||=data.reason==='compressed-queue-overflow';return;}
+        if(data.kind!=='frame') throw new Error('Unexpected test transport message');
+        packet({...data,bytes:new Uint8Array(data.bytes)},encoded+1);encoded++;
+        if(backpressure) await sleep(500);
+        port1.postMessage({kind:backpressure?'disable':'ack',sequence:data.sequence});
+      });
+      port1.start();event.senderFrame.postMessage('native-shadow-channel',{generation},[port2]);return true;
     });
     ipcMain.on('native-shadow-status',(_event,reason)=>{overflow ||=reason==='compressed-queue-overflow';console.log(JSON.stringify({event:'tap-status',reason}))});
   }
