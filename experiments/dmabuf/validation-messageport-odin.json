@@ -285,8 +285,305 @@
     "tests/smoke-webrtc-internals.cjs": "10250ba73c3c6081303e38c6a68a4bb3323e2d9f50d451128ed7a54c29840b02",
     "bridge.node": "425dc49231bbdd88ec5c61b5730fcbe6798a41d3e8fec46a1a64c5bb9f89c378"
   },
-  "directPortGfnTested": false,
+  "directPortGfnTested": true,
   "gfnHevcValidated": false,
   "decodeLatencyMeasured": false,
-  "explanation": "Tap had zero ACKs for 121 ms while helper pipe acknowledged four packets within 7.61 ms. Direct port removes page relay tasks; preload still shares renderer scheduling. Sustained GFN playback remains unverified."
+  "explanation": "Tap had zero ACKs for 121 ms while helper pipe acknowledged four packets within 7.61 ms. Direct port removes page relay tasks; preload still shares renderer scheduling. Sustained GFN playback remains unverified. Direct-port GFN processed 375 transfers then overflowed on a burst of eight packets aged only 3.1 ms. The native worker acceptance maximum before stop was 0.187 ms. Burst scheduling is the next hypothesis.",
+  "directPortGfnEvidence": {
+    "firstTransfer": {
+      "timestamp": "2026-10-04T17:41:05.349Z",
+      "event": "native-shadow",
+      "status": "transferring",
+      "lastFrameAt": "2026-10-04T17:41:05.346Z",
+      "mode": "isolated-parallel-shadow",
+      "codec": "H264",
+      "helperPid": 168075,
+      "helperExited": false,
+      "helperExitSignal": null,
+      "helperExitCode": null,
+      "lastNativeError": null,
+      "negotiatedColorSpace": {
+        "matrix": "bt709",
+        "primaries": "bt709",
+        "transfer": "bt709",
+        "range": "full"
+      },
+      "encodedFrames": 14,
+      "decodedTransfers": 7,
+      "rendererDraws": 7,
+      "releasedSamples": 6,
+      "outstanding": 2,
+      "queueMetrics": {
+        "helper-worker": {
+          "stage": "helper-worker",
+          "pending": 0,
+          "pendingBytes": 0,
+          "highWater": 4,
+          "ackCount": 14,
+          "ackMaxMs": 5.329871999998431,
+          "oldestMs": 0,
+          "nativePushMaxMs": 0.18681700000161072
+        },
+        "tap": {
+          "stage": "tap",
+          "pending": 6,
+          "pendingBytes": 33128,
+          "highWater": 7,
+          "ackCount": 1,
+          "ackMaxMs": 99.39999999850988,
+          "oldestMs": 86.19999999925494
+        },
+        "preload": {
+          "stage": "preload",
+          "pending": 5,
+          "pendingBytes": 27588,
+          "highWater": 6,
+          "ackCount": 1,
+          "ackMaxMs": 24.599999997764826,
+          "oldestMs": 24.600000001490116
+        },
+        "helper-pipe": {
+          "stage": "helper-pipe",
+          "pending": 0,
+          "pendingBytes": 0,
+          "highWater": 4,
+          "ackCount": 14,
+          "ackMaxMs": 18.830094000000827,
+          "oldestMs": 0
+        },
+        "supervisor": {
+          "pending": 0,
+          "pendingBytes": 0
+        }
+      },
+      "originalBrowserDecodeEnabled": true,
+      "hardwareDecoderActive": "unknown"
+    },
+    "stop": {
+      "timestamp": "2026-10-04T17:41:11.532Z",
+      "event": "native-shadow",
+      "status": "stopped",
+      "reason": "compressed-queue-overflow",
+      "lastFrameAt": "2026-10-04T17:41:11.395Z",
+      "mode": "isolated-parallel-shadow",
+      "codec": "H264",
+      "helperPid": 168075,
+      "helperExited": false,
+      "helperExitSignal": null,
+      "helperExitCode": null,
+      "lastNativeError": null,
+      "negotiatedColorSpace": {
+        "matrix": "bt709",
+        "primaries": "bt709",
+        "transfer": "bt709",
+        "range": "full"
+      },
+      "encodedFrames": 387,
+      "decodedTransfers": 375,
+      "rendererDraws": 375,
+      "releasedSamples": 375,
+      "outstanding": 0,
+      "queueMetrics": {
+        "helper-worker": {
+          "stage": "helper-worker",
+          "pending": 0,
+          "pendingBytes": 0,
+          "highWater": 4,
+          "ackCount": 379,
+          "ackMaxMs": 5.329871999998431,
+          "oldestMs": 0,
+          "nativePushMaxMs": 0.18681700000161072
+        },
+        "tap": {
+          "stage": "tap",
+          "pending": 8,
+          "pendingBytes": 25042,
+          "highWater": 8,
+          "ackCount": 379,
+          "ackMaxMs": 99.39999999850988,
+          "oldestMs": 3.100000001490116
+        },
+        "preload": {
+          "stage": "preload",
+          "pending": 0,
+          "pendingBytes": 0,
+          "highWater": 6,
+          "ackCount": 373,
+          "ackMaxMs": 27.200000002980232,
+          "oldestMs": 0
+        },
+        "helper-pipe": {
+          "stage": "helper-pipe",
+          "pending": 5,
+          "pendingBytes": 18714,
+          "highWater": 5,
+          "ackCount": 382,
+          "ackMaxMs": 18.830094000000827,
+          "oldestMs": 2.624807000000146
+        },
+        "supervisor": {
+          "pending": 5,
+          "pendingBytes": 18714
+        }
+      },
+      "originalBrowserDecodeEnabled": true,
+      "hardwareDecoderActive": "unknown"
+    },
+    "closed": {
+      "timestamp": "2026-10-04T17:41:11.561Z",
+      "event": "native-shadow",
+      "status": "closed",
+      "lastFrameAt": "2026-10-04T17:41:11.395Z",
+      "mode": "isolated-parallel-shadow",
+      "codec": "H264",
+      "helperPid": 168075,
+      "helperExited": false,
+      "helperExitSignal": null,
+      "helperExitCode": null,
+      "lastNativeError": null,
+      "negotiatedColorSpace": {
+        "matrix": "bt709",
+        "primaries": "bt709",
+        "transfer": "bt709",
+        "range": "full"
+      },
+      "encodedFrames": 387,
+      "decodedTransfers": 375,
+      "rendererDraws": 375,
+      "releasedSamples": 377,
+      "outstanding": 0,
+      "queueMetrics": {
+        "helper-worker": {
+          "stage": "helper-worker",
+          "pending": 0,
+          "pendingBytes": 0,
+          "highWater": 4,
+          "ackCount": 379,
+          "ackMaxMs": 5.329871999998431,
+          "oldestMs": 0,
+          "nativePushMaxMs": 0.18681700000161072
+        },
+        "tap": {
+          "stage": "tap",
+          "pending": 8,
+          "pendingBytes": 25042,
+          "highWater": 8,
+          "ackCount": 379,
+          "ackMaxMs": 99.39999999850988,
+          "oldestMs": 3.100000001490116
+        },
+        "preload": {
+          "stage": "preload",
+          "pending": 0,
+          "pendingBytes": 0,
+          "highWater": 6,
+          "ackCount": 373,
+          "ackMaxMs": 27.200000002980232,
+          "oldestMs": 0
+        },
+        "helper-pipe": {
+          "stage": "helper-pipe",
+          "pending": 5,
+          "pendingBytes": 18714,
+          "highWater": 5,
+          "ackCount": 382,
+          "ackMaxMs": 18.830094000000827,
+          "oldestMs": 2.624807000000146
+        },
+        "supervisor": {
+          "pending": 5,
+          "pendingBytes": 18714
+        }
+      },
+      "originalBrowserDecodeEnabled": true,
+      "hardwareDecoderActive": "unknown"
+    },
+    "exit": {
+      "timestamp": "2026-10-04T17:41:11.617Z",
+      "event": "native-shadow",
+      "status": "helper-exited",
+      "reason": "0",
+      "lastFrameAt": "2026-10-04T17:41:11.395Z",
+      "mode": "isolated-parallel-shadow",
+      "codec": "H264",
+      "helperPid": 168075,
+      "helperExited": true,
+      "helperExitSignal": null,
+      "helperExitCode": 0,
+      "lastNativeError": null,
+      "negotiatedColorSpace": {
+        "matrix": "bt709",
+        "primaries": "bt709",
+        "transfer": "bt709",
+        "range": "full"
+      },
+      "encodedFrames": 387,
+      "decodedTransfers": 375,
+      "rendererDraws": 375,
+      "releasedSamples": 377,
+      "outstanding": 0,
+      "queueMetrics": {
+        "helper-worker": {
+          "stage": "helper-worker",
+          "pending": 0,
+          "pendingBytes": 0,
+          "highWater": 4,
+          "ackCount": 379,
+          "ackMaxMs": 5.329871999998431,
+          "oldestMs": 0,
+          "nativePushMaxMs": 0.18681700000161072
+        },
+        "tap": {
+          "stage": "tap",
+          "pending": 8,
+          "pendingBytes": 25042,
+          "highWater": 8,
+          "ackCount": 379,
+          "ackMaxMs": 99.39999999850988,
+          "oldestMs": 3.100000001490116
+        },
+        "preload": {
+          "stage": "preload",
+          "pending": 0,
+          "pendingBytes": 0,
+          "highWater": 6,
+          "ackCount": 373,
+          "ackMaxMs": 27.200000002980232,
+          "oldestMs": 0
+        },
+        "helper-pipe": {
+          "stage": "helper-pipe",
+          "pending": 5,
+          "pendingBytes": 18714,
+          "highWater": 5,
+          "ackCount": 382,
+          "ackMaxMs": 18.830094000000827,
+          "oldestMs": 2.624807000000146
+        },
+        "supervisor": {
+          "pending": 5,
+          "pendingBytes": 18714
+        }
+      },
+      "originalBrowserDecodeEnabled": true,
+      "hardwareDecoderActive": "unknown"
+    },
+    "browserAfterStop": {
+      "timestamp": 1791135758231,
+      "event": "native-webrtc-decoder",
+      "status": "sampled",
+      "streams": [
+        {
+          "codec": "video/H264",
+          "decoder": "FFmpeg",
+          "powerEfficientDecoder": false,
+          "framesDecoded": 5544,
+          "framesDropped": 0,
+          "totalDecodeTime": 19.401393,
+          "statsTimestamp": 1791135757626.331
+        }
+      ]
+    }
+  },
+  "sustainedGfnPlaybackValidated": false
 }

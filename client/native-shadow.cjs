@@ -10,8 +10,8 @@ function attachNativeShadow({app,ipcMain,source,addon,report,localTest=false}) {
   function rememberMetrics(m){
     if(!m||!["tap","preload","helper-worker"].includes(m.stage)) return;
     const clean={stage:m.stage};
-    for(const key of ["pending","pendingBytes","highWater","ackCount","ackMaxMs","oldestMs","nativePushMaxMs"]){
-      if(m[key]===undefined&&key==="nativePushMaxMs") continue;
+    for(const key of ["pending","pendingBytes","highWater","ackCount","ackMaxMs","oldestMs","nativePushMaxMs","yieldCount","yieldMaxMs"]){
+      if(m[key]===undefined&&["nativePushMaxMs","yieldCount","yieldMaxMs"].includes(key)) continue;
       if(!Number.isFinite(m[key])||m[key]<0||m[key]>1e9) return;clean[key]=m[key];
     }
     if(!Number.isInteger(clean.pending)||clean.pending>8||!Number.isInteger(clean.highWater)||clean.highWater>8||clean.pendingBytes>4194304) return;

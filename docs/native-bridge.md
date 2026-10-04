@@ -368,3 +368,44 @@ Browserstream. Die acht Pakete / 4 MiB bleiben unverändert begrenzt.
 Die Latenzmaxima schwanken zwischen diesen synthetischen Versuchen; daraus
 wird kein Performancegewinn abgeleitet. Echter GFN-Dauertest steht aus.
 Evidenz: [validation-messageport-odin.json](../experiments/dmabuf/validation-messageport-odin.json).
+
+### Burst-Verarbeitung im Tap (2026-10-04)
+
+Der echte GFN-Test mit direktem Port lieferte 375 H264-Transfers und
+Renderer-Draws mit Full-Range-BT.709, bevor die Tap-Queue erneut acht Pakete
+erreichte. Ihr ältestes Paket war diesmal nur 3,1 ms alt. Die Helper-Pipe
+hatte bereits 382 von 387 Paketen bestätigt; fünf waren noch offen,
+ältestes 2,62 ms. Vor dem Abbruch gemessene Maxima: Helper-Worker-ACK
+5,33 ms, native Paketannahme 0,187 ms, Pipe-ACK 18,83 ms, Preload-ACK
+27,2 ms, Tap-ACK 99,4 ms. Die Maxima gehören nicht zwingend zum selben
+Paket. Kein nativer Fehler, Helper-Exit 0, null verbleibende Leases;
+beim Stop wurden zusätzlich zwei nicht mehr übertragenen Samples
+freigegeben (377 Freigaben bei 375 Transfers). Der Browser lief weiter
+mit FFmpeg und null gemeldeten Drops. Das bestätigt weiterhin nur den
+parallelen H264-Hardwarepfad, keinen dauerhaften Decoder-Ersatz oder HEVC.
+
+Die schnelle Füllung passt zu einem Burst bereits verfügbarer Streamframes,
+der MessagePort-ACK-Tasks verdrängt. Der Transform gibt jetzt nach dem
+Weiterreichen eines Originalframes bei mindestens vier offenen Paketen
+mit einem `setTimeout(0)`-Yield die Worker-Ereignisschleife frei. Er wartet
+nicht auf eine ACK-Bedingung und erweitert keine Queue. Weiterhin wird
+bei acht unbestätigten Paketen abgeschaltet. Das bereits weitergereichte
+Originalframe bleibt unverändert; die Annahme folgender Frames kann durch
+den Yield verzögert werden. `yieldCount` und `yieldMaxMs` erfassen diesen
+Scheduling-Aufwand; Timerlaufzeiten sind nicht garantiert und müssen im
+GFN-Dauertest bewertet werden. Ein Yield garantiert keinen ACK-Eingang.
+
+Neue Tests führen den tatsächlich serialisierten Worker mit einem Burst
+von 40 Frames und task-basierten ACKs aus: alle 40 Kopien werden akzeptiert,
+Höchststand höchstens vier. Ohne ACKs werden exakt acht Kopien zugelassen;
+alle 40 Originalframes bleiben identisch und in Reihenfolge. Diese
+Regression prüft Worker-Scheduling, nicht Chromium- oder GFN-Timing.
+
+34 Tests bestanden auf Mac und ARM64. Der lokale 30-Sekunden-Iris-Test mit
+1280×720 lieferte 880 Transfers/Draws, 881 Sample-Freigaben inklusive eines
+beim Stop nicht mehr übertragenen Frames, null offene Leases und Exit 0.
+Tap-Höchststand 1, ACK-Maximum 23,3 ms: der ruhige 30-fps-Test löste keinen
+Yield aus und validiert somit noch nicht dessen Verhalten bei echten
+GFN-Bursts. Der Electron-Backpressure-Test bestätigte erneut die Grenze
+von acht Kopien bei weiterlaufender Originalausgabe.
+Evidenz: [validation-yield-odin.json](../experiments/dmabuf/validation-yield-odin.json).

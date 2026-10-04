@@ -9,8 +9,8 @@ function installEncodedTap() {
       const transformer=event.transformer, generation=transformer.options.generation,port=transformer.options.port;
       let pendingBytes=0, enabled=true, started=false, sequence=0,observed=0,codecReported=false;
       const pending=new Map();
-      let highWater=0,ackCount=0,ackMaxMs=0,lastMetrics=0;
-      const metrics=()=>({stage:"tap",pending:pending.size,pendingBytes,highWater,ackCount,ackMaxMs,oldestMs:pending.size?performance.now()-pending.values().next().value.at:0});
+      let highWater=0,ackCount=0,ackMaxMs=0,lastMetrics=0,yieldCount=0,yieldMaxMs=0;
+      const metrics=()=>({stage:"tap",pending:pending.size,pendingBytes,highWater,ackCount,ackMaxMs,yieldCount,yieldMaxMs,oldestMs:pending.size?performance.now()-pending.values().next().value.at:0});
       const report=reason=>{port.postMessage({kind:'status',generation,reason,metrics:metrics()});
         if(['encoded-frame-observed','transform-ended-before-stream'].includes(reason)) postMessage({kind:'lifecycle',reason});};
       port.onmessage=e=>{
@@ -22,7 +22,7 @@ function installEncodedTap() {
         if(e.data?.kind==='disable') enabled=false;
       };
       transformer.sendKeyFrameRequest?.().catch(()=>report('keyframe-request-unavailable'));
-      transformer.readable.pipeThrough(new TransformStream({transform(frame,controller){
+      transformer.readable.pipeThrough(new TransformStream({async transform(frame,controller){
         // Always forward the original frame unchanged, including after bridge failure.
         try {
           if(enabled) {
@@ -54,6 +54,12 @@ function installEncodedTap() {
           }
         } catch {enabled=false;report('tap-copy-failed');}
         finally {controller.enqueue(frame);}
+        // A burst of resolved stream promises can starve MessagePort ACK tasks.
+        // Forward first, then give tasks one turn; never wait indefinitely for credit.
+        if(enabled && pending.size>=4){
+          const began=performance.now();yieldCount++;await new Promise(resolve=>setTimeout(resolve,0));
+          yieldMaxMs=Math.max(yieldMaxMs,performance.now()-began);
+        }
       }})).pipeTo(transformer.writable).catch(()=>report(observed?'transform-ended':'transform-ended-before-stream'));
     };
   }
