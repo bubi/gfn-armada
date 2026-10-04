@@ -97,11 +97,16 @@ legt aber nicht eindeutig fest, welche dieser Bedingungen zuerst scheitert.
 - GPU-Featureinformationen werden nach Initialisierung aktualisiert und mit
   eigenem Zeitstempel versehen; der frühe Startup-Snapshot genügt nicht.
 
-20 lokale Tests bestanden. Der isolierte echte Electron-Smoke-Test auf macOS
-mit aktivierter Media-Diagnostik lädt GFN, bestätigt die Renderer-Sandbox und
-empfängt Preload-Telemetrie. Die CDP-Anbindung wird beim Schließen getrennt;
-kein aktiver Medienplayer und kein Decodername in diesem Test. Live-Prüfung
-der neuen Diagnose auf Linux steht noch aus.
+20 lokale Tests bestanden. Der erste isolierte Electron-Smoke-Test auf macOS
+mit aktivierter Media-Diagnostik lud GFN, bestätigte die Renderer-Sandbox und
+empfing Preload-Telemetrie, beendete sich aber nicht sauber. Eine Rückkopplung
+zwischen vollständiger GPU-Abfrage und `gpu-info-update` wurde entfernt: der
+Eventhandler fragt nur den Featurestatus ab und startet keine neue vollständige
+GPU-Abfrage. Die eigenen festhängenden Testprozesse wurden gezielt beendet.
+Der erneute Smoke-Test überschritt anschließend sein 45-Sekunden-Startlimit;
+deshalb **kein vollständig bestandener neuer GUI-Smoke-Test**. Keine aktive
+Medienwiedergabe und kein Decodername in diesen Tests. Live-Prüfung der neuen
+Diagnose auf Linux sowie erneute GUI-Validierung stehen noch aus.
 
 ## Nächster kontrollierter Versuch
 

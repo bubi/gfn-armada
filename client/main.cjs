@@ -105,7 +105,11 @@ if(cfg&&request?.resolved) {
       const refreshGPU=()=>app.getGPUInfo('complete').then(gpu=>{
         runtime.gpu=gpu;runtime.gpuFeatures=app.getGPUFeatureStatus();runtime.gpuSnapshotTimestamp=new Date().toISOString();save();
       }).catch(()=>{});
-      app.on('gpu-info-update',()=>{void refreshGPU()});
+      // Reading complete GPU info can itself emit this event. Never request it
+      // again from the event handler, otherwise the update loop prevents exit.
+      app.on('gpu-info-update',()=>{
+        runtime.gpuFeatures=app.getGPUFeatureStatus();runtime.gpuSnapshotTimestamp=new Date().toISOString();save();
+      });
       void refreshGPU();
     }).catch(e=>{log('startup-failed',{message:e.message});app.quit()});
     app.on('child-process-gone',(_e,details)=>log('child-process-gone',{type:details.type,reason:details.reason}));

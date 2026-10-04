@@ -59,8 +59,11 @@ Container lief mit 14 Tests. Das installierte Testbundle enthält die Korrektur,
 das ursprüngliche Releasearchiv noch nicht.
 
 Die anschließende Decoder-Untersuchung ergänzt Prozess-/Geräte-FD-Proben und
-optionale native CDP-Media-Metadaten. 20/20 lokale Tests und der isolierte
-macOS-Electron-Smoke-Test mit eingeschalteter Media-Diagnostik bestehen.
+optionale native CDP-Media-Metadaten. 20/20 lokale Tests bestehen. Der neue
+macOS-Electron-Smoke-Test mit Media-Diagnostik bestätigt zunächst Seitenladung
+und Telemetrie, scheitert aber an sauberer Beendigung; nach Korrektur der
+GPU-Update-Rückkopplung überschreitet ein weiterer Versuch das Startzeitlimit.
+Die neue GUI-Diagnostik ist damit noch nicht vollständig validiert.
 Diese Ergänzungen sind noch nicht auf das derzeit per SSH unerreichbare Portal
 übertragen. Die konkrete GFN-Decoderinstanz bleibt deshalb unbestätigt.
 Quellbefunde: [electron-decoder-investigation.md](electron-decoder-investigation.md).
