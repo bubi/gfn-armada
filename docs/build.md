@@ -28,15 +28,21 @@ CONTAINER_ENGINE=podman ./scripts/build
 ```
 
 Eine laufende Linux-VM/Containerengine ist erforderlich. Das installierte Docker
-CLI allein genügt nicht. Im untersuchten Host war der ausgewählte OrbStack-
-Daemon nicht erreichbar. `./scripts/build` muss dies früh und verständlich
-melden. Deshalb zunächst hostseitige Cross-Paketierung:
+CLI allein genügt nicht. Am 2026-10-04 wurde das bereits installierte OrbStack
+mit `open -a OrbStack` gestartet. Docker 28.5.2 meldet `aarch64`; der komplette
+Containerbau mit 14 Tests und Paketexport ist jetzt verifiziert.
+`./scripts/build` zeigt bei einer nicht erreichbaren Engine auch deren ursprüngliche
+Fehlermeldung. Der Packager erzeugt als root zunächst private Ausgabeverzeichnisse;
+der Container macht das distributierbare Bundle vor dem Export lesbar für den
+normalen macOS-Benutzer. Das Systemprofil und Login-Daten sind nicht Teil des Builds.
+
+Alternativ ist weiterhin hostseitige Cross-Paketierung möglich:
 
 ```sh
 ./scripts/package
 ```
 
-Optional `./scripts/archive` erzeugt mit Python 3.11+ ein transportierbares
+Optional `./scripts/archive` erzeugt mit Python 3 ein transportierbares
 `dist/gfn-armada-0.1.0-linux-arm64.tar.gz` plus SHA256-Datei. Die Archivmetadaten
 sind normalisiert; vollständige Byte-Reproduzierbarkeit der gesamten Buildkette
 ist damit noch nicht nachgewiesen.

@@ -4,5 +4,5 @@ WORKDIR /work
 COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts
 COPY . .
-RUN npm test && npm run package
+RUN npm test && npm run package && chmod -R a+rX dist
 CMD ["sh", "-c", "cp -a dist/gfn-armada-linux-arm64 /out/"]

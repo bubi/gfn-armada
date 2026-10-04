@@ -1,4 +1,4 @@
-# Validierungsstand 2026-10-03
+# Validierungsstand 2026-10-04
 
 | Prüfung | Ergebnis | Aussagegrenze |
 |---|---|---|
@@ -10,13 +10,22 @@
 | Preload → Main-World → IPC | Codec-/Controller-Report empfangen | kein aktiver Peer-/Hardwaredecoder-Nachweis |
 | Linux-ARM64-Paketierung auf macOS | bestanden | Linux-Binary nicht auf dem Mac ausführbar |
 | `file` des gepackten Runtime-Binary | ELF 64-bit ARM aarch64 | kein Linux-Laufzeittest |
-| Linux-ARM64-Containerlauf | nicht möglich: gewählter Docker/OrbStack-Daemon nicht erreichbar | Containerrezept vorbereitet, nicht verifiziert |
+| Linux-ARM64-Containerbau und Export | am 2026-10-04 bestanden; 14/14 Tests im Container | kein Armada-GUI-/Decoder-Test |
 | persistenter NVIDIA-Login | offen | isoliertes Testprofil, keine Anmeldung |
 | Steam Gaming Mode / Controller | offen | Zielgerät nicht erreichbar |
 | HEVC / AV1 auf Qualcomm VPU | unknown | kein Gerät, kein GFN-Stream |
 | DMA-BUF / Low-Copy | unknown | Import-/Queue-/Compositor-Nachweis fehlt |
 
-Der echte macOS-Test verwendete Electron 44.5.1 / Chromium 152.0.7977.130 /
+Am 2026-10-04 wurde das bereits installierte OrbStack gestartet. Docker 28.5.2
+meldet `aarch64`. `./scripts/build` baute mit der gepinnten Linux-ARM64-
+Containerbasis und exportierte das Bundle unter dem normalen macOS-Benutzer.
+Das anfängliche Exportproblem wurde behoben: Packager-Ausgaben müssen vor dem
+Export für den unprivilegierten Benutzer lesbar sein (`chmod -R a+rX dist`).
+Die exportierte Runtime wurde als ELF für ARM aarch64 geprüft; der exportierte
+Clientquellcode stimmt mit dem Repository überein. Docker Desktop wurde nicht
+zusätzlich installiert. Dies ersetzt weiterhin keinen Test auf ArmadaOS.
+
+Der echte macOS-Test vom 2026-10-03 verwendete Electron 44.5.1 / Chromium 152.0.7977.130 /
 Node 24.21.0. Der Renderer meldete unter anderem H264, H265 und AV1 in den
 WebRTC-Empfangsfähigkeiten. Das ist **ausschließlich ein macOS-Browserangebot**,
 keine NVIDIA-Verhandlung und keine Fähigkeit des Linux-ARM64-Pakets.
