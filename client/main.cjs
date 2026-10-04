@@ -24,7 +24,7 @@ if(cfg&&request?.resolved) {
   if(process.env.GFN_ARMADA_LOG==='debug') {
     app.commandLine.appendSwitch('enable-logging','file');
     app.commandLine.appendSwitch('log-file',path.join(root.state,'chromium.log'));
-    app.commandLine.appendSwitch('vmodule','*video_decoder*=2,*v4l2*=2');
+    app.commandLine.appendSwitch('vmodule','*video_decoder*=3,*v4l2*=3,*rtc_video_decoder*=3,*webrtc_video_decoder*=3');
   }
   const log=(event,data={})=>console.log(JSON.stringify({timestamp:new Date().toISOString(),event,...data}));
   let win;let runtime={timestamp:new Date().toISOString(),pid:process.pid,versions:process.versions,
@@ -61,6 +61,14 @@ if(cfg&&request?.resolved) {
       app.on('browser-window-created',(_e,w)=>secure(w));
       win=new BrowserWindow({width:1280,height:720,title:'gfn-armada',backgroundColor:'#111111',fullscreen:cfg.fullscreen&&request.command==='launch',webPreferences:prefs});
       win.setMenu(null);
+      if(process.env.GFN_ARMADA_MEDIA_DIAGNOSTICS==='1') {
+        require('./media-diagnostics.cjs').attachMediaDiagnostics(win.webContents,data=>{
+          runtime.nativeMedia=runtime.nativeMedia||{};
+          if(data.playerId) runtime.nativeMedia[data.playerId]=data.properties;
+          else runtime.nativeMediaStatus=data.status;
+          save();log('native-media-decoder',data);
+        });
+      }
       let capturing=false;
       async function captureMapping() {
         if(request.command!=='map' || capturing) return;
@@ -94,7 +102,11 @@ if(cfg&&request?.resolved) {
       runtime.gpuFeatures=app.getGPUFeatureStatus();save();
       await win.loadURL(request.resolved.url);
       if(request.command==='map') await dialog.showMessageBox(win,{type:'info',message:`Open ${request.name} with the Steam store in GFN, then press Ctrl+Shift+P to capture its current launch URL.`,detail:'No ID is guessed. The URL must match the upstream-observed streamer route.'});
-      app.getGPUInfo('complete').then(gpu=>{runtime.gpu=gpu;save()}).catch(()=>{});
+      const refreshGPU=()=>app.getGPUInfo('complete').then(gpu=>{
+        runtime.gpu=gpu;runtime.gpuFeatures=app.getGPUFeatureStatus();runtime.gpuSnapshotTimestamp=new Date().toISOString();save();
+      }).catch(()=>{});
+      app.on('gpu-info-update',()=>{void refreshGPU()});
+      void refreshGPU();
     }).catch(e=>{log('startup-failed',{message:e.message});app.quit()});
     app.on('child-process-gone',(_e,details)=>log('child-process-gone',{type:details.type,reason:details.reason}));
     app.on('window-all-closed',()=>app.quit());

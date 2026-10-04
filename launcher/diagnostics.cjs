@@ -28,7 +28,7 @@ function diagnostics() {
     displayEnvironment:process.env.WAYLAND_DISPLAY?'wayland requested':process.env.DISPLAY?'X11/XWayland environment':'unknown',
     gamescope:probe('pgrep',['-x','gamescope']).ok?'process detected':'unknown',
     gpu:probe('vulkaninfo',['--summary']),egl:probe('eglinfo',['-B']),videoDevices:devices,
-    kernelVideoConfig:kernelConfig(),
+    kernelVideoConfig:kernelConfig(),processVideoAccess:require('./process-video.cjs').processVideo(),
     ffmpeg:probe('ffmpeg',['-hide_banner','-decoders']),ffmpegHwaccels:probe('ffmpeg',['-hide_banner','-hwaccels']),
     gstreamer:probe('gst-inspect-1.0',['video4linux2']),
     h264HardwareDecode:'unknown',hevcHardwareDecode:'unknown',av1HardwareDecode:'unknown',dmabuf:'unknown',
