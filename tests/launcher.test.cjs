@@ -71,7 +71,15 @@ test('portable CLI invokes packaged runtime without an application-directory arg
  const dir=temp(t);const fake=path.join(dir,'fake-runtime');
  fs.writeFileSync(fake,'#!/bin/sh\nprintf "%s\n" "$@"\nif [ -n "${ELECTRON_RUN_AS_NODE:-}" ]; then exit 9; fi\n',{mode:0o755});
  const result=spawnSync(process.execPath,[path.resolve(__dirname,'../launcher/cli.cjs'),'login'],{encoding:'utf8',env:{...process.env,XDG_CONFIG_HOME:dir,GFN_ARMADA_ELECTRON:fake,ELECTRON_RUN_AS_NODE:'1'}});
- assert.equal(result.status,0);assert.equal(result.stdout.trim(),'login');
+ assert.equal(result.status,0);assert.equal(result.stdout.trim(),process.platform==='linux'&&process.env.WAYLAND_DISPLAY?'--ozone-platform=wayland\nlogin':'login');
+});
+test('Wayland runtime argument preserves packaged and development launch targets',()=>{
+ const {clientArgs}=require('../launcher/cli.cjs');
+ for(const [argv,packaged] of [
+  [['runtime','--ozone-platform=wayland','launch','steam:1091500'],true],
+  [['runtime','app','--ozone-platform=wayland','launch','steam:1091500'],false]
+ ]) assert.deepEqual(parse(clientArgs(argv,packaged)),{command:'launch',target:'steam:1091500'});
+ assert.throws(()=>parse(clientArgs(['runtime','--unsupported','login'],true)));
 });
 test('CLI sync never overwrites an existing review manifest',t=>{
  const {spawnSync}=require('node:child_process');

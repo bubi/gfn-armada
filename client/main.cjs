@@ -2,13 +2,14 @@ const {app,BrowserWindow,ipcMain,session,dialog}=require('electron');
 const fs=require('node:fs');
 const path=require('node:path');
 const {paths,loadConfig}=require('../launcher/config.cjs');
-const {parse}=require('../launcher/cli.cjs');
+const {parse,clientArgs}=require('../launcher/cli.cjs');
+const {allowed,origin}=require('./navigation.cjs');
 const {resolveGame,HOME,saveMapping,validatedURL}=require('../launcher/mapping.cjs');
 const root=paths();
 let cfg,request;
 try {
   cfg=loadConfig();
-  request=parse(process.argv.slice(app.isPackaged?1:2));
+  request=parse(clientArgs(process.argv,app.isPackaged));
   if(!['launch','login','map'].includes(request.command)) throw new Error('Use the gfn-armada launcher for this command');
   request.resolved=resolveGame(['login','map'].includes(request.command)?null:request.target);
 }catch(e){console.error(e.message);app.exit(1)}
@@ -29,18 +30,20 @@ if(cfg&&request?.resolved) {
     hardwareDecoderActive:'unknown',dmabuf:'unknown',requestedOzone:process.env.WAYLAND_DISPLAY?'wayland':'default',
     source:'page-reported; diagnostic evidence only',active:false};
   function save() {runtime.timestamp=new Date().toISOString();const f=path.join(root.state,'runtime.json');fs.writeFileSync(f+'.tmp',JSON.stringify(runtime,null,2),{mode:0o600});fs.renameSync(f+'.tmp',f)}
-  function allowed(value) {try{const u=new URL(value);return u.protocol==='https:'&&(u.hostname==='play.geforcenow.com'||u.hostname==='nvidia.com'||u.hostname.endsWith('.nvidia.com')||u.hostname==='nvidia.cn'||u.hostname.endsWith('.nvidia.cn'))}catch{return false}}
   const prefs={nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true,preload:path.join(__dirname,'preload.cjs'),partition:'persist:gfn'};
   function secure(window) {
-    window.webContents.on('will-navigate',(event,url)=>{if(!allowed(url)){event.preventDefault();log('navigation-blocked')}});
-    window.webContents.on('will-redirect',(event,url)=>{if(!allowed(url)){event.preventDefault();log('redirect-blocked')}});
-    window.webContents.setWindowOpenHandler(({url})=>allowed(url)?{action:'allow',overrideBrowserWindowOptions:{webPreferences:prefs}}:{action:'deny'});
+    window.webContents.on('will-navigate',(event,url)=>{if(!allowed(url)){event.preventDefault();log('navigation-blocked',{origin:origin(url)})}});
+    window.webContents.on('will-redirect',(event,url)=>{if(!allowed(url)){event.preventDefault();log('redirect-blocked',{origin:origin(url)})}});
+    window.webContents.setWindowOpenHandler(({url})=>{
+      if(allowed(url)) return {action:'allow',overrideBrowserWindowOptions:{webPreferences:prefs}};
+      log('popup-blocked',{origin:origin(url)});return {action:'deny'};
+    });
     window.webContents.on('will-attach-webview',e=>e.preventDefault());
   }
   if(!app.requestSingleInstanceLock()) app.quit();
   else {
     app.on('second-instance',(_e,argv)=>{
-      try{const next=parse(argv.slice(app.isPackaged?1:2));if(!['login','launch','map'].includes(next.command)) return;
+      try{const next=parse(clientArgs(argv,app.isPackaged));if(!['login','launch','map'].includes(next.command)) return;
         const target=resolveGame(['login','map'].includes(next.command)?null:next.target);
         request= {...next,resolved:target};
         if(win&&!win.isDestroyed()){win.loadURL(target.url).catch(()=>log('load-failed'));win.show();win.focus()}
