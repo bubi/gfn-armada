@@ -1,0 +1,49 @@
+#!/usr/bin/env python3
+"""Stage a pinned upstream comparison client; do not install or run it."""
+import hashlib
+import json
+from pathlib import Path
+import os
+import tempfile
+import urllib.request
+
+VERSION = '1.0.2'
+NAME = f'OpenNOW-Qt-{VERSION}-Linux-arm64.AppImage'
+URL = f'https://github.com/OpenCloudGaming/OpenNOW/releases/download/v{VERSION}/{NAME}'
+SHA256 = '55b57e7c2c5b1343266ce1741e15de1f2cf5fee15c92c189677e1b0ea016a59a'
+
+def digest(file):
+    h = hashlib.sha256()
+    with file.open('rb') as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b''):
+            h.update(block)
+    return h.hexdigest()
+
+def main():
+    directory = Path(__file__).resolve().parent.parent / '.artifacts' / 'opennow'
+    directory.mkdir(parents=True, exist_ok=True)
+    destination = directory / NAME
+    if not destination.exists() or digest(destination) != SHA256:
+        temporary = None
+        try:
+            with tempfile.NamedTemporaryFile(dir=directory, delete=False) as output:
+                temporary = Path(output.name)
+                with urllib.request.urlopen(URL, timeout=30) as response:
+                    for block in iter(lambda: response.read(1024 * 1024), b''):
+                        output.write(block)
+            if digest(temporary) != SHA256:
+                raise RuntimeError('OpenNOW archive SHA256 mismatch; not staged')
+            os.replace(temporary, destination)
+        finally:
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
+    destination.chmod(0o755)
+    (directory / 'upstream.json').write_text(json.dumps({
+        'version': VERSION, 'url': URL, 'sha256': SHA256,
+        'status': 'downloaded and digest checked; not executed or device validated'
+    }, indent=2) + '\n')
+    print(destination)
+    print('SHA256 verified. Not installed or executed.')
+
+if __name__ == '__main__':
+    main()
