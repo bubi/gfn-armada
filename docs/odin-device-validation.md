@@ -72,6 +72,20 @@ Apples [offizieller Autorisierungsdokumentation](https://developer.apple.com/doc
 explizit erlaubt und die Testinstanz neu gestartet. Keine pauschale Freigabe
 aller Apple-Domains. Blockierte Navigationen melden nur die Origin, keine
 OAuth-Queryparameter. Erfolgreicher Login bleibt durch den Nutzer zu prüfen.
+Der Nutzer bestätigt, dass die Apple-Seite nach der Korrektur erreichbar ist.
+„Sign in with iPhone“ zeigt jedoch keinen QR-Code. Kein weiterer blockierter
+Redirect/Popup wurde bei diesem Versuch protokolliert. Das ist somit kein
+belegter weiterer Allowlist-Fehler. Electron besitzt nicht automatisch die
+Chrome-Oberfläche für den WebAuthn-Hybridtransport. Im
+[WebAuthn-Delegate von Electron 44.5.1](https://github.com/electron/electron/blob/v44.5.1/shell/browser/webauthn/electron_authenticator_request_client_delegate.cc)
+werden Bluetooth-Aktionscallbacks nicht an eine QR-/Transportoberfläche
+angebunden. Diese Einschränkung passt zum beobachteten Verhalten; der konkrete
+WebAuthn-Request der Apple-Seite wurde noch nicht instrumentiert.
+Als erster Loginversuch bleibt Apples Anmeldung mit Apple-Account und Passwort
+innerhalb derselben Sitzung. Ein voller Chromium-Browser wäre eine Alternative
+für Hybrid-Passkeys, würde aber ein eigenes persistentes Profil benötigen.
+Ein Login im externen Browser überträgt nicht automatisch eine Sitzung an
+Electron; keine Cookies oder Auth-Tokens kopieren oder einen Callback erfinden.
 Controller-Liste war leer: es gab noch keinen bestätigten Gamepad-Test.
 Noch kein aktiver Stream und keine ausgehandelten Streamcodecs oder Decoder.
 Hardwaredecoder und DMA-BUF im GFN-Client bleiben `unknown`.

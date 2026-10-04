@@ -1,9 +1,10 @@
 # Hardware-Decoding: Evidenz, Lücken und Prüfplan
 
-Stand: 2026-10-03. **HEVC-VPU-Decoding, AV1-VPU-Decoding und DMABUF-Ausgabe sind
-auf dem Odin 2 Portal nicht nachgewiesen.** Kein Zielgerät ist erreichbar.
-`diagnostics` gibt deshalb für diese Fähigkeiten `unknown` aus. Weder GPU-
-Rendering noch niedrige CPU-Last allein beweisen Hardware-Decoding.
+Stand: 2026-10-04. HEVC-VPU-Decoding mit DMA-BUF-Ausgang ist auf dem Portal
+für einen synthetischen GStreamer-Testclip nachgewiesen. AV1, der GPU-/Wayland-
+Import und Hardwaredecodierung im GFN-Client bleiben unbestätigt.
+`diagnostics` gibt deshalb für den Clientpfad weiterhin `unknown` aus.
+Weder GPU-Rendering noch niedrige CPU-Last allein beweisen Hardware-Decoding.
 
 ## Armada-Stack aus dem Quellcode
 
