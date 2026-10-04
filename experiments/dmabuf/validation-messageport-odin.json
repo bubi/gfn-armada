@@ -1,0 +1,292 @@
+{
+  "date": "2026-10-04",
+  "device": "AYN Odin 2 Portal",
+  "scope": "GFN relay diagnostics and synthetic direct-port regression",
+  "priorGfnStop": {
+    "timestamp": "2026-10-04T17:33:58.700Z",
+    "event": "native-shadow",
+    "status": "stopped",
+    "reason": "compressed-queue-overflow",
+    "lastFrameAt": null,
+    "mode": "isolated-parallel-shadow",
+    "codec": "H264",
+    "helperPid": 161637,
+    "helperExited": false,
+    "helperExitSignal": null,
+    "helperExitCode": null,
+    "lastNativeError": null,
+    "negotiatedColorSpace": null,
+    "encodedFrames": 8,
+    "decodedTransfers": 0,
+    "rendererDraws": 0,
+    "releasedSamples": 0,
+    "outstanding": 0,
+    "queueMetrics": {
+      "helper-worker": {
+        "stage": "helper-worker",
+        "pending": 0,
+        "pendingBytes": 0,
+        "highWater": 0,
+        "ackCount": 0,
+        "ackMaxMs": 0,
+        "oldestMs": 0,
+        "nativePushMaxMs": 0
+      },
+      "tap": {
+        "stage": "tap",
+        "pending": 8,
+        "pendingBytes": 44985,
+        "highWater": 8,
+        "ackCount": 0,
+        "ackMaxMs": 0,
+        "oldestMs": 121.39999999850988
+      },
+      "helper-pipe": {
+        "stage": "helper-pipe",
+        "pending": 4,
+        "pendingBytes": 22360,
+        "highWater": 4,
+        "ackCount": 4,
+        "ackMaxMs": 7.610524999909103,
+        "oldestMs": 3.5635780000593513
+      },
+      "supervisor": {
+        "pending": 4,
+        "pendingBytes": 22360
+      }
+    },
+    "originalBrowserDecodeEnabled": true,
+    "hardwareDecoderActive": "unknown"
+  },
+  "browserSoftwareDecoderAfterStop": {
+    "timestamp": 1791135269574,
+    "event": "native-webrtc-decoder",
+    "status": "sampled",
+    "streams": [
+      {
+        "codec": "video/H264",
+        "decoder": "FFmpeg",
+        "powerEfficientDecoder": false,
+        "framesDecoded": 1821,
+        "framesDropped": 0,
+        "totalDecodeTime": 5.72162,
+        "statsTimestamp": 1791135268963.947
+      }
+    ]
+  },
+  "directPortSyntheticTests": {
+    "healthy": {
+      "status": "passed",
+      "scope": "local-webrtc-h264-iris-shadow",
+      "nativeTested": true,
+      "encoded": 0,
+      "originalFrames": 59,
+      "queueMetrics": {
+        "helper-worker": {
+          "stage": "helper-worker",
+          "pending": 0,
+          "pendingBytes": 0,
+          "highWater": 4,
+          "ackCount": 145,
+          "ackMaxMs": 49.35864800000013,
+          "oldestMs": 0,
+          "nativePushMaxMs": 47.75125400000002
+        },
+        "tap": {
+          "stage": "tap",
+          "pending": 0,
+          "pendingBytes": 0,
+          "highWater": 4,
+          "ackCount": 140,
+          "ackMaxMs": 172.69999999925494,
+          "oldestMs": 0
+        },
+        "preload": {
+          "stage": "preload",
+          "pending": 0,
+          "pendingBytes": 0,
+          "highWater": 4,
+          "ackCount": 136,
+          "ackMaxMs": 160.80000000074506,
+          "oldestMs": 0
+        },
+        "helper-pipe": {
+          "stage": "helper-pipe",
+          "pending": 0,
+          "pendingBytes": 0,
+          "highWater": 4,
+          "ackCount": 147,
+          "ackMaxMs": 106.79764999999998,
+          "oldestMs": 0
+        },
+        "supervisor": {
+          "pending": 0,
+          "pendingBytes": 0
+        }
+      },
+      "sequence": 147,
+      "decoded": 147,
+      "draws": 147,
+      "released": 147,
+      "outstanding": 0,
+      "stopped": true,
+      "helperPid": 166656,
+      "helperExited": true,
+      "helperExitSignal": null,
+      "helperExitCode": 0,
+      "lastNativeError": null,
+      "negotiatedColorSpace": {
+        "matrix": "bt709",
+        "primaries": "bt709",
+        "transfer": "bt709",
+        "range": "limited"
+      },
+      "elapsedMs": 5165,
+      "pixels": {
+        "width": 1280,
+        "height": 720,
+        "distinctColors": 6,
+        "validationReadback": true
+      }
+    },
+    "probe": {
+      "status": "passed",
+      "scope": "local-webrtc-h264-iris-shadow",
+      "nativeTested": true,
+      "encoded": 0,
+      "originalFrames": 57,
+      "queueMetrics": {
+        "helper-worker": {
+          "stage": "helper-worker",
+          "pending": 0,
+          "pendingBytes": 0,
+          "highWater": 1,
+          "ackCount": 147,
+          "ackMaxMs": 5.19675200000006,
+          "oldestMs": 0,
+          "nativePushMaxMs": 0.47607799999991585
+        },
+        "tap": {
+          "stage": "tap",
+          "pending": 0,
+          "pendingBytes": 0,
+          "highWater": 2,
+          "ackCount": 144,
+          "ackMaxMs": 16.5,
+          "oldestMs": 0
+        },
+        "preload": {
+          "stage": "preload",
+          "pending": 0,
+          "pendingBytes": 0,
+          "highWater": 1,
+          "ackCount": 131,
+          "ackMaxMs": 15.199999999254942,
+          "oldestMs": 0
+        },
+        "helper-pipe": {
+          "stage": "helper-pipe",
+          "pending": 0,
+          "pendingBytes": 0,
+          "highWater": 1,
+          "ackCount": 149,
+          "ackMaxMs": 13.409652000000051,
+          "oldestMs": 0
+        },
+        "supervisor": {
+          "pending": 0,
+          "pendingBytes": 0
+        }
+      },
+      "sequence": 149,
+      "decoded": 149,
+      "draws": 149,
+      "released": 149,
+      "outstanding": 0,
+      "stopped": true,
+      "helperPid": 167183,
+      "helperExited": true,
+      "helperExitSignal": null,
+      "helperExitCode": 0,
+      "lastNativeError": null,
+      "negotiatedColorSpace": {
+        "matrix": "bt709",
+        "primaries": "bt709",
+        "transfer": "bt709",
+        "range": "limited"
+      },
+      "elapsedMs": 5047,
+      "pixels": {
+        "width": 1280,
+        "height": 720,
+        "distinctColors": 6,
+        "validationReadback": true
+      }
+    },
+    "backpressure": {
+      "status": "passed",
+      "scope": "encoded-tap-only",
+      "nativeTested": false,
+      "encoded": 8,
+      "originalFrames": 66,
+      "elapsedMs": 5282,
+      "backpressureFallback": true,
+      "overflow": true
+    },
+    "csp": {
+      "status": "passed",
+      "scope": "encoded-tap-only",
+      "nativeTested": false,
+      "encoded": 0,
+      "originalFrames": 150,
+      "elapsedMs": 5029,
+      "cspFallback": true
+    }
+  },
+  "sourceSha256": {
+    "client/application.cjs": "25bd722249f3d8affef16f43d7d923b3b1fe72ca319afa9ee350379b4284432b",
+    "client/encoded-packet.cjs": "fb9695c803b747dc9631e3c6aa284a8ff67e4a19f8bf560248ca0be0667d9296",
+    "client/encoded-tap.cjs": "6bcd9d1e48956f77d10ea7516b9341c1f20c0f375114d358e24c725e647097bf",
+    "client/helper-process.cjs": "0880337fd5e3a3f713e9d693913d673fb30e612d10558236a907714a3aaa74f5",
+    "client/helper-wire.cjs": "c40268a62be4974af24fdf00ef8be64adbc47d39e4f959fe9a924d830c1a8c6d",
+    "client/main.cjs": "eb38e586fdb42b9be57de85e93ec49acf6ad708154c1801223658c5c6756f744",
+    "client/media-diagnostics.cjs": "7804316a36cba1aec734fdff227c88d6080d9d8fd61711c3187b6e640f80c8b2",
+    "client/native-decoder-worker.cjs": "6e36dbbb57300a0fd8bbecf2c13955ef35f1526297e17b4a99076c7665591dd1",
+    "client/native-helper.cjs": "389a486488b1c0d975223066470db7ade6988ca049098aae81722823bf0ef99d",
+    "client/native-shadow.cjs": "c2f62400396d5ce528ee9d946da109a7cbc05bba9661af1ad132b6b528f80f28",
+    "client/navigation.cjs": "18f6d2daa886dfe326efa9b6621b239a8e3d1c2e517046782b14c0ec68ab348a",
+    "client/preload.cjs": "0ca908477dfd64846ccf95b7546f9892fd362368735a88622c63bec311c48557",
+    "client/shadow-preload.cjs": "87f2e89d13141287b97c5c850450017c9c1dbf5cf6b7ba1eb50655c2a2dc347c",
+    "client/shadow.html": "28c641e10a3333633a5ea82ef50461d53a0f86a9eb6426793da0dcd16e7447c7",
+    "client/webrtc-internals.cjs": "5c4bb8d79be23fdd9943e989a61d31951cbfbeb6a4be91672c922c70bf3794c8",
+    "launcher/cli.cjs": "632923f9209ff68c30b96d0fd1bfa7ac0b9f89e222804a3b7e84bc900a295257",
+    "launcher/config.cjs": "e8edaefa194027d39eac619b83e4994070b8b92773cb59509c3b56db29ea2326",
+    "launcher/diagnostics.cjs": "9085abe1dfa06a233cabca32d8b5206aa09e220e080fa85cdf44044790fac15a",
+    "launcher/mapping.cjs": "b33fd672196d6edf4ac0dc6986f9b533bd8434c5a995f981a89cf013d0024a56",
+    "launcher/process-video.cjs": "8fcb31e5fceda06ebe82da261008e767c08c53f636268efd17c4ba4c714357d3",
+    "package.json": "dc8c72d9e09b63768b1523a5796f90126d814a765ebad1bb4a4569a36a203a5a",
+    "tests/decoder-diagnostics.test.cjs": "04ed223a4de55d01f58364230d85752de92d6d6bc4635cd364418b4b5c4bd02c",
+    "tests/encoded-packet.test.cjs": "8d45cc14af93130747c6f9468ce156f13f11000c2e3fea42264055b2af619d3f",
+    "tests/fixtures/fake-decoder.cjs": "439fbe6437efd85d2323557602fcb98ffe4089d77ce3fab946babe89d8331d14",
+    "tests/fixtures/helper-process.cjs": "bf770c91a9e73c6e7ab0d062ddb04968cbc0e233c41f4f414533c1f7cd2ceaeb",
+    "tests/fixtures/local-webrtc.cjs": "0b29932828a34c14d4b19e120f66fd679e05d1681f6cb640d2e9a4e19df69e7b",
+    "tests/fixtures/prewarm-decoder.cjs": "71b8a73e95a5b0d55ab8969c782e91eedc36e35e6ff2189a3de036ff04bd5575",
+    "tests/fixtures/rejecting-decoder.cjs": "690ce0e69c46b482c711d6f3ca5fdc4dbe933fc49f7de2bb8a54cfe90f8c6d6b",
+    "tests/fixtures/unavailable-decoder.cjs": "3a5e3255fa19352d46837ce12cdaec1d8d87c198c600b2a64188c3c3688249d7",
+    "tests/helper-process.test.cjs": "81892743bc008034a68145db677ab8e8c865b71840539539571bae5c4e5d308f",
+    "tests/helper-wire.test.cjs": "b6920aec1d91224dfeafcc4e8d64b8d8bc4fd59bf9b8e28f33572825c0c1adf8",
+    "tests/launcher.test.cjs": "7fa31232619d08e4232468dd28998b42f7c761894ebac6e07bcfe5aa118527b5",
+    "tests/native-decoder-worker.test.cjs": "ba763e3604ae5e8c976aef45e321be7a9fa103f671ea9e64e1541522acd1341e",
+    "tests/navigation.test.cjs": "bd7ca2bb5c34acf49b1f7a4187846b8d096bd48937d2ddf67561259f68974c51",
+    "tests/smoke-encoded-transform.cjs": "e532f58b1b35104864eb430555f28f006be7bc4bb0711b32c945ce54a22344bb",
+    "tests/smoke-native-bridge.cjs": "6c43de1b396333b347cdf31ef9cf0f5d73dbbddf8374097f3b063eb0187d2022",
+    "tests/smoke-native-worker.cjs": "79591822a6b0eb06fa5dc53f94a92da240501934e728fe9312017cb19c37bea0",
+    "tests/smoke-runtime.cjs": "90ebfdadb8490a81eb0afe76b44252ddcef685cf2755bb0d451504a84cf2731b",
+    "tests/smoke-webrtc-internals.cjs": "10250ba73c3c6081303e38c6a68a4bb3323e2d9f50d451128ed7a54c29840b02",
+    "bridge.node": "425dc49231bbdd88ec5c61b5730fcbe6798a41d3e8fec46a1a64c5bb9f89c378"
+  },
+  "directPortGfnTested": false,
+  "gfnHevcValidated": false,
+  "decodeLatencyMeasured": false,
+  "explanation": "Tap had zero ACKs for 121 ms while helper pipe acknowledged four packets within 7.61 ms. Direct port removes page relay tasks; preload still shares renderer scheduling. Sustained GFN playback remains unverified."
+}

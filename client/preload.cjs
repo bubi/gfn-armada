@@ -48,15 +48,17 @@ if(location.origin==='https://play.geforcenow.com') {
     if(second!==statusSecond){statusSecond=second;statusCount=0;}
     if(typeof reason==='string' && reason.length<100 && statusCount++<8) ipcRenderer.send('native-shadow-status',reason,metrics);
   };
-  window.addEventListener('message',async event=>{
-    if(event.source!==window || event.origin!==location.origin) return;
-    if(!encodedEnabled) return;
-    const data=event.data;
-    if(data?.type==='gfn-armada-encoded-status') {
-      sendStatus(data.reason,data.metrics);
-      return;
-    }
-    if(data?.type!=='gfn-armada-encoded') return;
+  let encodedPort;
+  window.addEventListener('message',event=>{
+    if(event.source!==window||event.origin!==location.origin||!encodedEnabled||event.data?.type!=='gfn-armada-encoded-channel-request') return;
+    const generation=event.data.generation;
+    if(typeof generation!=='string'||generation.length!==36) return;
+    encodedPort?.close();const channel=new MessageChannel();encodedPort=channel.port1;
+    const port=encodedPort;
+    port.onmessage=e=>{if(e.data?.generation===generation) receiveEncoded(e.data,port);};
+    window.postMessage({type:'gfn-armada-encoded-channel',generation},location.origin,[channel.port2]);
+  });
+  async function receiveEncoded(data,port){
     if(data.kind==='status'){sendStatus(data.reason,data.metrics);return;}
     if(data.kind!=='frame' || typeof data.generation!=='string' || data.generation.length!==36) return;
     let byteLength;try{byteLength=bufferLength.call(data.bytes)}catch{return;}
@@ -72,8 +74,11 @@ if(location.origin==='https://play.geforcenow.com') {
       ackCount++;ackMaxMs=Math.max(ackMaxMs,performance.now()-started);pendingTimes.delete(token);
       pendingEncoded--;pendingBytes-=byteLength;
       if(performance.now()-lastMetrics>=1000){lastMetrics=performance.now();sendStatus("queue-metrics",queueMetrics());}
-      window.postMessage({type:'gfn-armada-encoded-feedback',generation:data.generation,sequence:data.sequence,accepted},location.origin);
+      port.postMessage({kind:accepted?'ack':'disable',sequence:data.sequence});
     }
+  }
+  window.addEventListener('message',event=>{
+    if(event.source===window&&event.origin===location.origin&&encodedEnabled&&event.data?.type==='gfn-armada-encoded-status') sendStatus(event.data.reason);
   });
   ipcRenderer.invoke('native-shadow-bootstrap').then(source=>{
     if(typeof source==='string' && source.length<32000){encodedEnabled=true;return webFrame.executeJavaScript(source);}

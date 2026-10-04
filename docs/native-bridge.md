@@ -334,3 +334,37 @@ Helper-Pipe-Maximum ca. 7,95 ms und native Paketannahme ca. 0,37 ms.
 Dies ist ein synthetischer 1280×720-Test und erklärt den bisherigen
 GFN-Abbruch noch nicht. Modul und native Pipeline bleiben unverändert.
 Der echte GFN-Test dieser Instrumentierung steht noch aus.
+
+### Direkter Tap-/Preload-Port (2026-10-04)
+
+Der folgende echte GFN-Test stoppte bereits nach acht Paketen: Tap-Belegung
+8 / 44.985 Byte, keine ACKs, ältestes Paket 121,4 ms. Gleichzeitig hatte
+die Helper-Pipe vier Pakete bestätigt (ACK-Maximum 7,61 ms) und vier weitere
+mit höchstens 3,56 ms Alter offen. Das weist auf Verzögerung im Renderer-
+Weiterleitungs-/Rückweg hin; eine exakte Aufteilung zwischen Renderer-Tasks
+und IPC-Antwortzustellung ist noch nicht gemessen. Der Helper schloss mit
+Exit 0; der Browser lief mit FFmpeg und null gemeldeten Drops weiter.
+Veraltete Helper-Worker-Stichproben mit null Zählern sind hier kein Nachweis
+fehlender nativer Arbeit.
+
+Ein vorbereiteter MessageChannel verbindet jetzt Tap-Worker und isolierten
+Preload direkt für komprimierte Pakete, Status und ACKs. Die Seite überträgt
+nur beim Aufbau den Port; ihre per-Frame-window.postMessage-Weiterleitung
+entfällt. Bootstrap bleibt opt-in, die Daten werden unverändert validiert,
+kein privilegierter Zugriff wird für die Seite freigeschaltet. Die Preload-
+IPC läuft weiterhin im Renderer und kann bei dessen Blockade verzögert
+werden. Der Port allein garantiert somit keine konstante Latenz.
+
+Der Port wird vor dem Track-Ereignis vorbereitet. Ein erster Versuch mit
+asynchronem Aufbau beim Track installierte den Transform zu spät und
+lieferte im lokalen Test keine Tap-Frames; dieser Versuch wurde nicht für
+GFN gestartet. Der korrigierte Aufbau installiert den Transform synchron
+und bestand 32 Unit-Tests auf Mac/ARM64, 147 echte lokale Iris-Transfers/
+Draws/Freigaben und einen Probe-Receiver-Test mit 149 Frames. Die Testausgabe
+hat sechs Farben bei 1280×720, keine übrigen Leases und Helper-Exit 0.
+Künstliches Backpressure stoppt nach acht Paketen und lässt die originale
+Browserausgabe weiterlaufen; worker-src-CSP-Blockade erhält ebenfalls den
+Browserstream. Die acht Pakete / 4 MiB bleiben unverändert begrenzt.
+Die Latenzmaxima schwanken zwischen diesen synthetischen Versuchen; daraus
+wird kein Performancegewinn abgeleitet. Echter GFN-Dauertest steht aus.
+Evidenz: [validation-messageport-odin.json](../experiments/dmabuf/validation-messageport-odin.json).

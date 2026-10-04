@@ -91,7 +91,7 @@ function attachNativeShadow({app,ipcMain,source,addon,report,localTest=false}) {
       if(sequence) stop('track-ended');else report({status:reason,hardwareDecoderActive:'unknown'});
       return;
     }
-    if(trusted(event) && ['negotiated-codec-not-h264','encoded-transform-unavailable','worker-unavailable-or-csp-blocked'].includes(reason)){stop(reason);return;}
+    if(trusted(event) && ['negotiated-codec-not-h264','encoded-transform-unavailable','worker-unavailable-or-csp-blocked','encoded-channel-unavailable'].includes(reason)){stop(reason);return;}
     if(trusted(event) && ['hook-installed','attached-encoded-shadow','negotiated-h264','encoded-frame-observed','waiting-inband-parameter-sets','negotiated-codec-not-h264','existing-transform-preserved','encoded-transform-unavailable','worker-unavailable-or-csp-blocked','keyframe-request-unavailable'].includes(reason)) report({status:reason,hardwareDecoderActive:'unknown'});
     else if(trusted(event)) stop('encoded-tap-ended-or-overloaded');
   };

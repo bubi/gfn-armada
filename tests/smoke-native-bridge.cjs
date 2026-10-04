@@ -62,7 +62,7 @@ app.whenReady().then(async()=>{
   }
   await window.loadURL('https://play.geforcenow.com/local-test');
   for(let n=0;n<50;n++){
-    if(await window.webContents.executeJavaScript('Boolean(window.__gfnArmadaEncodedTap)')) break;
+    if(await window.webContents.executeJavaScript('Boolean(window.__gfnArmadaEncodedTap?.ready)')) break;
     await sleep(100);
   }
   if(process.env.GFN_ARMADA_TEST_PROBE_RECEIVER==='1'){

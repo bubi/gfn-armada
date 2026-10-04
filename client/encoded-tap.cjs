@@ -2,17 +2,18 @@
 function installEncodedTap() {
   if(window.__gfnArmadaEncodedTap) return;
   const state={attached:false}; window.__gfnArmadaEncodedTap=state;
-  let preparedWorker,preparedURL,workerReady=false,pendingReceiver;
+  let preparedWorker,preparedURL,preparedPort,preparedGeneration,workerReady=false,pendingReceiver;
   function workerSource() {
     postMessage({kind:'ready'});
     onrtctransform=event=>{
-      const transformer=event.transformer, generation=transformer.options.generation;
+      const transformer=event.transformer, generation=transformer.options.generation,port=transformer.options.port;
       let pendingBytes=0, enabled=true, started=false, sequence=0,observed=0,codecReported=false;
       const pending=new Map();
       let highWater=0,ackCount=0,ackMaxMs=0,lastMetrics=0;
       const metrics=()=>({stage:"tap",pending:pending.size,pendingBytes,highWater,ackCount,ackMaxMs,oldestMs:pending.size?performance.now()-pending.values().next().value.at:0});
-      const report=reason=>postMessage({kind:'status',generation,reason,metrics:metrics()});
-      onmessage=e=>{
+      const report=reason=>{port.postMessage({kind:'status',generation,reason,metrics:metrics()});
+        if(['encoded-frame-observed','transform-ended-before-stream'].includes(reason)) postMessage({kind:'lifecycle',reason});};
+      port.onmessage=e=>{
         if(e.data?.kind==='ack' && pending.has(e.data.sequence)){
           const item=pending.get(e.data.sequence);ackMaxMs=Math.max(ackMaxMs,performance.now()-item.at);ackCount++;
           pendingBytes-=item.bytes;pending.delete(e.data.sequence);
@@ -47,7 +48,7 @@ function installEncodedTap() {
                 enabled=false; report(full?'compressed-queue-overflow':'unsupported-access-unit');
               } else {
                 pending.set(++sequence,{bytes:bytes.length,at:performance.now()});highWater=Math.max(highWater,pending.size);pendingBytes+=bytes.length;const copy=frame.data.slice(0);
-                postMessage({kind:'frame',generation,sequence,timestamp:metadata.rtpTimestamp??frame.timestamp,key:frame.type==='key',bytes:copy},[copy]);
+                port.postMessage({kind:'frame',generation,sequence,timestamp:metadata.rtpTimestamp??frame.timestamp,key:frame.type==='key',bytes:copy},[copy]);
               }
             }
           }
@@ -62,7 +63,7 @@ function installEncodedTap() {
     if(!workerReady){pendingReceiver ||= receiver;return;}
     if(receiver.transform) {report('existing-transform-preserved');return;}
     try {
-      const generation=crypto.randomUUID();
+      const generation=preparedGeneration;
       const codecs=Object.fromEntries((receiver.getParameters().codecs||[]).map(c=>[c.payloadType,c.mimeType]));
       const url=preparedURL,worker=preparedWorker;
       let transform,seenFrame=false;
@@ -72,24 +73,20 @@ function installEncodedTap() {
       };
       const resetProbe=()=>{
         if(preparedWorker!==worker) return;
-        worker.terminate();URL.revokeObjectURL(url);window.removeEventListener('message',feedback);
-        state.attached=false;workerReady=false;pendingReceiver=undefined;
+        worker.terminate();URL.revokeObjectURL(url);
+        state.attached=false;state.ready=false;workerReady=false;pendingReceiver=undefined;
         report('probe-receiver-ended');prepareWorker();
       };
       worker.onmessage=e=>{
-        if(e.data.kind==='status' && e.data.reason==='transform-ended-before-stream'){resetProbe();return;}
-        if(e.data.kind==='frame' || (e.data.kind==='status'&&e.data.reason==='encoded-frame-observed')) seenFrame=true;
-        URL.revokeObjectURL(url);window.postMessage({type:'gfn-armada-encoded',...e.data},location.origin,e.data.bytes?[e.data.bytes]:[]);
+        if(e.data.kind!=='lifecycle') return;
+        if(e.data.reason==='transform-ended-before-stream'){resetProbe();return;}
+        if(e.data.reason==='encoded-frame-observed') seenFrame=true;
       };
-      const feedback=e=>{
-        if(e.source===window && e.origin===location.origin && e.data?.type==='gfn-armada-encoded-feedback' && e.data.generation===generation)
-          worker.postMessage({kind:e.data.accepted?'ack':'disable',sequence:e.data.sequence});
-      };
-      window.addEventListener('message',feedback);
-      transform=new RTCRtpScriptTransform(worker,{generation,codecs});receiver.transform=transform;state.attached=true;
+      const port=preparedPort;preparedPort=undefined;
+      transform=new RTCRtpScriptTransform(worker,{generation,codecs,port},[port]);receiver.transform=transform;state.attached=true;
       receiver.track.addEventListener('ended',()=>{
         if(!seenFrame){resetProbe();return;}
-        worker.terminate();URL.revokeObjectURL(url);window.removeEventListener('message',feedback);report('track-ended');
+        worker.terminate();URL.revokeObjectURL(url);report('track-ended');
       },{once:true});
       report('attached-encoded-shadow');
     }catch{report('encoded-transform-unavailable');}
@@ -102,10 +99,20 @@ function installEncodedTap() {
     preparedURL=URL.createObjectURL(new Blob([`(${workerSource.toString()})()`],{type:'text/javascript'}));
     preparedWorker=new Worker(preparedURL);
     preparedWorker.onerror=()=>{URL.revokeObjectURL(preparedURL);preparedWorker.terminate();report('worker-unavailable-or-csp-blocked');};
+    const worker=preparedWorker,generation=crypto.randomUUID();preparedGeneration=generation;
+    let channelTimer;
+    const channel=e=>{
+      if(e.source!==window||e.origin!==location.origin||e.data?.type!=='gfn-armada-encoded-channel'||e.data.generation!==generation||e.ports.length!==1) return;
+      clearTimeout(channelTimer);window.removeEventListener('message',channel);
+      if(preparedWorker!==worker){e.ports[0].close();return;}
+      preparedPort=e.ports[0];workerReady=true;state.ready=true;
+      if(pendingReceiver) attach(pendingReceiver);
+    };
     preparedWorker.onmessage=e=>{
       if(e.data?.kind==='ready'){
-        URL.revokeObjectURL(preparedURL);workerReady=true;state.ready=true;
-        if(pendingReceiver) attach(pendingReceiver);
+        URL.revokeObjectURL(preparedURL);window.addEventListener('message',channel);
+        channelTimer=setTimeout(()=>{window.removeEventListener('message',channel);worker.terminate();report('encoded-channel-unavailable');},3000);
+        window.postMessage({type:'gfn-armada-encoded-channel-request',generation},location.origin);
       }
     };
   }catch{report('worker-unavailable-or-csp-blocked');}}
