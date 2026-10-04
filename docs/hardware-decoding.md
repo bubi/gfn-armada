@@ -175,3 +175,10 @@ als **page-reported** markiert und setzen Hardwarestatus niemals auf `yes`.
 `runtime.json` ist eine historische, timestamped Momentaufnahme, kein Live-
 Hardwareattest. `active` ist nur die zuletzt gespeicherte Sitzungsbeobachtung;
 bei Crash kann es veraltet sein. Die Diagnose liest es ohne Frischebehauptung.
+# Nachtrag: Gerätetest 2026-10-04
+
+Der Iris-HEVC-Pfad wurde auf dem Portal mit einem synthetischen Clip und
+GStreamer erfolgreich getestet, einschließlich DMA-BUF-Ausgang. Das getestete
+Electron-Bundle bietet jedoch kein H.265 in WebRTC an. Details und Grenzen:
+[odin-device-validation.md](odin-device-validation.md). GFN-Hardwaredecodierung
+bleibt unbestätigt.

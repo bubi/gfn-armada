@@ -12,8 +12,10 @@
 | `file` des gepackten Runtime-Binary | ELF 64-bit ARM aarch64 | kein Linux-Laufzeittest |
 | Linux-ARM64-Containerbau und Export | am 2026-10-04 bestanden; 14/14 Tests im Container | kein Armada-GUI-/Decoder-Test |
 | persistenter NVIDIA-Login | offen | isoliertes Testprofil, keine Anmeldung |
-| Steam Gaming Mode / Controller | offen | Zielgerät nicht erreichbar |
-| HEVC / AV1 auf Qualcomm VPU | unknown | kein Gerät, kein GFN-Stream |
+| Steam Gaming Mode / Controller | offen | Gerät erreichbar; Test in KDE Wayland, keine Gamepads gemeldet |
+| HEVC auf Qualcomm VPU | synthetischer 720p-Test bestanden | GStreamer Iris / DMA-BUF, kein GFN-Stream |
+| AV1 auf Qualcomm VPU | unknown | Element vorhanden, kein Decodiertest |
+| Electron auf ArmadaOS | startet und lädt GFN | H.265 fehlt im WebRTC-Angebot; Login/Stream offen |
 | DMA-BUF / Low-Copy | unknown | Import-/Queue-/Compositor-Nachweis fehlt |
 
 Am 2026-10-04 wurde das bereits installierte OrbStack gestartet. Docker 28.5.2
@@ -48,3 +50,8 @@ XDG_STATE_HOME="$PWD/.artifacts/smoke/state" \
 Das Script beendet Electron nach Seitenladung und empfangener Telemetrie,
 spätestens nach 45 Sekunden mit Fehler. Es ist wegen GUI-/Netzwerkzugriff nicht
 Teil der Unit-Tests. Beim ersten Start lädt Electron seine native Runtime nach.
+
+Gerätetest und Reproduktion: [odin-device-validation.md](odin-device-validation.md).
+Nach Wayland- und Apple-Login-Korrektur bestehen lokal 17/17 Tests; der zuvor gebaute
+Container lief mit 14 Tests. Das installierte Testbundle enthält die Korrektur,
+das ursprüngliche Releasearchiv noch nicht.
