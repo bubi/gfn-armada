@@ -1,7 +1,7 @@
 // Separate Electron process. Native decoder FDs never enter the GFN process.
 const {app,BrowserWindow,ipcMain,session,sharedTexture}=require('electron');
 const {Worker}=require('node:worker_threads');
-const fs=require('node:fs'),path=require('node:path');
+const path=require('node:path');
 const {Socket}=require('node:net');
 const {encode,Reader}=require('./helper-wire.cjs');
 const profile=process.env.GFN_ARMADA_HELPER_PROFILE,addon=process.env.GFN_ARMADA_NATIVE_BRIDGE;
@@ -48,7 +48,8 @@ const reader=new Reader((message,bytes)=>{
 input.on('data',chunk=>{try{reader.feed(chunk);}catch(error){fail(error.message);}});
 app.on('window-all-closed',()=>{});
 app.on('before-quit',()=>stop());
-app.once('quit',()=>fs.rmSync(profile,{recursive:true,force:true}));
+// The supervisor owns the temporary profile and removes it after child exit.
+// Do not delete Chromium's profile synchronously while its processes exit.
 app.whenReady().then(async()=>{
   session.defaultSession.setPermissionRequestHandler((_wc,_permission,callback)=>callback(false));
   session.defaultSession.webRequest.onBeforeRequest((details,callback)=>callback({cancel:!details.url.startsWith('file://')}));

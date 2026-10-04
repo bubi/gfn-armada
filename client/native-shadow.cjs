@@ -5,12 +5,12 @@ const {startHelper}=require('./helper-process.cjs');
 function attachNativeShadow({app,ipcMain,source,addon,report,localTest=false}) {
   if((!localTest&&(process.platform!=='linux'||process.arch!=='arm64'))||!path.isAbsolute(addon)) throw new Error('Native shadow requires Linux ARM64 and an absolute addon path');
   let helper,starting,stopped=false,generation,sequence=0,inflight=0,inflightBytes=0,previous,pts=0;
-  let decoded=0,draws=0,released=0,outstanding=0,lastFrameAt=null,helperExited=false,helperExitSignal=null,helperExitCode=null;
+  let decoded=0,draws=0,released=0,outstanding=0,lastFrameAt=null,helperExited=false,helperExitSignal=null,helperExitCode=null,lastNativeError=null;
   const trusted=event=>{
     try{return event.sender===source&&event.senderFrame===source.mainFrame&&new URL(event.senderFrame.url).origin==='https://play.geforcenow.com';}catch{return false;}
   };
   const evidence=(status,reason)=>report({status,reason,timestamp:new Date().toISOString(),lastFrameAt,mode:'isolated-parallel-shadow',codec:'H264',
-    helperPid:helper?.pid,helperExited,helperExitSignal,helperExitCode,encodedFrames:sequence,decodedTransfers:decoded,rendererDraws:draws,releasedSamples:released,outstanding,
+    helperPid:helper?.pid,helperExited,helperExitSignal,helperExitCode,lastNativeError,encodedFrames:sequence,decodedTransfers:decoded,rendererDraws:draws,releasedSamples:released,outstanding,
     originalBrowserDecodeEnabled:true,hardwareDecoderActive:'unknown'});
   function stop(reason='stopped') {
     if(stopped) return;stopped=true;helper?.stop();evidence('stopped',reason);
@@ -24,7 +24,10 @@ function attachNativeShadow({app,ipcMain,source,addon,report,localTest=false}) {
     if(localTest) env.GFN_ARMADA_HELPER_LOCAL_TEST='1';
     const args=[...(!app.isPackaged?[path.resolve(__dirname,'..')]:[]),'--gfn-armada-native-helper',...(process.platform==='linux'?['--ozone-platform=wayland']:[])];
     helper=startHelper({command:process.execPath,args,env,profile,onEvent:message=>{
-      if(message.kind==='failed'){report({status:'native-error',reason:message.reason});stop('native-helper-failed');}
+      if(message.kind==='failed'){
+        lastNativeError=typeof message.reason==='string'?message.reason.slice(0,300):'invalid-helper-error';
+        report({status:'native-error',reason:lastNativeError,lastNativeError});stop('native-helper-failed');
+      }
       else if(message.kind==='opened') report({status:'native-opened',codec:'H264',device:message.device,helperPid:helper.pid,hardwareDecoderActive:'unknown'});
       else if(message.kind==='stats'||message.kind==='closed'){
         if(['decoded','draws','released','outstanding'].some(key=>!Number.isSafeInteger(message[key])||message[key]<0)||message.outstanding>4){stop('invalid-helper-counters');return;}
@@ -79,7 +82,7 @@ function attachNativeShadow({app,ipcMain,source,addon,report,localTest=false}) {
   const gone=()=>stop('source-renderer-gone'),destroyed=()=>stop('source-destroyed');
   source.on('render-process-gone',gone);source.on('did-start-navigation',navigation);source.once('destroyed',destroyed);
   return {prepare:()=>{starting ||=start();return starting;},stop,
-    snapshot:()=>({sequence,decoded,draws,released,outstanding,stopped,helperPid:helper?.pid,helperExited,helperExitSignal,helperExitCode}),
+    snapshot:()=>({sequence,decoded,draws,released,outstanding,stopped,helperPid:helper?.pid,helperExited,helperExitSignal,helperExitCode,lastNativeError}),
     inspectTestOutput:()=>{if(!localTest) throw new Error('Pixel readback is restricted to the local test');return helper.inspect();},
     crashTestHelper:()=>{if(!localTest) throw new Error('Fault injection is restricted to the local test');helper.killForTest('SIGSEGV');},
     dispose:()=>{

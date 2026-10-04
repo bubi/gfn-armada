@@ -84,6 +84,8 @@ app.whenReady().then(async()=>{
       if(state.stopped&&crashAtFrames===null) crashAtFrames=originalFrames;
       if(state.helperExited){
         if(state.helperExitSignal||state.helperExitCode!==0) throw new Error('Rejecting helper did not exit cleanly');
+        if(mockHelper&&state.lastNativeError!=='First prototype requires negotiated limited-range BT.709 (test rejection)')
+          throw new Error('Decoder rejection diagnostic was lost during helper shutdown');
         if(originalFrames>=Math.max(30,crashAtFrames+30)){
           await finish(null,{decoderRejectionContained:true,parentPid:process.pid,browserFramesAtRejection:crashAtFrames,browserFramesAfterRejection:originalFrames});return;
         }

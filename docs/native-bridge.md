@@ -172,6 +172,31 @@ Evidenz: [validation-isolated-helper-odin.json](../experiments/dmabuf/validation
 29 Unit-Tests bestehen. Die zusätzliche Farbraumdiagnose enthält nur
 Range-/Matrix-/Transfer-/Primaries-Enumwerte, keine Videobytes.
 
+### Diagnose und Helper-Abschluss, 2026-10-04
+
+Bei Wiederaufnahme der eigenen Brücke wurde die genaue native Fehlermeldung
+in den Supervisor-Snapshots als `lastNativeError` erhalten. Sie bleibt dadurch
+auch nach dem allgemeinen Stopstatus und Helper-Exit verfügbar. Ein Regressionstest
+prüft die Decoderablehnung nach vollständigem Helper-Abschluss.
+Die doppelte synchrone Profil-Löschung im Helper-`quit`-Handler wurde entfernt:
+der Supervisor besitzt das temporäre Profil und entfernt es nach Child-Exit.
+Ein erster Mac-Abschluss erforderte SIGKILL; nach der Änderung bestand der
+Fehlertest mit Exit 0 und weiterlaufendem Browservideo (1 → 38 Frames).
+Das beweist diesen erneuten Test, keine abschließend geklärte Ursache des
+vorherigen Shutdown-Hängers oder des früheren GFN-Absturzes.
+
+Die neue separate Portal-Testinstanz `bridge-color-20261004` bestand 29/29
+ARM64-Unit-Tests und einen lokalen 1280×720-H.264-Iris-Test: 148 Transfers,
+Draws und Freigaben in 5,040 Sekunden, keine offenen Leases, sechs Testfarben,
+Helper-Exit 0. Die Farbraumprüfung ist weiterhin streng; keine Farbraumwerte
+auf Verdacht überschrieben. Das unveränderte native Modul hat SHA256
+`2e663ef54f5915140d21d415e8994b036a56c23fba1a832285338c60f4a3426d`.
+Die produktive GFN-Installation wurde nicht ersetzt. Für den nächsten echten
+GFN-Test ist die getrennte Instanz vorbereitet; der Wechsel von der aktiven
+Sitzung wartet auf die Zustimmung des Nutzers.
+Strukturierter Testbeleg:
+[validation-helper-diagnostics-odin.json](../experiments/dmabuf/validation-helper-diagnostics-odin.json).
+
 Die neue H264-Schnittstelle kompiliert mit `-Wall -Wextra -Werror`; 24 Unit-
 Tests bestehen. Nach Wiederherstellung des SSH-Zugangs bestand die lokale
 H264-Brücke auf Iris auch bei 1280×720 über 30 Sekunden. WebRTC hatte die
