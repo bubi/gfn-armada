@@ -19,8 +19,11 @@ lokale Mac-/Portal-Tests. Der anschließende echte Stream lieferte als
 Farbraum-Befund volles BT.709, das bisher abgelehnt wurde. Der Adapter
 übernimmt nun Limited/Full Range entsprechend den ausgehandelten Caps;
 beide Varianten bestehen lokale Iris-/DMA-BUF-Farbtests. Der echte GFN-
-Ausgabetest mit dieser Korrektur steht noch aus. Das Frontend bleibt
-XWayland, der Helper Wayland. Die ursprüngliche SIGSEGV-Ursache ist offen.
+Ausgabetest mit dieser Korrektur lieferte 610 Iris-/DMA-BUF-Transfers und
+Renderer-Draws; danach stoppte die Bridge erneut bei voller komprimierter Queue.
+Alle Samples wurden freigegeben und der Browserstream lief weiter. Dauerhafte
+Hardwareausgabe ist damit noch nicht erreicht. Das Frontend bleibt XWayland,
+der Helper Wayland. Die ursprüngliche SIGSEGV-Ursache ist offen.
 
 ```text
 GFN RTCRtpReceiver → RTCRtpScriptTransform (unveränderte Frames weiterreichen)
@@ -266,8 +269,24 @@ diese einmaligen Readbacks dienen nur der Farbprüfung. Temporäre Encoder-
 Container und das dafür erstellte Image wurden entfernt.
 
 Die getrennte Instanz `bridge-fullrange-20261004` läuft mit dieser Korrektur.
-GFN-Hardwareausgabe, GFN-HEVC, CPU-Einsparung und Audio-Sync bleiben bis zu
-ihren jeweiligen eigenen Tests unbestätigt.
+Der darauf gestartete **echte GFN-H.264-Stream** lieferte 621 komprimierte
+Pakete an die Bridge und 610 decodierte DMA-BUF-Transfers, Renderer-Draws
+und Sample-Freigaben mit vollem BT.709. Native Pipeline explizit
+`v4l2h264dec`, Gerät `/dev/video0`, Name `qcom-iris-decoder`, Treiber
+`/sys/bus/platform/drivers/qcom-iris`; kein Software-Fallback in der Pipeline.
+Das belegt Hardware-Decoding und Electron-Übergabe im parallelen Diagnosepfad
+dieses Streams. Es ersetzt den ursprünglichen Browserdecoder nicht.
+
+Nach ungefähr zehn Sekunden wurde die komprimierte Tap-Queue erneut voll.
+Der Helper schloss mit Exit 0 und null offenen Leases. Der Browserstream
+lief mit FFmpeg und ohne gemeldete Drops weiter. Die aktuelle Bridge ist
+dadurch ausgeschaltet; automatische Runtimefelder bleiben konservativ.
+Nächster Schritt: ACK-Rundlaufzeiten und Queue-Höchststände je Stufe messen,
+die begrenzte Pufferung anschließend gezielt korrigieren. Kein unkontrollierter
+Queue-Ausbau oder stilles Verwerfen abhängiger Delta-Frames.
+Sustained Playback, tatsächlich präsentierte Compositorframes, interne
+GPU-Kopien, Decode-/End-to-End-Latenz, GFN-HEVC, CPU-Einsparung und Audio-Sync
+sind damit noch nicht nachgewiesen. Kein Kernel-Queue-Trace gesammelt.
 Evidenz: [validation-fullrange-odin.json](../experiments/dmabuf/validation-fullrange-odin.json).
 
 Die neue H264-Schnittstelle kompiliert mit `-Wall -Wextra -Werror`; 24 Unit-
