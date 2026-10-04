@@ -1,7 +1,9 @@
 # Isolierter HEVC → DMA-BUF → Electron-Test
 
 Dieser Prototyp lädt ausschließlich einen lokalen synthetischen HEVC-Clip.
-Die produktive GFN-Anwendung importiert das Modul nicht. Keine NVIDIA-Cookies,
+Die produktive GFN-Anwendung lädt das Modul nur bei explizit aktiviertem
+[H264-Shadow-Experiment](../../docs/native-bridge.md). Die hier beschriebene
+HEVC-Testanwendung verwendet keine NVIDIA-Cookies,
 kein Netzwerkstream, kein `decodebin`, kein Softwaredecoder und kein
 `videoconvert` in dieser Pipeline.
 
@@ -76,6 +78,8 @@ Ende-zu-Ende-Latenz und kein Zero-Copy innerhalb von Chromium/Gamescope.
 * Bounded Polling im Main-Prozess ist bewusst nur für diesen Test. Vor einer
   GFN-Anbindung braucht es einen asynchronen Worker, Sessiongenerationen,
   Auflösungswechsel, Synchronisation mit Audio und Fehler-/Keyframe-Recovery.
+  Ein separater Node-Worker und begrenztes H264-appsrc sind inzwischen
+  implementiert; deren Laufzeittest auf Iris ist noch offen.
 * Dieser Test nutzt die experimentelle Electron-44.5.1-SharedTexture-API.
   Import-/GPUfehler dürfen nicht als funktionierende Ausgabe gelten.
 

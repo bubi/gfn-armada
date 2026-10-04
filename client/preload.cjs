@@ -37,4 +37,37 @@ if(location.origin==='https://play.geforcenow.com') {
     if(size>16384) return;last=Date.now();ipcRenderer.send('rtc-observation',e.data.payload);
   });
   webFrame.executeJavaScript(`(${observe.toString()})()`).catch(()=>{});
+  // Enabled only by Main's explicit native-shadow option. Remote data stays untrusted.
+  let pendingEncoded=0,encodedEnabled=false,statusSecond=0,statusCount=0;
+  const bufferLength=Object.getOwnPropertyDescriptor(ArrayBuffer.prototype,'byteLength').get;
+  const sendStatus=reason=>{
+    const second=Math.floor(Date.now()/1000);
+    if(second!==statusSecond){statusSecond=second;statusCount=0;}
+    if(typeof reason==='string' && reason.length<100 && statusCount++<8) ipcRenderer.send('native-shadow-status',reason);
+  };
+  window.addEventListener('message',async event=>{
+    if(event.source!==window || event.origin!==location.origin) return;
+    if(!encodedEnabled) return;
+    const data=event.data;
+    if(data?.type==='gfn-armada-encoded-status') {
+      sendStatus(data.reason);
+      return;
+    }
+    if(data?.type!=='gfn-armada-encoded') return;
+    if(data.kind==='status'){sendStatus(data.reason);return;}
+    if(data.kind!=='frame' || pendingEncoded>=4 || typeof data.generation!=='string' || data.generation.length!==36) return;
+    let byteLength;try{byteLength=bufferLength.call(data.bytes)}catch{return;}
+    if(!byteLength || byteLength>2097152) return;
+    pendingEncoded++;
+    let accepted=false;
+    try{
+      accepted=await ipcRenderer.invoke('native-shadow-packet',{generation:data.generation,sequence:data.sequence,
+        timestamp:data.timestamp,key:data.key,bytes:new Uint8Array(data.bytes)});
+    }catch{}finally{
+      pendingEncoded--;window.postMessage({type:'gfn-armada-encoded-feedback',generation:data.generation,accepted},location.origin);
+    }
+  });
+  ipcRenderer.invoke('native-shadow-bootstrap').then(source=>{
+    if(typeof source==='string' && source.length<32000){encodedEnabled=true;return webFrame.executeJavaScript(source);}
+  }).catch(()=>{});
 }

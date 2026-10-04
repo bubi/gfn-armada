@@ -1,8 +1,14 @@
 // Synthetic canvas video; local ICE only, no microphone or camera.
 function loopback(options={}) {
-  const canvas=document.createElement('canvas');canvas.width=640;canvas.height=360;
+  const canvas=document.createElement('canvas');canvas.width=options.width||640;canvas.height=options.height||360;
   const ctx=canvas.getContext('2d');let frame=0;
-  setInterval(()=>{ctx.fillStyle=frame++%2?'#123456':'#abcdef';ctx.fillRect(0,0,640,360)},33);
+  setInterval(()=>{
+    ctx.fillStyle=frame++%2?'#123456':'#abcdef';ctx.fillRect(0,0,canvas.width,canvas.height);
+    if(options.pattern==='bars'){
+      ['red','lime','blue','yellow','cyan','magenta'].forEach((color,i)=>{ctx.fillStyle=color;ctx.fillRect(i*canvas.width/6,0,canvas.width/6,canvas.height)});
+      ctx.fillStyle='white';ctx.fillRect(frame%canvas.width,0,30,30);
+    }
+  },33);
   const sender=new RTCPeerConnection(),receiver=new RTCPeerConnection();
   sender.onicecandidate=e=>{if(e.candidate) receiver.addIceCandidate(e.candidate)};
   receiver.onicecandidate=e=>{if(e.candidate) sender.addIceCandidate(e.candidate)};

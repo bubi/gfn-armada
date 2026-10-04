@@ -152,3 +152,13 @@ diesem Nachweis dessen Ausgabe an die native Queue anbinden. Ein anfänglicher
 Doppelpfad spart noch keine CPU; Softwaredecode erst mit funktionierender
 Fehlerbehandlung und Audio-Synchronisation ersetzen. HEVC-Negotiation bleibt
 eine eigene Grenze und AV1 weiterhin nachrangig.
+
+### Update: H264-Anschluss implementiert
+
+`GFN_ARMADA_NATIVE_SHADOW=1` aktiviert den Anschluss des originalen
+GFN-Empfängers an die native appsrc-Brücke. Worker-Preflight, Codec-/Keyframe-
+Gate, begrenzte Queues und separater Decoderthread sind implementiert.
+Originalframes werden weitergereicht. Reale lokale Mac-WebRTC-Tap- und
+Fallbacktests bestehen; ein echter Portal/GFN-Stream ist noch nicht validiert.
+Details: [native-bridge.md](native-bridge.md). Noch kein Softwaredecode-Ersatz
+oder HEVC-Angebot an NVIDIA.

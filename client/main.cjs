@@ -1,4 +1,4 @@
-const {app,BrowserWindow,ipcMain,session,dialog}=require('electron');
+const {app,BrowserWindow,ipcMain,session,dialog,sharedTexture}=require('electron');
 const fs=require('node:fs');
 const path=require('node:path');
 const {paths,loadConfig}=require('../launcher/config.cjs');
@@ -61,6 +61,17 @@ if(cfg&&request?.resolved) {
       app.on('browser-window-created',(_e,w)=>secure(w));
       win=new BrowserWindow({width:1280,height:720,title:'gfn-armada',backgroundColor:'#111111',fullscreen:cfg.fullscreen&&request.command==='launch',webPreferences:prefs});
       win.setMenu(null);
+      if(process.env.GFN_ARMADA_NATIVE_SHADOW==='1') {
+        let shadow;
+        try {
+          const addon=process.env.GFN_ARMADA_NATIVE_BRIDGE;
+          if(typeof addon!=='string' || !path.isAbsolute(addon)) throw new Error('Set GFN_ARMADA_NATIVE_BRIDGE to an absolute ARM64 addon path');
+          shadow=require('./native-shadow.cjs').attachNativeShadow({app,BrowserWindow,ipcMain,sharedTexture,
+            source:win.webContents,addon,report:data=>{runtime.nativeShadow=data;save();log('native-shadow',data)}});
+          win.on('closed',()=>shadow.dispose());
+          await shadow.prepare();
+        }catch{shadow?.dispose();ipcMain.handle('native-shadow-bootstrap',()=>null);log('native-shadow-unavailable');}
+      } else ipcMain.handle('native-shadow-bootstrap',()=>null);
       if(process.env.GFN_ARMADA_MEDIA_DIAGNOSTICS==='1') {
         const disposeInternals=require('./webrtc-internals.cjs').attachWebRTCInternals(BrowserWindow,data=>{
           runtime.nativeWebRTC=data;

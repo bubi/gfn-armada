@@ -144,3 +144,9 @@ Controller und Originaloberfläche bleiben im Browser. Erst danach dessen
 Softwaredecode ersetzen und Audio-/Video-Synchronisation messen. HEVC-
 Aushandlung ist weiterhin separat ungelöst. Details und Einschränkungen:
 [Testanwendung](../experiments/dmabuf/README.md).
+
+Der H264-Anschluss ist inzwischen opt-in implementiert: Encoded-Transform,
+validiertes und begrenztes IPC, Node-Decoderthread, appsrc/V4L2 und DMA-BUF-
+Diagnosefenster. Der originale Browserstream bleibt aktiv. Mac-Tap und
+Fallbacks geprüft; Portal/GFN-H264-Hardwareprobe noch offen.
+[Brückenarchitektur und Aktivierung](native-bridge.md).

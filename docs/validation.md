@@ -147,3 +147,44 @@ Bestehende 22 Launcher-/Diagnostiktests auf dem Mac bestanden; neue JS-Dateien
 und Packaging-Script syntaxgeprüft. Experiment wird vom produktiven Bundle
 ausgeschlossen. Das oben genannte Produktionsarchiv bleibt unverändert:
 kein neues GFN-Bundle gebaut oder eine native GFN-Stream-Anbindung behauptet.
+
+## H264-Encoded-Frame-Brücke (nachfolgender Arbeitsschritt)
+
+Der opt-in Anschluss ist im Client implementiert: produktiver sandboxed
+Preload → komprimiertes H264-IPC → eigener Node-Worker → begrenztes GStreamer
+appsrc/V4L2 → SharedTexture-Diagnosefenster. Originalbrowserdecode bleibt
+aktiv. Annex-B-/SPS-/PPS-Gate, Codec-Frame-Metadaten, Receivergeneration,
+Sequenz und RTP-Rollover werden geprüft. Maximal vier IPC-Pakete à 2 MiB,
+native Queue acht Frames / 4 MiB. Fehler stoppen den Shadow-Pfad.
+
+Neue native Modulprüfsumme (H264-stream-API, **noch nicht auf Iris getestet**):
+
+```text
+570f398438fbdcd7e2917ad0942cd408279b9241b62a9bf67eabe4db836efa9f
+```
+
+Mac mit realem lokalem WebRTC und produktivem Preload:
+
+| Test | Ergebnis |
+|---|---|
+| H264-Encoded-Tap, finale ArrayBuffer-Typprüfung | 99 IPC-Pakete, 32 Originalbrowserframes |
+| Verzögerte Paketablehnung | 1 Paket, 64 weiterlaufende Browserframes; kein gemessener Queue-Overflow |
+| CSP blockiert Worker | 0 Pakete, 64 Originalbrowserframes; Preflight verhindert Einsetzen des Workers |
+
+Ein erster CSP-Versuch ohne Worker-Preflight unterbrach die lokale Ausgabe;
+die geprüfte Fassung setzt nur einen erfolgreich geladenen Worker ein.
+Ein Workerabsturz nach Anbindung ist damit noch nicht abgedeckt.
+
+Fedora-ARM64-Container: echtes Node-API-Modul geladen, Workerbereitschaft,
+Fehler bei fehlendem `v4l2h264dec`-Pipelineelement und sauberer Workerabschluss
+geprüft (`hardwareTested:false`). Kompiliert mit `-Wall -Wextra -Werror`.
+24 Unit-Tests bestehen auf Mac und im Linux-ARM64-Build. ARM64-Paket gebaut;
+alle elf Clientdateien stimmen per SHA-256 mit den finalen Quellen überein.
+Ein noch laufender älterer Build wurde beendet, damit er den finalen Build
+nicht überschreibt. Keine weiteren Buildprozesse dieses Projekts offen.
+
+Die H264-appsrc-/GFN-Hardwareprobe ist wegen nicht stabil erreichbarem SSH
+noch offen. Kein neuer Client auf dem Portal installiert oder aktives Spiel
+für dieses Experiment beendet. Globale GFN-Hardwareklassifikation bleibt
+unverändert, Shadow-Hardwarestatus `unknown`.
+Aktivierung und Grenzen: [native-bridge.md](native-bridge.md).
