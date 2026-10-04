@@ -17,6 +17,13 @@ function videoReports(reports) {
   }
   return result;
 }
+function softwareDecodeStatus(data) {
+  if(data?.status!=='sampled'||!Array.isArray(data.streams)) return 'unknown';
+  const active=data.streams.filter(s=>s.framesDecoded>0);
+  // FFmpeg's software WebRTC decoder is known. Platform names or an efficiency
+  // hint alone do not prove Qualcomm hardware, so never infer "yes" here.
+  return active.length&&active.every(s=>s.decoder==='FFmpeg')?'no':'unknown';
+}
 async function installObserver(allowedOrigin,filter) {
   const {addWebUiListener}=await import('chrome://resources/js/cr.js');
   const {peerConnectionDataStore}=await import('chrome://webrtc-internals/dump_creator.js');
@@ -62,4 +69,4 @@ function attachWebRTCInternals(BrowserWindow,report,allowedOrigin='https://play.
   }).catch(()=>{if(!disposed) report({status:'unavailable',streams:[]});dispose()});
   return dispose;
 }
-module.exports={videoReports,installObserver,attachWebRTCInternals};
+module.exports={videoReports,softwareDecodeStatus,installObserver,attachWebRTCInternals};

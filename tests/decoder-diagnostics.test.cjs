@@ -5,7 +5,13 @@ const os=require('node:os');
 const path=require('node:path');
 const {processVideo}=require('../launcher/process-video.cjs');
 const {decoderProperties}=require('../client/media-diagnostics.cjs');
-const {videoReports}=require('../client/webrtc-internals.cjs');
+const {videoReports,softwareDecodeStatus}=require('../client/webrtc-internals.cjs');
+test('software evidence can reject hardware without treating efficiency hints as a VPU proof',()=>{
+  assert.equal(softwareDecodeStatus({status:'sampled',streams:[{decoder:'FFmpeg',framesDecoded:100}]}),'no');
+  assert.equal(softwareDecodeStatus({status:'sampled',streams:[{decoder:'ExternalDecoder (V4L2VideoDecoder)',framesDecoded:100,powerEfficientDecoder:true}]}),'unknown');
+  assert.equal(softwareDecodeStatus({status:'sampled',streams:[{decoder:'FFmpeg',framesDecoded:0}]}),'unknown');
+  assert.equal(softwareDecodeStatus({status:'stale',streams:[{decoder:'FFmpeg',framesDecoded:100}]}),'unknown');
+});
 test('native WebRTC stats export video decoder evidence without session identifiers',()=>{
   const result=videoReports([
     ['video',{type:'inbound-rtp',kind:'video',codecId:'codec',decoderImplementation:'FFmpeg',
