@@ -122,3 +122,28 @@ ad67b21a08d90b3bb027b6cf371fad9fb6fc50c413a82bf7411dfd2c1ccb8d9f
 
 Die aktualisierten Clientdateien sind mit Backups auf dem Portal für den
 nächsten Start bereitgestellt; das laufende Spiel wurde dafür nicht neu gestartet.
+
+## Isolierte native DMA-BUF-Brücke (2026-10-04)
+
+`scripts/build-dmabuf` baut das experimentelle Node-API-8-Modul im gepinnten
+Fedora-44-ARM64-Image. GCC 16.2.1, GStreamer 1.28.7, Node-Header 24.18.0;
+`-Wall -Wextra -Werror` erfolgreich. DNF-Paketversionen werden exportiert,
+Repositories sind noch nicht eingefroren. ELF aarch64, SHA-256:
+
+```text
+fcd369709004866916387defc52e21e4187ca5fb550d95d727042937916f2ecb
+```
+
+Portal/Wayland: Iris-HEVC → NV12-DMA-BUF → Electron SharedTexture → sandboxed
+VideoFrame-/Canvas-Ausgabe bestanden. 60 Transfers und Draw-Aufrufe,
+60 Freigaben, 0 verbleibende Leases. Testbild per Pixelcheck und Screenshot
+geprüft, ANGLE/Freedreno FD740, GPU-Compositing/OpenGL aktiv. Ownership-
+Fehlerfälle werden während des realen Tests mit Assertions geprüft.
+XWayland-Vergleiche fehlgeschlagen, deshalb keine Unterstützung behauptet.
+Details: [Gerätetest](odin-device-validation.md),
+[strukturierter Report](../experiments/dmabuf/validation-odin.json).
+
+Bestehende 22 Launcher-/Diagnostiktests auf dem Mac bestanden; neue JS-Dateien
+und Packaging-Script syntaxgeprüft. Experiment wird vom produktiven Bundle
+ausgeschlossen. Das oben genannte Produktionsarchiv bleibt unverändert:
+kein neues GFN-Bundle gebaut oder eine native GFN-Stream-Anbindung behauptet.

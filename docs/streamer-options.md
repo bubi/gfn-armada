@@ -127,3 +127,28 @@ der Reader im originalen GFN-Client und der Linux-Encoded-Transform-Test
 erfolgreich geprüft. Der nächste Schritt ist der GStreamer-Adapter mit
 synthetischen Frames und Electron-DMA-BUF-Import, anschließend der echte
 GFN-Encoded-Framezugriff. Kein HEVC-Angebot durch Flags vortäuschen.
+
+### Update: DMA-BUF-Import auf dem Portal bestätigt
+
+Der isolierte [GStreamer-/Node-API-Prototyp](../experiments/dmabuf/README.md)
+ist implementiert und unter nativem Wayland mit einem HEVC-Testclip validiert.
+Iris liefert 1280×736-NV12-Capturebuffer mit sichtbaren 1280×720 Pixeln.
+Electron 44.5.1 importiert die zwei linearen DMA-BUF-Planes und stellt das
+Testmuster im GPU-Canvas dar. Der Renderer bleibt sandboxed; 60 Transfers
+und Draw-Aufrufe, alle 60 Sample-Leases freigegeben. Die Screenshot-/Pixel-
+Readbacks dienen ausschließlich der Prüfung. Keine Rohpixelkopie im Addon,
+aber keine Messung aller internen GPU-/Compositor-Kopien.
+
+XWayland-Vergleiche scheiterten am SharedImage-Backing; der letzte meldete
+zusätzlich Software-GPU-Features. Deshalb Wayland als nachgewiesenen Pfad
+verwenden und XWayland nicht als unterstützt melden. Die genaue Ursache
+dieses Vergleichsfehlers ist noch nicht isoliert. `ExtSamplerOff` im Fehler
+allein rechtfertigt keinen Formatpatch: derselbe NV12-Import klappt unter
+Wayland ohne Patch. GPU-Features müssen nach Initialisierung geprüft werden.
+
+Jetzt folgt `appsrc` mit komprimierten lokalen H.264-Frames, anschließend
+die isolierte Beobachtung eines echten GFN-Encoded-Transforms. Erst nach
+diesem Nachweis dessen Ausgabe an die native Queue anbinden. Ein anfänglicher
+Doppelpfad spart noch keine CPU; Softwaredecode erst mit funktionierender
+Fehlerbehandlung und Audio-Synchronisation ersetzen. HEVC-Negotiation bleibt
+eine eigene Grenze und AV1 weiterhin nachrangig.

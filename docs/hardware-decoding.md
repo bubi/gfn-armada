@@ -193,4 +193,15 @@ Der Iris-HEVC-Pfad wurde auf dem Portal mit einem synthetischen Clip und
 GStreamer erfolgreich getestet, einschließlich DMA-BUF-Ausgang. Das getestete
 Electron-Bundle bietet jedoch kein H.265 in WebRTC an. Details und Grenzen:
 [odin-device-validation.md](odin-device-validation.md). GFN-Hardwaredecodierung
-bleibt unbestätigt.
+bleibt beim originalen GFN-Stream aus: dieser wurde als FFmpeg-H.264-
+Softwaredecode identifiziert.
+
+Die lokale Testbrücke `experiments/dmabuf` wurde anschließend unter Wayland
+validiert: Iris → lineares NV12-DMA-BUF → Electron SharedTexture → VideoFrame
+→ GPU-Canvas. 60 Transfers und Renderer-Draw-Aufrufe, sichtbares Testmuster,
+60 freigegebene Samples, keine verbleibenden Leases. GPU-Renderer:
+`ANGLE (freedreno, FD740, OpenGL ES 3.2)`. Der Adapter mappt keine Rohpixel.
+Das belegt weder die Anzahl interner Chromium-/Compositor-Kopien noch
+120-Hz-Leistung oder HEVC von NVIDIA. XWayland-Import scheiterte in den
+Vergleichstests. Für diesen lokalen Wayland-Pfad ist bisher kein Chromium-
+Patch erforderlich; die GFN-Codec-Aushandlung wird dadurch nicht erweitert.

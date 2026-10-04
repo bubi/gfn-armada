@@ -110,9 +110,11 @@ Hardwarefähigkeitsbericht. Unbekannte TOML-Schlüssel führen zu einem Fehler.
 
 Implementiert: minimaler Client, persistentes Profil, CLI, explizite Mapping-
 Auflösung, Diagnostik, Manifestexport, ARM64-Paketierung und Launcher-Tests.
-Offen: echte Login-/Streamtests, Gerätecontroller, automatisch gepflegter
-Katalog, robuste UI-basierte Suche als Alternative zu geänderter CMS-Route,
-Steam-VDF-Import, Hardware-Decoding und nachgewiesene Low-Copy-Ausgabe.
+Login, GFN-Spiel und Xbox-Controller-Erkennung wurden inzwischen auf dem
+Portal getestet. Der ursprüngliche GFN-H.264-Stream verwendet nachweislich
+FFmpeg-Softwaredecode. Offen: automatisch gepflegter Katalog, robuste
+UI-basierte Suche als Alternative zu geänderter CMS-Route, Steam-VDF-Import,
+Hardware-Decoding des GFN-Streams und gemessene Low-Copy-Ausgabe.
 Wenn NVIDIA die CMS-Route ändert, muss der Nutzer den Titel in der GFN-Oberfläche
 suchen und die Zuordnung neu erfassen. Dieser manuelle Rückweg ist verfügbar;
 eine automatische DOM-Suche ist noch nicht implementiert.
@@ -125,3 +127,20 @@ Architektur; OpenNOW wird nicht als Client eingesetzt oder weiter getestet.
 Es wurde lediglich ein Vergleichspaket heruntergeladen und auf dem Portal
 entpackt, nicht gestartet. Die Quellanalyse bleibt als Referenz erhalten.
 Quellbewertung und Testplan: [opennow-evaluation.md](opennow-evaluation.md).
+
+## Lokale Decoderbrücke (2026-10-04)
+
+Der isolierte Prototyp unter `experiments/dmabuf` decodiert einen synthetischen
+HEVC-Clip explizit mit GStreamer `v4l2h265dec` auf Iris `/dev/video0` und
+importiert die NV12-DMA-BUFs über Electron SharedTexture in einen sandboxed
+Renderer. Unter nativem Wayland wurden Bildinhalt, 60 Transfers/Draw-Aufrufe
+und vollständige Pufferfreigabe bestätigt. Die Anwendung bleibt vom GFN-Client
+getrennt und wird aus dessen Paket ausgeschlossen.
+
+Nächste Grenze: komprimierte Frames aus dem originalen GFN-WebRTC-Empfänger
+an eine gebundene native `appsrc`-Queue übergeben. Zunächst den tatsächlich
+verhandelten H.264-Stream parallel beobachten/decodieren; Audio, Login,
+Controller und Originaloberfläche bleiben im Browser. Erst danach dessen
+Softwaredecode ersetzen und Audio-/Video-Synchronisation messen. HEVC-
+Aushandlung ist weiterhin separat ungelöst. Details und Einschränkungen:
+[Testanwendung](../experiments/dmabuf/README.md).

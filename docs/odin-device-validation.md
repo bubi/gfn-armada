@@ -188,4 +188,59 @@ Gamescope-Test und keine visuelle Prüfung jedes Bildes.
 
 Gerätelog: `~/.local/share/gfn-armada-tests/hevc-wayland.log`, lokale Kopie
 `.artifacts/odin/hevc-wayland.log` (unversioniert). HEVC im GFN-Stream und
-DMA-BUF-Import in Electron bleiben getrennte offene Schritte.
+DMA-BUF-Import in Electron bleiben zu diesem Zeitpunkt getrennte offene Schritte.
+
+## HEVC → Iris → DMA-BUF → Electron bestätigt (2026-10-04, 10:50 UTC)
+
+Die isolierte Anwendung `experiments/dmabuf` wurde als Node-API-8-Modul
+im Fedora-44-ARM64-Container gebaut und in einer separaten Electron-Laufzeit
+auf dem Portal geprüft. Keine Pakete im Basissystem installiert, keine
+produktiven Clientressourcen oder NVIDIA-Sitzungen verändert.
+
+Die explizite Pipeline `filesrc ! h265parse ! v4l2h265dec ! appsink` liefert
+Iris-NV12-DMA-BUFs. Der Adapter hält jeden `GstSample` bis Electron
+`allReferencesReleased` meldet; kein CPU-Mapping der Rohpixel im Addon.
+Die Allocation-Query unterstützt `GstVideoMeta`. Tatsächliche Puffergeometrie:
+
+| Eigenschaft | Gemessen |
+|---|---|
+| Decoder / Gerät | `v4l2h265dec`, `/dev/video0`, `qcom-iris-decoder` |
+| Coded / sichtbar | 1280×736 / 1280×720 |
+| Y-Plane | Stride 1280, Offset 0, Größe 942.080 Bytes |
+| UV-Plane | Stride 1280, Offset 942.080, Größe 471.040 Bytes |
+| Format / Farbraum | lineares NV12-DMA-BUF, begrenztes BT.709 |
+| Anzeige | natives Wayland, sandboxed Electron 44.5.1 |
+| GPU-Renderer | `ANGLE (freedreno, FD740, OpenGL ES 3.2)` |
+| Transfers / Renderer-Draw-Aufrufe | 60 / 60 |
+| Freigaben / übrige Leases | 60 / 0 |
+| Maximal gleichzeitig geleast | 4 |
+
+Electron SharedTexture → VideoFrame → 2D-Canvas funktioniert mit dieser
+Konfiguration ohne Chromium-Patch. Pixelcheck: zehn unterschiedliche
+quantisierte Farben, Canvas 1280×720. Ein Screenshot des synthetischen
+Testmusters wurde visuell geprüft. GPU-Compositing und OpenGL sind aktiviert;
+der Test schaltet die Sandbox oder die GPU-Blockliste nicht ab. Ungültige
+Aufrufe, doppelte Freigaben und `close()` bei lebenden Leases werden abgelehnt.
+Nach Beendigung bleiben keine Prozesse der isolierten Testlaufzeit übrig.
+
+Grenzen: Draw-Aufrufe zählen keine tatsächlich präsentierten Compositor-
+Frames. Screenshot/Pixelcheck sind einmalige CPU-Readbacks zur Validierung.
+Interne Chromium-/Compositor-Kopien, Gamescope, 1080p/120 Hz, Audio-Sync und
+GFN-HEVC sind nicht nachgewiesen. Der originale GFN-Stream bleibt beim
+bereits gemessenen FFmpeg-H.264-Softwarepfad; die lokale Brücke ist noch
+nicht angeschlossen.
+
+XWayland-Vergleiche scheiterten am NV12-SharedImage-Backing; im letzten
+Vergleich wurden außerdem Software-GPU-Features gemeldet. Genaue Ursache
+offen, kein allgemeiner Beweis gegen XWayland-DMA-BUF. Ein erster Wayland-
+Durchlauf erreichte 60 Draw-Aufrufe, wartete aber mit noch sichtbarem letzten
+Capturebuffer auf EOS bis zur Frist. Die Testfassung endet deshalb nach den
+60 bekannten Fixture-Frames und zerstört den Renderer vor Decoder-Close.
+Die finale Wayland-Fassung besteht mit vollständiger Freigabe.
+
+Strukturierte Evidenz: [validation-odin.json](../experiments/dmabuf/validation-odin.json).
+Lokale Testlogs und Screenshot: `.artifacts/dmabuf/` (unversioniert).
+Nach dem gesicherten Erfolg wurde SSH beim abschließenden Abgleich wieder
+nicht erreichbar. Eine optionale zusätzliche Screenshot-Synchronisierung
+wurde deshalb verworfen; die gehaltene Fassung entspricht dem erfolgreichen
+Gerätetest.
