@@ -261,3 +261,29 @@ Paket weiterlaufen (`overflow:false`); 24 Unit-Tests bestehen. Der aktive
 GFN-Client reagierte nicht auf SIGTERM. Nach dem erlaubten Neustart wurde
 deshalb nur dessen per Executable-Pfad verifizierter Main-Prozess per SIGKILL
 beendet. Das bestehende Profil wurde unverändert weiterverwendet.
+
+## Absturz beim zweiten echten GFN-Stream
+
+Nach dem erneuten Spielstart verhandelte GFN H264. Die Brücke öffnete
+`/dev/video0` und übernahm sechs Pakete. `pullFrame` lehnte einen Sample mit
+`First prototype requires negotiated limited-range BT.709` ab. Es wurde
+kein SharedTexture importiert oder Bild gezeichnet; Leases blieben null.
+Der native Worker schloss danach. Chromium decodierte anschließend weiter
+über FFmpeg (201 Browserframes, null Drops im letzten Seiten-Snapshot).
+
+Wenige Sekunden später endete Client-PID 115444 mit SIGSEGV; systemd
+bestätigt einen abgeschnittenen Core-Dump. Die verfügbare Zusammenfassung
+enthält keinen Stacktrace; gdb und eu-stack sind nicht auf dem Gerät
+installiert. Ein kausaler Zusammenhang zwischen Farbraumfehler,
+GStreamer-Teardown und dem bereits früher auffälligen Wayland-Modus ist
+nicht bewiesen. Weder Hardwareausgabe noch ein Absturzfix werden behauptet.
+
+Der bisherige Client wurde unter XWayland ohne native Brücke und mit dem
+bisherigen Profil wieder gestartet und blieb bei der Nachprüfung aktiv.
+Keine Basispakete installiert, kein weiterer Live-Hardwaretest gestartet.
+Vor einem erneuten Live-Test: genaue Farbraum-Metadaten erfassen, diesen
+Fehlerpfad isoliert reproduzieren und native Prozessisolation implementieren.
+Node-Worker teilen den Prozess; ein SIGSEGV darin kann die GFN-Oberfläche
+mit beenden. Numerische DMA-BUF-FDs dürfen bei einer Prozessaufteilung
+nicht einfach als normale IPC-Zahlen verwendet werden; FD-Transfer oder
+Import/Ausgabe im Decoder-Hilfsprozess sind erforderlich.

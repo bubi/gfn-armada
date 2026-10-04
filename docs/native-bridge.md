@@ -2,6 +2,16 @@
 
 Implementierter Anschluss, noch kein validierter GFN-Hardwarestream:
 
+**Live-GFN-Test derzeit zurückgestellt:** Beim zweiten echten Streamstart
+wurde ein nicht unterstützter Farbraum abgelehnt; wenige Sekunden später
+stürzte der Client mit SIGSEGV ab. Die Ursache ist noch nicht zugeordnet.
+Ein Node-Worker ist ein Thread im selben Prozess und isoliert native
+Speicherfehler nicht. Vor weiteren Live-Tests muss der native Pfad in einen
+separaten Prozess oder zunächst unabhängig vom GFN-Client reproduziert
+werden. Der Portal-Client wurde auf den bisherigen XWayland-Modus ohne
+Brücke zurückgesetzt. Die lokalen Hardwaretests bleiben auf ihren Scope
+beschränkt.
+
 ```text
 GFN RTCRtpReceiver → RTCRtpScriptTransform (unveränderte Frames weiterreichen)
                          ↓ Kopie der komprimierten H264-Access-Units
