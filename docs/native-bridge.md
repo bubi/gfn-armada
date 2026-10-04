@@ -2,7 +2,7 @@
 
 Implementierter Anschluss, noch kein validierter GFN-Hardwarestream:
 
-**Live-GFN-Test derzeit zurückgestellt:** Beim zweiten echten Streamstart
+**Live-GFN-Test wieder aufgenommen:** Beim früheren zweiten echten Streamstart
 wurde ein nicht unterstützter Farbraum abgelehnt; wenige Sekunden später
 stürzte der Client mit SIGSEGV ab. Die Ursache ist noch nicht zugeordnet.
 Ein Node-Worker ist ein Thread im selben Prozess und isoliert native
@@ -10,9 +10,14 @@ Speicherfehler nicht. Der native Pfad ist jetzt in einen separaten Electron-
 Helper verlegt. Gezielt ausgelöste Helper-SIGSEGVs am Mac und auf dem Portal
 ließen das Browservideo weiterlaufen. Die lokale Iris-/DMA-BUF-Ausgabe im
 separaten Helper ist bei 720p über 30 Sekunden bestätigt; ein echter
-GFN-Stream mit der neuen Prozessgrenze bleibt noch zu prüfen.
-Der stabile Portal-Client bleibt vorerst im bisherigen XWayland-Modus ohne
-Brücke. Die ursprüngliche Farbraum-/SIGSEGV-Ursache bleibt ungelöst.
+GFN-Stream mit der neuen Prozessgrenze wurde anschließend getestet: der
+erste Versuch stoppte bei acht ausstehenden Paketen vor dem ersten Transfer
+mit `compressed-queue-overflow`. Der Helper beendete sich mit Exit 0 und
+das ursprüngliche Browservideo lief mit FFmpeg weiter. Die native Pipeline
+wird nun vor der Bereitschaftsmeldung vorbereitet; diese Korrektur besteht
+lokale Mac-/Portal-Tests und wartet auf den nächsten echten Spielstream.
+Das Frontend bleibt XWayland, der Helper Wayland. Die ursprüngliche
+Farbraum-/SIGSEGV-Ursache bleibt ungelöst.
 
 ```text
 GFN RTCRtpReceiver → RTCRtpScriptTransform (unveränderte Frames weiterreichen)
@@ -191,11 +196,39 @@ Draws und Freigaben in 5,040 Sekunden, keine offenen Leases, sechs Testfarben,
 Helper-Exit 0. Die Farbraumprüfung ist weiterhin streng; keine Farbraumwerte
 auf Verdacht überschrieben. Das unveränderte native Modul hat SHA256
 `2e663ef54f5915140d21d415e8994b036a56c23fba1a832285338c60f4a3426d`.
-Die produktive GFN-Installation wurde nicht ersetzt. Für den nächsten echten
-GFN-Test ist die getrennte Instanz vorbereitet; der Wechsel von der aktiven
-Sitzung wartet auf die Zustimmung des Nutzers.
+Die produktive GFN-Installation wurde nicht ersetzt. Die getrennte Instanz
+wurde anschließend mit Zustimmung des Nutzers für den echten GFN-Test
+gestartet; das Ergebnis folgt im nächsten Abschnitt.
 Strukturierter Testbeleg:
 [validation-helper-diagnostics-odin.json](../experiments/dmabuf/validation-helper-diagnostics-odin.json).
+
+### Erster isolierter GFN-Stream und Pipeline-Vorbereitung
+
+Nach Zustimmung des Nutzers wurde die vorbereitete Testinstanz gestartet.
+Beim Spielstart am 2026-10-04 um 16:42:34 UTC erreichten acht komprimierte
+H.264-Pakete den Supervisor. Der Tap meldete `compressed-queue-overflow`,
+bevor `native-opened` eintraf. Kein DMA-BUF wurde übertragen; der Helper
+beendete sich mit Exit 0. Ein späterer Snapshot zeigte im selben GFN-Client
+2.301 FFmpeg-decodierte Frames und 0 Drops. Damit ist ein sauberer
+Fallback dieses realen Versuchs belegt, keine Hardwareausgabe oder
+Farbraumkorrektur. Die genaue Burst-/ACK-Latenz ist noch nicht gemessen.
+
+Die einmalige GStreamer-Pipeline-Erzeugung wird jetzt im Decoder-Worker
+vor `ready` ausgeführt. `pullFrame` beginnt erst nach dem ersten angenommenen
+Paket. SPS/PPS-basierte Treiberkonfiguration findet weiterhin beim Streamstart
+statt. Öffnen allein bestätigt keine aktive VPU. Die Queuegrenzen bleiben
+acht Pakete / 4 MiB; kein unkontrolliertes Vergrößern oder stilles Frame-Dropping.
+Ein langsamer Testdecoder prüft Bereitschaft nach Vorbereitung und acht
+aufeinanderfolgende Pakete; ein fehlendes Backend scheitert vor Bereitschaft.
+
+31/31 Unit-Tests auf Mac und ARM64 bestanden. Die lokale Portal-Brücke mit
+dieser Vorbereitung lieferte 149 Transfers/Draws/Freigaben in 5,046 Sekunden
+bei 1280×720, sechs Testfarben und Exit 0. Der Mac-Ablehnungstest bewahrte
+die native Fehlermeldung, während Browservideo von 1 auf 33 Frames weiterlief.
+Die neue getrennte Testinstanz `bridge-prewarm-20261004` wurde gestartet;
+`native-opened` ging nachweislich der Bereitschaftsmeldung voraus. Ein
+korrigierter echter Spielstream bleibt zu prüfen.
+Evidenz: [validation-prewarm-odin.json](../experiments/dmabuf/validation-prewarm-odin.json).
 
 Die neue H264-Schnittstelle kompiliert mit `-Wall -Wextra -Werror`; 24 Unit-
 Tests bestehen. Nach Wiederherstellung des SSH-Zugangs bestand die lokale
