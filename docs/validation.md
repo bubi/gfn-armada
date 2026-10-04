@@ -325,3 +325,10 @@ Evidenz mit getesteten Quellhashes:
 Prozessisolation behebt weder den noch ungeklärten ursprünglichen Fehler
 noch HEVC-Aushandlung. Kein Nachweis von GFN-Hardwareausgabe, CPU-Ersparnis,
 Compositor-Zero-Copy, Ende-zu-Ende-Latenz oder tatsächlich präsentierten Frames.
+
+Finales ARM64-Clientbundle: alle Clientdateien im Paket und im exportierten
+Bundle stimmen mit den Quellen überein. Das portable Archiv wurde wegen
+einer stockenden macOS-Dateileseoperation mit dem unveränderten
+`scripts/archive.py` im Fedora-ARM64-Container erstellt. Archiv SHA-256:
+`9c02de50dd6ecd31c76e736ee046e98829c7d91098c52f3c63467a880574e6eb`.
+Das native Addon bleibt ein separat bereitzustellendes Artefakt.
