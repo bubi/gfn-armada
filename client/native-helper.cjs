@@ -10,7 +10,8 @@ app.setPath('userData',profile);app.setPath('sessionData',profile);
 const input=new Socket({fd:3,readable:true,writable:false}),output=new Socket({fd:4,readable:false,writable:true});
 let worker,window,stopping=false,finished=false,closeTimer,exitTimer,sequence=0,inflightBytes=0,decoded=0,draws=0,released=0,lastFrameAt=null;
 const leases=new Set(),pending=new Map();
-const snapshot=()=>({decoded,draws,released,outstanding:leases.size,lastFrameAt});
+let colorSpace=null;
+const snapshot=()=>({decoded,draws,released,outstanding:leases.size,lastFrameAt,colorSpace});
 function send(message){if(!finished) output.write(encode(message));}
 function closeWindow(){clearTimeout(closeTimer);if(window&&!window.isDestroyed()) window.destroy();}
 function finish(){
@@ -85,6 +86,8 @@ app.whenReady().then(async()=>{
       const release=()=>{if(leases.delete(message.leaseId)){worker.postMessage({kind:'release',id:message.leaseId});released++;if(stopping&&!leases.size) closeWindow();}};
       if(stopping){release();return;}
       try{
+        const c=message.textureInfo.colorSpace;
+        colorSpace={matrix:c.matrix,primaries:c.primaries,transfer:c.transfer,range:c.range};
         imported=sharedTexture.importSharedTexture({textureInfo:message.textureInfo,allReferencesReleased:release});
         await sharedTexture.sendSharedTexture({frame:window.webContents.mainFrame,importedSharedTexture:imported});
         decoded++;lastFrameAt=new Date().toISOString();

@@ -65,7 +65,7 @@ Ende-zu-Ende-Latenz und kein Zero-Copy innerhalb von Chromium/Gamescope.
   `GstVideoMeta` führen zum Fehler. Keine Rohdaten werden gemappt.
 * Eine Allocation-Query kündigt Unterstützung für `GstVideoMeta` an, damit
   der Decoder gepaddete Capturebuffer ohne CPU-Umpacken liefern kann.
-* Farbraum muss ausgehandeltes BT.709 mit begrenztem Wertebereich sein;
+* Farbraum muss ausgehandeltes BT.709 mit begrenztem oder vollem Wertebereich sein;
   er wird explizit an Electron übergeben. Andere Farbräume sind noch abgelehnt.
 * Stride, Planengröße, Speicher-Offset und gepaddete Höhe stammen aus
   GStreamer-Metadaten. Jede Plane muss in genau einer DMA-BUF-Memory liegen.

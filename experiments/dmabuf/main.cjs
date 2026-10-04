@@ -9,6 +9,7 @@ const profile=fs.mkdtempSync(path.join(os.tmpdir(),'gfn-dmabuf-'));
 app.setPath('userData',profile);
 app.commandLine.appendSwitch('ozone-platform',process.env.GFN_ARMADA_OZONE || 'wayland');
 let window,opened=false,finished=false,received=0,submitted=0,released=0,peakLeases=0;
+let negotiatedColorSpace=null;
 const pending=new Set();
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const deadline=setTimeout(()=>finish(new Error('30 second test deadline exceeded')),30000);
@@ -20,7 +21,7 @@ async function finish(error,evidence={}) {
   if(pending.size) error ||= new Error('GPU references still outstanding after renderer shutdown');
   if(opened && !pending.size) { try{bridge.close()}catch(e){error ||= e} }
   log({status:error?'failed':'passed',experiment:'local-hevc-dmabuf',
-    submitted,received,released,peakLeases,outstanding:pending.size,...evidence,
+    submitted,received,released,peakLeases,outstanding:pending.size,negotiatedColorSpace,...evidence,
     ...(error?{error:String(error.message).slice(0,500)}:{})});
   app.exit(error?1:0);
 }
@@ -75,8 +76,12 @@ app.whenReady().then(async()=>{
     const frame=bridge.pullFrame(20);
     if(frame.eos) break;
     if(!frame.textureInfo) {await sleep(10);continue;}
+    negotiatedColorSpace=frame.textureInfo.colorSpace;
+    if(process.env.GFN_ARMADA_TEST_EXPECT_RANGE&&negotiatedColorSpace.range!==process.env.GFN_ARMADA_TEST_EXPECT_RANGE){
+      bridge.releaseFrame(frame.leaseId);throw new Error('Negotiated color range differs from the test fixture');
+    }
     if(!submitted) log({event:'native-frame',decoder:'v4l2h265dec',format:'linear-nv12-dmabuf',
-      codedSize:frame.textureInfo.codedSize,visibleRect:frame.textureInfo.visibleRect,
+      codedSize:frame.textureInfo.codedSize,visibleRect:frame.textureInfo.visibleRect,colorSpace:negotiatedColorSpace,
       planes:frame.textureInfo.handle.nativePixmap.planes.map(({stride,offset,size})=>({stride,offset,size})),
       gpu:app.getGPUFeatureStatus(),ozone:process.env.GFN_ARMADA_OZONE || 'wayland'});
     pending.add(frame.leaseId); peakLeases=Math.max(peakLeases,pending.size);
@@ -106,7 +111,7 @@ app.whenReady().then(async()=>{
     const samples=[];
     for(let y=0;y<3;y++)for(let x=0;x<7;x++)
       samples.push([...context.getImageData(Math.floor((x+.5)*canvas.width/7),Math.floor((y+.5)*canvas.height/3),1,1).data]);
-    return {width:canvas.width,height:canvas.height,distinctColors:new Set(samples.map(p=>p.slice(0,3).map(c=>Math.round(c/32)).join(','))).size};
+    return {width:canvas.width,height:canvas.height,rgbSamples:samples.map(p=>p.slice(0,3)),distinctColors:new Set(samples.map(p=>p.slice(0,3).map(c=>Math.round(c/32)).join(','))).size};
   })()`);
   if(submitted<30 || received!==submitted || pixels.distinctColors<5) throw new Error('Insufficient displayed frames or test-pattern colors');
   const screenshot=await window.webContents.capturePage();

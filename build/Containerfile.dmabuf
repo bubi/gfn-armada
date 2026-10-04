@@ -2,6 +2,7 @@
 FROM --platform=linux/arm64 registry.fedoraproject.org/fedora:44@sha256:7011f51bd8089d345be42d41f0aa3190d258823528852a5e7ec976fe2fd20f53
 RUN dnf install -y --setopt=install_weak_deps=False gcc nodejs24-devel gstreamer1-devel gstreamer1-plugins-base-devel && dnf clean all
 WORKDIR /work
-COPY experiments/dmabuf/bridge.c ./bridge.c
+COPY experiments/dmabuf/bridge.c experiments/dmabuf/color-space.h experiments/dmabuf/color-space-test.c ./
+RUN gcc -std=c11 -O2 -Wall -Wextra -Werror color-space-test.c -o color-space-test $(pkg-config --cflags --libs gstreamer-video-1.0) && ./color-space-test
 RUN gcc -std=c11 -O2 -g -fPIC -shared -Wall -Wextra -Werror -DNAPI_VERSION=8 -I/usr/include/node bridge.c -o bridge.node $(pkg-config --cflags --libs gstreamer-app-1.0 gstreamer-video-1.0 gstreamer-allocators-1.0)
 RUN rpm -qa | sort > build-packages.txt

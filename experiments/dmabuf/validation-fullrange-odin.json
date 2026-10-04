@@ -1,0 +1,512 @@
+{
+  "recordedAt": "2026-10-04T17:07:31.782127+00:00",
+  "scope": "bt709-range-mapping-and-synthetic-iris-rendering",
+  "device": "AYN Odin 2 Portal",
+  "electron": "44.5.1",
+  "addonSha256": "425dc49231bbdd88ec5c61b5730fcbe6798a41d3e8fec46a1a64c5bb9f89c378",
+  "testedSourceSha256": {
+    "client/native-decoder-worker.cjs": "3be9fdd4dd8830d76c715bae5c80288b062bb62e0cb8025d9b953ea4cb62d191",
+    "client/encoded-tap.cjs": "ca149458127f886025ca48e854c20060a6fa47ccee82e2b504c780c19c29b91d",
+    "client/preload.cjs": "7c4eb44c9cc62ba267dd4518c862e8031b41f67e8d47dd835ba8895f318ccfed",
+    "client/helper-process.cjs": "34ceadc144c4046593132b9f7ab836a47b895434ee8145d9860ecaa05e38075b",
+    "client/encoded-packet.cjs": "fb9695c803b747dc9631e3c6aa284a8ff67e4a19f8bf560248ca0be0667d9296",
+    "client/native-shadow.cjs": "91433380daf3e7a3230c123aa216057c9cec1bf809d8810beab1d560f176ef6d",
+    "client/shadow.html": "28c641e10a3333633a5ea82ef50461d53a0f86a9eb6426793da0dcd16e7447c7",
+    "client/shadow-preload.cjs": "87f2e89d13141287b97c5c850450017c9c1dbf5cf6b7ba1eb50655c2a2dc347c",
+    "client/native-helper.cjs": "28bd8dd565cc370a461b07a45645c74446ea974e3b81de3530738849170490ea",
+    "client/webrtc-internals.cjs": "5c4bb8d79be23fdd9943e989a61d31951cbfbeb6a4be91672c922c70bf3794c8",
+    "client/navigation.cjs": "18f6d2daa886dfe326efa9b6621b239a8e3d1c2e517046782b14c0ec68ab348a",
+    "client/application.cjs": "25bd722249f3d8affef16f43d7d923b3b1fe72ca319afa9ee350379b4284432b",
+    "client/main.cjs": "eb38e586fdb42b9be57de85e93ec49acf6ad708154c1801223658c5c6756f744",
+    "client/media-diagnostics.cjs": "7804316a36cba1aec734fdff227c88d6080d9d8fd61711c3187b6e640f80c8b2",
+    "client/helper-wire.cjs": "c40268a62be4974af24fdf00ef8be64adbc47d39e4f959fe9a924d830c1a8c6d",
+    "launcher/mapping.cjs": "b33fd672196d6edf4ac0dc6986f9b533bd8434c5a995f981a89cf013d0024a56",
+    "launcher/diagnostics.cjs": "9085abe1dfa06a233cabca32d8b5206aa09e220e080fa85cdf44044790fac15a",
+    "launcher/process-video.cjs": "8fcb31e5fceda06ebe82da261008e767c08c53f636268efd17c4ba4c714357d3",
+    "launcher/cli.cjs": "632923f9209ff68c30b96d0fd1bfa7ac0b9f89e222804a3b7e84bc900a295257",
+    "launcher/config.cjs": "e8edaefa194027d39eac619b83e4994070b8b92773cb59509c3b56db29ea2326",
+    "tests/smoke-webrtc-internals.cjs": "10250ba73c3c6081303e38c6a68a4bb3323e2d9f50d451128ed7a54c29840b02",
+    "tests/smoke-runtime.cjs": "90ebfdadb8490a81eb0afe76b44252ddcef685cf2755bb0d451504a84cf2731b",
+    "tests/launcher.test.cjs": "7fa31232619d08e4232468dd28998b42f7c761894ebac6e07bcfe5aa118527b5",
+    "tests/helper-process.test.cjs": "d1df6f3575889c385dae476a4939e8d12aa082de3ff563a1a2a5b00f6008c8a8",
+    "tests/helper-wire.test.cjs": "b6920aec1d91224dfeafcc4e8d64b8d8bc4fd59bf9b8e28f33572825c0c1adf8",
+    "tests/smoke-native-bridge.cjs": "8da4ff39278b431cbb0f5f328a0dda2bc678aab2999ed35e032342a0bc9fea75",
+    "tests/smoke-encoded-transform.cjs": "e532f58b1b35104864eb430555f28f006be7bc4bb0711b32c945ce54a22344bb",
+    "tests/navigation.test.cjs": "bd7ca2bb5c34acf49b1f7a4187846b8d096bd48937d2ddf67561259f68974c51",
+    "tests/smoke-native-worker.cjs": "79591822a6b0eb06fa5dc53f94a92da240501934e728fe9312017cb19c37bea0",
+    "tests/native-decoder-worker.test.cjs": "ba763e3604ae5e8c976aef45e321be7a9fa103f671ea9e64e1541522acd1341e",
+    "tests/decoder-diagnostics.test.cjs": "04ed223a4de55d01f58364230d85752de92d6d6bc4635cd364418b4b5c4bd02c",
+    "tests/encoded-packet.test.cjs": "8d45cc14af93130747c6f9468ce156f13f11000c2e3fea42264055b2af619d3f",
+    "tests/fixtures/rejecting-decoder.cjs": "690ce0e69c46b482c711d6f3ca5fdc4dbe933fc49f7de2bb8a54cfe90f8c6d6b",
+    "tests/fixtures/helper-process.cjs": "a4caee586f94114f8537cd01b187df8a7a4da3f73e121d7640ae587263d71734",
+    "tests/fixtures/fake-decoder.cjs": "439fbe6437efd85d2323557602fcb98ffe4089d77ce3fab946babe89d8331d14",
+    "tests/fixtures/unavailable-decoder.cjs": "3a5e3255fa19352d46837ce12cdaec1d8d87c198c600b2a64188c3c3688249d7",
+    "tests/fixtures/local-webrtc.cjs": "0b29932828a34c14d4b19e120f66fd679e05d1681f6cb640d2e9a4e19df69e7b",
+    "tests/fixtures/prewarm-decoder.cjs": "71b8a73e95a5b0d55ab8969c782e91eedc36e35e6ff2189a3de036ff04bd5575",
+    "package.json": "dc8c72d9e09b63768b1523a5796f90126d814a765ebad1bb4a4569a36a203a5a",
+    "bridge.node": "425dc49231bbdd88ec5c61b5730fcbe6798a41d3e8fec46a1a64c5bb9f89c378",
+    "experiments/dmabuf/bridge.c": "72997d5aa01f1176b8c958500d15c7e00a4ec8a8b2181e328fd12479088432ff",
+    "experiments/dmabuf/color-space.h": "087158062bb1e3a0c66b9ff30812f13463fbc175b7fb3f8250be68932c7f731d",
+    "experiments/dmabuf/color-space-test.c": "05c8317f3546e1cb5e37d4a29dc4948b8f3ce514a8ff2760ab5bcabdcbfe6835",
+    "experiments/dmabuf/main.cjs": "00acea971d956b015b1c108703664f50a9b1698fd48b21fab8ec945dafcde4fe",
+    "build/Containerfile.dmabuf": "a81e57bdaf458e32f4a1ff7d93c59a5bd89223bb2950e451c40a02cb4f239b1d"
+  },
+  "preFixGfnColorDiagnostic": {
+    "nativeShadowEvents": [
+      {
+        "timestamp": "2026-10-04T16:50:28.230Z",
+        "event": "native-shadow",
+        "status": "native-opened",
+        "codec": "H264",
+        "device": "/dev/video0",
+        "helperPid": 150130,
+        "hardwareDecoderActive": "unknown"
+      },
+      {
+        "timestamp": "2026-10-04T16:50:28.231Z",
+        "event": "native-shadow",
+        "status": "helper-ready",
+        "lastFrameAt": null,
+        "mode": "isolated-parallel-shadow",
+        "codec": "H264",
+        "helperPid": 150130,
+        "helperExited": false,
+        "helperExitSignal": null,
+        "helperExitCode": null,
+        "lastNativeError": null,
+        "encodedFrames": 0,
+        "decodedTransfers": 0,
+        "rendererDraws": 0,
+        "releasedSamples": 0,
+        "outstanding": 0,
+        "originalBrowserDecodeEnabled": true,
+        "hardwareDecoderActive": "unknown"
+      },
+      {
+        "timestamp": "2026-10-04T16:50:28.842Z",
+        "event": "native-shadow",
+        "status": "hook-installed",
+        "hardwareDecoderActive": "unknown"
+      },
+      {
+        "timestamp": "2026-10-04T16:50:30.531Z",
+        "event": "native-shadow",
+        "status": "attached-encoded-shadow",
+        "hardwareDecoderActive": "unknown"
+      },
+      {
+        "timestamp": "2026-10-04T16:50:30.549Z",
+        "event": "native-shadow",
+        "status": "keyframe-request-unavailable",
+        "hardwareDecoderActive": "unknown"
+      },
+      {
+        "timestamp": "2026-10-04T16:50:30.551Z",
+        "event": "native-shadow",
+        "status": "probe-receiver-ended",
+        "hardwareDecoderActive": "unknown"
+      },
+      {
+        "timestamp": "2026-10-04T16:51:32.701Z",
+        "event": "native-shadow",
+        "status": "attached-encoded-shadow",
+        "hardwareDecoderActive": "unknown"
+      },
+      {
+        "timestamp": "2026-10-04T16:51:32.745Z",
+        "event": "native-shadow",
+        "status": "keyframe-request-unavailable",
+        "hardwareDecoderActive": "unknown"
+      },
+      {
+        "timestamp": "2026-10-04T16:51:33.694Z",
+        "event": "native-shadow",
+        "status": "encoded-frame-observed",
+        "hardwareDecoderActive": "unknown"
+      },
+      {
+        "timestamp": "2026-10-04T16:51:33.696Z",
+        "event": "native-shadow",
+        "status": "negotiated-h264",
+        "hardwareDecoderActive": "unknown"
+      },
+      {
+        "timestamp": "2026-10-04T16:51:33.753Z",
+        "event": "native-shadow",
+        "status": "native-error",
+        "reason": "First prototype requires negotiated limited-range BT.709 (range=1 matrix=3 transfer=5 primaries=1)",
+        "lastNativeError": "First prototype requires negotiated limited-range BT.709 (range=1 matrix=3 transfer=5 primaries=1)"
+      },
+      {
+        "timestamp": "2026-10-04T16:51:33.756Z",
+        "event": "native-shadow",
+        "status": "stopped",
+        "reason": "native-helper-failed",
+        "lastFrameAt": null,
+        "mode": "isolated-parallel-shadow",
+        "codec": "H264",
+        "helperPid": 150130,
+        "helperExited": false,
+        "helperExitSignal": null,
+        "helperExitCode": null,
+        "lastNativeError": "First prototype requires negotiated limited-range BT.709 (range=1 matrix=3 transfer=5 primaries=1)",
+        "encodedFrames": 9,
+        "decodedTransfers": 0,
+        "rendererDraws": 0,
+        "releasedSamples": 0,
+        "outstanding": 0,
+        "originalBrowserDecodeEnabled": true,
+        "hardwareDecoderActive": "unknown"
+      },
+      {
+        "timestamp": "2026-10-04T16:51:33.791Z",
+        "event": "native-shadow",
+        "status": "closed",
+        "lastFrameAt": null,
+        "mode": "isolated-parallel-shadow",
+        "codec": "H264",
+        "helperPid": 150130,
+        "helperExited": false,
+        "helperExitSignal": null,
+        "helperExitCode": null,
+        "lastNativeError": "First prototype requires negotiated limited-range BT.709 (range=1 matrix=3 transfer=5 primaries=1)",
+        "encodedFrames": 9,
+        "decodedTransfers": 0,
+        "rendererDraws": 0,
+        "releasedSamples": 0,
+        "outstanding": 0,
+        "originalBrowserDecodeEnabled": true,
+        "hardwareDecoderActive": "unknown"
+      },
+      {
+        "timestamp": "2026-10-04T16:51:33.861Z",
+        "event": "native-shadow",
+        "status": "helper-exited",
+        "reason": "0",
+        "lastFrameAt": null,
+        "mode": "isolated-parallel-shadow",
+        "codec": "H264",
+        "helperPid": 150130,
+        "helperExited": true,
+        "helperExitSignal": null,
+        "helperExitCode": 0,
+        "lastNativeError": "First prototype requires negotiated limited-range BT.709 (range=1 matrix=3 transfer=5 primaries=1)",
+        "encodedFrames": 9,
+        "decodedTransfers": 0,
+        "rendererDraws": 0,
+        "releasedSamples": 0,
+        "outstanding": 0,
+        "originalBrowserDecodeEnabled": true,
+        "hardwareDecoderActive": "unknown"
+      }
+    ],
+    "lastNativeWebRTC": {
+      "timestamp": "2026-10-04T17:05:38.922Z",
+      "event": "native-webrtc-decoder",
+      "status": "stale",
+      "streams": []
+    }
+  },
+  "syntheticH264Limited": {
+    "status": "passed",
+    "scope": "local-webrtc-h264-iris-shadow",
+    "nativeTested": true,
+    "encoded": 0,
+    "originalFrames": 150,
+    "sequence": 150,
+    "decoded": 150,
+    "draws": 150,
+    "released": 150,
+    "outstanding": 0,
+    "stopped": true,
+    "helperPid": 152542,
+    "helperExited": true,
+    "helperExitSignal": null,
+    "helperExitCode": 0,
+    "lastNativeError": null,
+    "negotiatedColorSpace": {
+      "matrix": "bt709",
+      "primaries": "bt709",
+      "transfer": "bt709",
+      "range": "limited"
+    },
+    "elapsedMs": 5051,
+    "pixels": {
+      "width": 1280,
+      "height": 720,
+      "distinctColors": 6,
+      "validationReadback": true
+    }
+  },
+  "syntheticHevcRangeComparison": {
+    "results": {
+      "full": {
+        "status": "passed",
+        "experiment": "local-hevc-dmabuf",
+        "submitted": 60,
+        "received": 60,
+        "released": 60,
+        "peakLeases": 3,
+        "outstanding": 0,
+        "negotiatedColorSpace": {
+          "matrix": "bt709",
+          "primaries": "bt709",
+          "transfer": "bt709",
+          "range": "full"
+        },
+        "pixels": {
+          "width": 1280,
+          "height": 720,
+          "rgbSamples": [
+            [
+              189,
+              189,
+              189
+            ],
+            [
+              190,
+              190,
+              0
+            ],
+            [
+              0,
+              191,
+              189
+            ],
+            [
+              0,
+              189,
+              0
+            ],
+            [
+              190,
+              0,
+              189
+            ],
+            [
+              190,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              190
+            ],
+            [
+              189,
+              189,
+              189
+            ],
+            [
+              190,
+              190,
+              0
+            ],
+            [
+              0,
+              191,
+              189
+            ],
+            [
+              0,
+              189,
+              0
+            ],
+            [
+              190,
+              0,
+              189
+            ],
+            [
+              190,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              190
+            ],
+            [
+              1,
+              61,
+              103
+            ],
+            [
+              253,
+              253,
+              253
+            ],
+            [
+              254,
+              253,
+              253
+            ],
+            [
+              60,
+              0,
+              118
+            ],
+            [
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0
+            ]
+          ],
+          "distinctColors": 11
+        },
+        "validationReadback": true
+      },
+      "limited": {
+        "status": "passed",
+        "experiment": "local-hevc-dmabuf",
+        "submitted": 60,
+        "received": 60,
+        "released": 60,
+        "peakLeases": 4,
+        "outstanding": 0,
+        "negotiatedColorSpace": {
+          "matrix": "bt709",
+          "primaries": "bt709",
+          "transfer": "bt709",
+          "range": "limited"
+        },
+        "pixels": {
+          "width": 1280,
+          "height": 720,
+          "rgbSamples": [
+            [
+              187,
+              189,
+              189
+            ],
+            [
+              188,
+              190,
+              0
+            ],
+            [
+              0,
+              190,
+              187
+            ],
+            [
+              0,
+              189,
+              0
+            ],
+            [
+              188,
+              0,
+              189
+            ],
+            [
+              188,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              188
+            ],
+            [
+              187,
+              189,
+              189
+            ],
+            [
+              188,
+              190,
+              0
+            ],
+            [
+              0,
+              190,
+              187
+            ],
+            [
+              0,
+              189,
+              0
+            ],
+            [
+              188,
+              0,
+              189
+            ],
+            [
+              188,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              188
+            ],
+            [
+              0,
+              60,
+              101
+            ],
+            [
+              251,
+              253,
+              253
+            ],
+            [
+              252,
+              254,
+              254
+            ],
+            [
+              60,
+              0,
+              116
+            ],
+            [
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0
+            ]
+          ],
+          "distinctColors": 11
+        },
+        "validationReadback": true
+      }
+    },
+    "maxChannelDifference": 2,
+    "scope": "synthetic-local-hevc-full-vs-limited-only"
+  },
+  "nativeColorTests": "passed Linux ARM64 with -Wall -Wextra -Werror",
+  "unitTests": {
+    "mac": 31,
+    "linuxArm64": 31
+  },
+  "correctedGfnStreamTested": false,
+  "gfnHardwareDecoderActive": "unknown",
+  "gfnHevcNegotiated": false,
+  "cpuSavings": "not implemented: parallel shadow decode"
+}

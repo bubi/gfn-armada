@@ -15,9 +15,12 @@ erste Versuch stoppte bei acht ausstehenden Paketen vor dem ersten Transfer
 mit `compressed-queue-overflow`. Der Helper beendete sich mit Exit 0 und
 das ursprüngliche Browservideo lief mit FFmpeg weiter. Die native Pipeline
 wird nun vor der Bereitschaftsmeldung vorbereitet; diese Korrektur besteht
-lokale Mac-/Portal-Tests und wartet auf den nächsten echten Spielstream.
-Das Frontend bleibt XWayland, der Helper Wayland. Die ursprüngliche
-Farbraum-/SIGSEGV-Ursache bleibt ungelöst.
+lokale Mac-/Portal-Tests. Der anschließende echte Stream lieferte als
+Farbraum-Befund volles BT.709, das bisher abgelehnt wurde. Der Adapter
+übernimmt nun Limited/Full Range entsprechend den ausgehandelten Caps;
+beide Varianten bestehen lokale Iris-/DMA-BUF-Farbtests. Der echte GFN-
+Ausgabetest mit dieser Korrektur steht noch aus. Das Frontend bleibt
+XWayland, der Helper Wayland. Die ursprüngliche SIGSEGV-Ursache ist offen.
 
 ```text
 GFN RTCRtpReceiver → RTCRtpScriptTransform (unveränderte Frames weiterreichen)
@@ -126,7 +129,8 @@ ist kein fertiger Gaming-Mode-Ausgabemodus.
   des Diagnosefensters und Fehler stoppen die Brücke. Zum neuen Experiment
   den Client neu starten. Kein automatischer Restart-Loop.
 
-Farbraum/Import zunächst auf lineares NV12 und begrenztes BT.709 beschränkt.
+Farbraum/Import auf lineares NV12 und BT.709 mit ausgehandeltem begrenztem
+oder vollem Wertebereich beschränkt; unbekannte/HDR-Farbräume bleiben abgelehnt.
 Auflösungswechsel werden nicht als unterstützter Produktionspfad behauptet.
 Die Iris→Electron-Ausgabe ist mit dem früheren HEVC-Clip und inzwischen
 auch mit lokalem H264-WebRTC über appsrc validiert. Ein echter GFN-Stream
@@ -229,6 +233,42 @@ Die neue getrennte Testinstanz `bridge-prewarm-20261004` wurde gestartet;
 `native-opened` ging nachweislich der Bereitschaftsmeldung voraus. Ein
 korrigierter echter Spielstream bleibt zu prüfen.
 Evidenz: [validation-prewarm-odin.json](../experiments/dmabuf/validation-prewarm-odin.json).
+
+### Tatsächlicher GFN-Farbraum und gezielte Range-Korrektur
+
+Der nächste echte Stream erreichte die native Sample-Prüfung. Sie meldete
+`range=1 matrix=3 transfer=5 primaries=1`: gemäß den
+[GStreamer-Enums](https://gstreamer.freedesktop.org/documentation/video/video-color.html)
+BT.709 mit vollem Wertebereich 0–255. Die bisherige Ablehnung ist damit für
+diesen Stream erklärt. Der Helper beendete sich mit Exit 0; der ursprüngliche
+Browserpfad decodierte weiter mit FFmpeg, ohne gemeldete Drops.
+Das erklärt nicht den früheren SIGSEGV und beweist keine frühere Farbraumgleichheit.
+
+Das Modul akzeptiert jetzt ausschließlich die bereits unterstützten BT.709-
+Primaries/Matrix/Transfer mit ausdrücklich gemeldetem Limited oder Full Range
+und reicht diesen Wert an
+[Electron ColorSpace](https://www.electronjs.org/docs/latest/api/structures/color-space)
+weiter. Keine Umrechnung oder CPU-Kopie von Rohpixeln und keine geratenen
+Defaults. Der Helper meldet `negotiatedColorSpace` ohne FDs oder Bilddaten.
+Ein nativer ARM64-Test prüft den echten GFN-Enumtuple sowie die Ablehnung von
+unbekanntem Range, BT.601 und nicht unterstützten Transferfunktionen.
+
+Das neue Modul wurde mit `-Wall -Wextra -Werror` gebaut; SHA256
+`425dc49231bbdd88ec5c61b5730fcbe6798a41d3e8fec46a1a64c5bb9f89c378`.
+31 Unit-Tests bestanden auf Mac und ARM64. H.264-Limited-Range-Regression auf
+dem Portal: 150 Transfers/Draws/Freigaben, keine übrigen Leases, Exit 0.
+Für den gesonderten Range-Test wurden im temporären Linux-Container zwei
+äquivalente synthetische HEVC-Testmuster mit Full-/Limited-Range erzeugt,
+ohne Zielpakete zu installieren. Iris → NV12-DMA-BUF → Electron lieferte
+jeweils 60 Frames mit passendem Farbraum, vollständiger Freigabe und Exit 0.
+21 RGB-Testpunkte unterscheiden sich um höchstens zwei Kanalstufen;
+diese einmaligen Readbacks dienen nur der Farbprüfung. Temporäre Encoder-
+Container und das dafür erstellte Image wurden entfernt.
+
+Die getrennte Instanz `bridge-fullrange-20261004` läuft mit dieser Korrektur.
+GFN-Hardwareausgabe, GFN-HEVC, CPU-Einsparung und Audio-Sync bleiben bis zu
+ihren jeweiligen eigenen Tests unbestätigt.
+Evidenz: [validation-fullrange-odin.json](../experiments/dmabuf/validation-fullrange-odin.json).
 
 Die neue H264-Schnittstelle kompiliert mit `-Wall -Wextra -Werror`; 24 Unit-
 Tests bestehen. Nach Wiederherstellung des SSH-Zugangs bestand die lokale

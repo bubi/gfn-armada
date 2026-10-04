@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <math.h>
+#include "color-space.h"
 
 #define MAX_LEASES 8
 typedef struct { GstSample *sample; uint32_t id; } Lease;
@@ -151,7 +152,7 @@ static napi_value pull_frame(napi_env env, napi_callback_info info) {
   GstVideoInfoDmaDrm drm; gst_video_info_dma_drm_init(&drm);
   GstVideoMeta *meta=gst_buffer_get_video_meta(buffer);
   gsize plane_size[GST_VIDEO_MAX_PLANES]; guint heights[GST_VIDEO_MAX_PLANES];
-  const char *invalid=NULL;char color_error[200];
+  const char *invalid=NULL,*color_range=NULL;char color_error[200];
   if(!gst_video_info_dma_drm_from_caps(&drm,gst_sample_get_caps(sample)) ||
      drm.drm_fourcc!=gst_video_dma_drm_fourcc_from_format(GST_VIDEO_FORMAT_NV12) || drm.drm_modifier!=0)
     invalid="Only explicitly negotiated linear NV12 DMA-BUF is supported";
@@ -163,11 +164,8 @@ static napi_value pull_frame(napi_env env, napi_callback_info info) {
           meta->width!=(guint)GST_VIDEO_INFO_WIDTH(&drm.vinfo) ||
           meta->height!=(guint)GST_VIDEO_INFO_HEIGHT(&drm.vinfo) || gst_buffer_get_video_crop_meta(buffer))
     invalid="Unsupported crop or padded frame geometry";
-  else if(drm.vinfo.colorimetry.matrix!=GST_VIDEO_COLOR_MATRIX_BT709 ||
-          drm.vinfo.colorimetry.primaries!=GST_VIDEO_COLOR_PRIMARIES_BT709 ||
-          drm.vinfo.colorimetry.transfer!=GST_VIDEO_TRANSFER_BT709 ||
-          drm.vinfo.colorimetry.range!=GST_VIDEO_COLOR_RANGE_16_235) {
-    g_snprintf(color_error,sizeof(color_error),"First prototype requires negotiated limited-range BT.709 (range=%u matrix=%u transfer=%u primaries=%u)",
+  else if(!(color_range=bridge_bt709_range(&drm.vinfo.colorimetry))) {
+    g_snprintf(color_error,sizeof(color_error),"Bridge requires negotiated BT.709 with limited or full range (range=%u matrix=%u transfer=%u primaries=%u)",
       (unsigned)drm.vinfo.colorimetry.range,(unsigned)drm.vinfo.colorimetry.matrix,
       (unsigned)drm.vinfo.colorimetry.transfer,(unsigned)drm.vinfo.colorimetry.primaries);
     invalid=color_error;
@@ -202,7 +200,7 @@ static napi_value pull_frame(napi_env env, napi_callback_info info) {
   set(env,texture,"visibleRect",rect); set(env,texture,"handle",handle);
   napi_value color=object(env);
   set(env,color,"matrix",string(env,"bt709")); set(env,color,"primaries",string(env,"bt709"));
-  set(env,color,"transfer",string(env,"bt709")); set(env,color,"range",string(env,"limited"));
+  set(env,color,"transfer",string(env,"bt709")); set(env,color,"range",string(env,color_range));
   set(env,texture,"colorSpace",color);
   if(GST_BUFFER_PTS_IS_VALID(buffer)) set(env,texture,"timestamp",number(env,GST_BUFFER_PTS(buffer)/1000));
   b->leases[slot]=(Lease){sample,++b->next_id};
