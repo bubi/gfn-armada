@@ -3,7 +3,8 @@
 Stand: 2026-10-04. Ziel: Odin 2 Portal, Linux aarch64, ArmadaOS.
 Das Repository war bei Beginn leer. Inzwischen sind GFN-Spielstart und
 Controller auf dem Portal bestätigt; HEVC-Iris-Decoding ist in einem getrennten
-GStreamer-Test nachgewiesen. Hardwaredecode im GFN-Stream bleibt unbestätigt.
+GStreamer-Test bis Wayland-DMA-BUF nachgewiesen. Der aktuelle GFN-H.264-Stream
+nutzt nach nativen Statistiken FFmpeg-Softwaredecode; GFN-HEVC bleibt offen.
 Die aktuellen Decoderadapter-Optionen stehen in
 [streamer-options.md](streamer-options.md). Die originale GFN-Web-App bleibt
 die Oberfläche; kein Wechsel zum OpenNOW-Client.

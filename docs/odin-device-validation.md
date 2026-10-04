@@ -151,3 +151,41 @@ Die Nutzerentscheidung bleibt der originale GFN-Webclient. OpenNOW wurde für
 die Untersuchung heruntergeladen und entpackt, aber nicht als Client gestartet.
 Der getrennte erfolgreiche HEVC-Iris-Test bleibt ein Nachweis des Gerätedecoders,
 kein Nachweis für HEVC im GFN-Stream.
+
+## GFN-Decoder eindeutig bestimmt / HEVC bis Wayland
+
+Nach erneutem Verbindungsaufbau wurde der native WebRTC-Internals-Reader mit
+Backup in den originalen Client übertragen und bei beendetem Spielstream
+neu gestartet. Am 2026-10-04 um 10:13:50 UTC meldet er für die GFN-Origin:
+H.264, Decoder **FFmpeg**, `powerEfficientDecoder: false`, 3.260 decodierte
+Frames, 0 Drops, kumulative Decode-Zeit 10,384172 s. Die Seitenstatistik desselben
+Streams bleibt bei Decoder `unknown`, meldet inzwischen 3.338 Frames und
+ca. 3,17 ms mittlere Decode-Zeit. Die Zeitversetzung entsteht durch getrennte
+Statistikintervalle. Damit ist Software-Decoding für diesen echten GFN-Test
+festgestellt; die frühere fehlende native Evidenz ist geschlossen.
+
+Der Encoded-Transform-Smoke-Test besteht nun auch auf Linux ARM64:
+30 weitergereichte synthetische H.264-Frames, 32.766 Bytes, zwei Keyframes,
+30 Annex-B-Startcodes, 43 angezeigte Frames. Keine echten GFN-Frames in diesem
+Test abgegriffen, noch keine native Decoderbrücke implementiert.
+
+Der vorhandene synthetische HEVC-Clip wurde außerdem durch diese Pipeline
+geschickt, mit erfolgreichem EOS und Exit 0:
+
+```sh
+gst-launch-1.0 -v filesrc location=hevc-720p.h265 \
+  ! h265parse ! v4l2h265dec ! waylandsink sync=true
+```
+
+Debug: `GST_DEBUG=v4l2*:4,waylandsink:6,wl*:6`. Das Log bestätigt Iris
+`/dev/video0`, `video/x-raw(memory:DMABuf)` / `DMA_DRM` / `NV12`, 1280×720@30
+und ausdrücklich `created linux_dmabuf wl_buffer`, zwei Planes, anschließend
+direktes Schreiben bestehender `wl_buffer` und `wl_buffer::release`.
+Damit ist für diesen Clip die VPU-Ausgabe bis zur Wayland-DMA-BUF-Übergabe
+belegt. Kein Softwaredecoder oder `videoconvert` in der Pipeline. Das ist
+kein vollständiger Nachweis aller Compositor-/GPU-internen Kopien, kein
+Gamescope-Test und keine visuelle Prüfung jedes Bildes.
+
+Gerätelog: `~/.local/share/gfn-armada-tests/hevc-wayland.log`, lokale Kopie
+`.artifacts/odin/hevc-wayland.log` (unversioniert). HEVC im GFN-Stream und
+DMA-BUF-Import in Electron bleiben getrennte offene Schritte.

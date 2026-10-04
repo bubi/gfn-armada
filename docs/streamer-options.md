@@ -45,6 +45,13 @@ Bilddaten gespeichert. Dieser Test belegt die API im lokalen synthetischen
 Stream, nicht die GFN-Content-Security-Policy, Frameformate anderer Codecs oder
 die Kompatibilität der GFN-Streamerlogik.
 
+Derselbe Test besteht auf dem Portal mit 30 Frames / 32.766 Bytes und
+43 angezeigten Frames. Ein zusätzlicher lokaler HEVC-Test belegt dort Iris →
+NV12-DMA-BUF → Wayland-`wl_buffer`; Details in
+[odin-device-validation.md](odin-device-validation.md). Der tatsächliche
+GFN-H.264-Stream wurde inzwischen mit dem Reader als FFmpeg-Softwaredecode
+identifiziert. Damit sind die lokale Decoderbasis und die Browserlücke getrennt.
+
 Electron 44.5.1 bietet tatsächlich einen Linux-Import für DMA-BUF-Planes:
 [SharedTextureHandle](https://github.com/electron/electron/blob/v44.5.1/docs/api/structures/shared-texture-handle.md)
 beschreibt `nativePixmap` mit FD, Stride, Offset, Größe und Modifier;
@@ -113,11 +120,10 @@ Iris-V4L2-Pfad. Deshalb jetzt kein Browserengine-Wechsel auf diese Basis.
 
 ## Nächster Gerätetest
 
-Der Portalzugriff ist während des experimentellen Blocklistenvergleichs
-abgebrochen. Deshalb fehlen dessen Ergebnis, der reale GFN-Test des neuen
-Statistikreaders und der Linux-Test der Encoded Transform API. Ein ursächlicher
-Zusammenhang mit dem Browser wurde nicht festgestellt. Die Übertragung des
-neuen Readers ins laufende GFN-Bundle ist ebenfalls nicht bestätigt.
-
-Nach Wiederherstellung von SSH erst diese kleinen Tests abschließen, dann
-den GStreamer-Adapter mit synthetischen Frames und DMA-BUF-Import prototypisieren.
+Der Portalzugriff brach während des experimentellen Blocklistenvergleichs
+ab; dessen Ergebnis fehlt weiterhin, ein ursächlicher Zusammenhang mit dem
+Browser wurde nicht festgestellt. Nach Wiederherstellung von SSH wurden
+der Reader im originalen GFN-Client und der Linux-Encoded-Transform-Test
+erfolgreich geprüft. Der nächste Schritt ist der GStreamer-Adapter mit
+synthetischen Frames und Electron-DMA-BUF-Import, anschließend der echte
+GFN-Encoded-Framezugriff. Kein HEVC-Angebot durch Flags vortäuschen.

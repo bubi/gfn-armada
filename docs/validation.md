@@ -68,7 +68,8 @@ Diese Ergänzungen wurden nach Wiederherstellung des SSH-Zugriffs auf das Portal
 übertragen. Der originale GFN-Webclient liefert dort einen laufenden H.264-Stream
 und Controller-Telemetrie. Die 60-Sekunden-Geräteprobe beobachtet GPU-Zugriffe,
 aber keinen Iris-Zugriff; native Decodermetadaten fehlen weiterhin.
-Die konkrete GFN-Decoderinstanz bleibt unbestätigt.
+Dieser frühere Test allein bestimmte die GFN-Decoderinstanz nicht; der spätere
+native Reader hat sie inzwischen als FFmpeg-Softwaredecode identifiziert.
 Quellbefunde: [electron-decoder-investigation.md](electron-decoder-investigation.md).
 
 ## Native WebRTC-Diagnose und Decoderadapter-Versuch
@@ -78,8 +79,9 @@ zusätzlich einen gefilterten Reader für `chrome://webrtc-internals`.
 Der gesonderte synthetische H.264-Smoke-Test besteht auf Mac (VideoToolbox) und
 Portal (FFmpeg); das ist noch kein GFN-Test der neuen Integration.
 Fedora-Chromium .57 liefert im gleichen lokalen Vergleich ebenfalls FFmpeg.
-Der neue Reader wurde wegen erneut unterbrochenem SSH noch nicht bestätigt
-in das laufende Portal-GFN-Bundle integriert.
+Nach zwischenzeitlichem SSH-Ausfall wurde der neue Reader mit Backup in das
+Portal-GFN-Bundle integriert und im echten GFN-Spiel bestätigt: FFmpeg,
+Effizienzflag false, 3.260 Frames, 0 Drops im dokumentierten Snapshot.
 
 Die lokalen optionalen GUI-Tests ohne Login oder externe Streamserver:
 
@@ -88,8 +90,8 @@ Die lokalen optionalen GUI-Tests ohne Login oder externe Streamserver:
 ./node_modules/.bin/electron tests/smoke-encoded-transform.cjs
 ```
 
-Der Encoded-Transform-Test besteht am Mac mit 30 durchgereichten H.264-Frames
-und Annex-B-Startcodes. Er untersucht nur den komprimierten Framezugriff; kein
+Der Encoded-Transform-Test besteht am Mac und Portal mit je 30 durchgereichten
+H.264-Frames und Annex-B-Startcodes. Er untersucht nur den Framezugriff; kein
 nativer Decoder, DMA-BUF-Import oder HEVC darin implementiert.
 Die Begrenzungen und nächste Versuchsarchitektur sind in
 [streamer-options.md](streamer-options.md) dokumentiert.
@@ -98,12 +100,25 @@ Der Linux-ARM64-Containerbuild wurde mit diesen Änderungen erneut erfolgreich
 ausgeführt: 21/21 Tests, Packaging für Electron 44.5.1. Bundle-Export erfolgreich.
 Ein zu früh parallel zum Export begonnener Archivversuch scheiterte an einem
 Datei-Timeout; nach beendetem Export wurde das Archiv erfolgreich neu erzeugt.
-Aktuelles unversioniertes `dist/gfn-armada-0.1.0-linux-arm64.tar.gz`:
+Zwischenarchiv `dist/gfn-armada-0.1.0-linux-arm64.tar.gz` (inzwischen ersetzt):
 
 ```text
 d022d019c042c7c0370c280a58b7fabeb0313fed1c0c6a31857d966728489f2b
 ```
 
-Das Archiv enthält den neuen Reader; das installierte Portal-Bundle ist nicht
-auf diesen Archivstand aktualisiert. Keine HEVC- oder Hardwaredecode-Fähigkeit
-wird durch erfolgreiches Packaging behauptet.
+Dieser Zwischenbuild enthielt den Reader. Nach anschließender konservativer
+Softwareklassifikation wurden 22/22 Tests auf Mac und im Linux-ARM64-Container
+bestanden und das Bundle erneut gebaut. Das Export-Script überträgt jetzt ein
+Tar über den Container-Datenstrom statt per macOS-VM-Bind-Mount zu kopieren.
+Die laufende Portal-Instanz meldet FFmpeg bereits in `nativeWebRTC`; die neue
+`hardwareDecoderActive: no`-Zusammenfassung gilt erst nach Neustart. Keine
+HEVC- oder Hardwaredecode-Fähigkeit wird durch Packaging behauptet.
+
+Aktuelles Archiv mit 22-Test-Build und konservativer Softwareklassifikation:
+
+```text
+ad67b21a08d90b3bb027b6cf371fad9fb6fc50c413a82bf7411dfd2c1ccb8d9f
+```
+
+Die aktualisierten Clientdateien sind mit Backups auf dem Portal für den
+nächsten Start bereitgestellt; das laufende Spiel wurde dafür nicht neu gestartet.

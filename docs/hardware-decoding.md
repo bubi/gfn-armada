@@ -5,10 +5,14 @@ Die versionsgenaue Electron-/Chromium-Untersuchung steht in
 Sie identifiziert den standardmäßig ausgeschalteten V4L2-Buildpfad und die
 explizite HEVC-Ablehnung im stateful Decoder von Chromium 152 und aktuellem main.
 
-Stand: 2026-10-04. HEVC-VPU-Decoding mit DMA-BUF-Ausgang ist auf dem Portal
-für einen synthetischen GStreamer-Testclip nachgewiesen. AV1, der GPU-/Wayland-
-Import und Hardwaredecodierung im GFN-Client bleiben unbestätigt.
-`diagnostics` gibt deshalb für den Clientpfad weiterhin `unknown` aus.
+Stand: 2026-10-04. HEVC-VPU-Decoding bis zur Wayland-DMA-BUF-Übergabe ist auf dem
+Portal für einen synthetischen GStreamer-Testclip nachgewiesen. Der aktuelle
+GFN-H.264-Spielstream wurde dagegen eindeutig als **FFmpeg-Softwaredecode**
+bestimmt. HEVC im GFN-Stream, AV1, Gamescope und der Electron-DMA-BUF-Import
+bleiben unbestätigt. Die neue Diagnose klassifiziert eindeutig gemeldetes
+FFmpeg-Softwaredecode als `no`; sie leitet aus Plattformnamen/Effizienzflags
+keinen Qualcomm-Hardwareerfolg ab. Historische Snapshots können noch `unknown`
+enthalten; Zeitpunkt und `nativeWebRTC`-Beleg prüfen.
 Weder GPU-Rendering noch niedrige CPU-Last allein beweisen Hardware-Decoding.
 
 ## Armada-Stack aus dem Quellcode

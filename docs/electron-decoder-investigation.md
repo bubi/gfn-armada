@@ -5,11 +5,12 @@
 Die Hauptlücke liegt sehr wahrscheinlich im ausgelieferten Chromium-Decoderbackend,
 nicht in fehlender Iris-Unterstützung des Geräts. Außerdem fehlt im betrachteten
 stateful Chromium-Backend eine konkrete HEVC-Implementierung. Die genaue
-Decoderinstanz des GFN-H.264-Streams ist weiterhin nicht festgestellt. Nach
-Wiederherstellung von SSH wurden Geräte-FD-Proben im GFN-Stream durchgeführt;
-der anschließend ergänzte native Statistikreader ist in isolierten lokalen
-WebRTC-Tests auf Mac und Portal validiert. Vor seiner Integration in die laufende
-GFN-Sitzung brach SSH erneut ab. Siehe die Ergebnisse weiter unten.
+Decoderinstanz des aktuellen GFN-H.264-Streams ist inzwischen eindeutig
+**FFmpeg**: der neue native Statistikreader wurde nach wiederhergestelltem SSH
+im originalen Client validiert. Der laufende Stream meldete 3.260 decodierte
+Frames, 0 Drops und `powerEfficientDecoder: false`. Der getrennte HEVC-Test
+belegt Iris → NV12-DMA-BUF → Wayland. Details und Zeitstempel in
+[odin-device-validation.md](odin-device-validation.md).
 
 Die bisherigen GStreamer- und GFN-Tests sind in
 [odin-device-validation.md](odin-device-validation.md) getrennt dokumentiert.
@@ -138,8 +139,13 @@ PeerConnections mit eigenem temporären Profil. Ergebnisse vom 2026-10-04:
 | Electron 44.5.1 / Portal | `FFmpeg`, Effizienzflag false, 80 Frames, 0 Drops | Softwaredecoder für diesen synthetischen Test nachgewiesen; aktive GFN-Instanz noch separat prüfen |
 | Fedora Chromium 154.0.8037.57-1.fc44 / Portal | `FFmpeg`, Effizienzflag false, 31 Frames, 0 Drops | GL-Vergleich mit `AcceleratedVideoDecodeLinuxGL`; Hardwareprofile leer, Video-Feature `disabled_software` |
 
-21/21 Unit-Tests bestehen. Die neuen lokalen Smoke-Tests ersetzen keine
-vollständige GFN-Login-/Spiel-/Beendigungsprüfung der neuen Integration.
+Nach Ergänzung der konservativen Softwareklassifikation bestehen 22/22
+Unit-Tests. Die neuen lokalen Smoke-Tests ersetzen keine vollständige
+GFN-Login-/Spiel-/Beendigungsprüfung; der Reader wurde zusätzlich im echten
+GFN-Spiel geprüft. Die laufende Instanz enthält noch die ursprüngliche
+`hardwareDecoderActive: unknown`-Zusammenfassung; ihr `nativeWebRTC` meldet
+bereits eindeutig FFmpeg. Die aktualisierte Zusammenfassung greift beim
+nächsten Start. Keine aktive Spielsitzung dafür unterbrechen.
 
 ## Fertiges Fedora-Binary als Vergleich
 
@@ -169,10 +175,11 @@ Alternative Decoder-/Streamerwege: [streamer-options.md](streamer-options.md).
 
 ## Nächster kontrollierter Versuch
 
-1. Portal wieder erreichen, den neuen WebRTC-Internals-Reader übertragen, Stream
-   mit XWayland und Media-Diagnostik starten; das bestehende Profil weiter nutzen.
-2. Native Decoderangaben mit Streamzeitstempel und Device-FD-Samples korrelieren.
-   V4L2-Queueaktivität ist für einen echten Hardwarebeweis stärker als ein FD.
+1. Der Reader im originalen GFN-Client ist geprüft: FFmpeg-Softwaredecode.
+   Mit diesem Vergleichsstand den nativen Decoderadapter vorbereiten.
+2. Bei zukünftiger Hardwareausgabe native Decoderangaben mit Streamzeitstempel
+   und Device-FD-Samples korrelieren. V4L2-Queueaktivität ist für einen echten
+   Hardwarebeweis stärker als ein FD.
 3. Den vorbereiteten Fedora-Vergleich eingrenzen: warum sind die gemeldeten
    Decodeprofile leer? Fedora/Flatpak/ARM64 allein beweist kein VPU-Decoding.
 4. Parallel den kleinen Decoderadapter-Versuch aus `streamer-options.md` prüfen.
