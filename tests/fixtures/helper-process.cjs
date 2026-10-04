@@ -5,6 +5,7 @@ const mode=process.argv[2];
 const reader=new Reader(message=>{
   if(message.kind==='stop'){output.end(encode({kind:'closed',decoded:0,draws:0,released:0,outstanding:0}),()=>process.exit(0));return;}
   if(mode==='invalid-control'){output.write(encode({kind:'ack',sequence:'bad',accepted:true}));return;}
+  if(mode==='delayed-ack'){setTimeout(()=>output.write(encode({kind:'ack',sequence:message.sequence,accepted:true})),60);return;}
   if(message.sequence===2) return; // Intentionally leave one request pending for the death test.
   output.write(encode({kind:'ack',sequence:message.sequence,accepted:true}));
 });

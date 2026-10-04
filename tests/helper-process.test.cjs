@@ -26,3 +26,14 @@ test('helper startup deadline is enforced for a non-ready process',async()=>{
   await assert.rejects(helper.prepared,/readiness timeout/);await exit;
   assert.ok(events.some(e=>e.reason==='helper-readiness-timeout'));
 });
+
+test('helper queue telemetry measures ACK delay, bounded high water and drain',async()=>{
+  const {helper,exit}=fixture('delayed-ack');await helper.prepared;
+  const bytes=Buffer.from([0,0,0,1,0x65]);
+  const first=helper.push({sequence:1},bytes),second=helper.push({sequence:2},bytes);
+  assert.equal(helper.metrics().pending,2);assert.equal(helper.metrics().pendingBytes,10);
+  assert.deepEqual(await Promise.all([first,second]),[true,true]);
+  const m=helper.metrics();assert.equal(m.highWater,2);assert.equal(m.ackCount,2);
+  assert.ok(m.ackMaxMs>=40);assert.equal(m.pending,0);assert.equal(m.oldestMs,0);
+  helper.stop();await exit;
+});

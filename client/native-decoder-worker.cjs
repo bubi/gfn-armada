@@ -15,9 +15,10 @@ parentPort.on('message',message=>{
     if(message.kind==='stop'){stopping=true;clearInterval(timer);finish();return;}
     if(stopping) return;
     if(message.kind==='push') {
+      const started=performance.now();
       const accepted=bridge.pushFrame(Buffer.from(message.bytes),message.timestampUs,message.key);
       if(accepted) streamStarted=true;
-      parentPort.postMessage({kind:'ack',sequence:message.sequence,accepted});
+      parentPort.postMessage({kind:'ack',sequence:message.sequence,accepted,nativePushMs:performance.now()-started});
       if(!accepted) failure('native-compressed-queue-overflow');
     }
   }catch(error){failure(error.message);}

@@ -10,8 +10,9 @@ app.setPath('userData',profile);app.setPath('sessionData',profile);
 const input=new Socket({fd:3,readable:true,writable:false}),output=new Socket({fd:4,readable:false,writable:true});
 let worker,window,stopping=false,finished=false,closeTimer,exitTimer,sequence=0,inflightBytes=0,decoded=0,draws=0,released=0,lastFrameAt=null;
 const leases=new Set(),pending=new Map();
-let colorSpace=null;
-const snapshot=()=>({decoded,draws,released,outstanding:leases.size,lastFrameAt,colorSpace});
+let colorSpace=null,highWater=0,ackCount=0,ackMaxMs=0,nativePushMaxMs=0;
+const queueMetrics=()=>({stage:"helper-worker",pending:pending.size,pendingBytes:inflightBytes,highWater,ackCount,ackMaxMs,oldestMs:pending.size?performance.now()-pending.values().next().value.at:0,nativePushMaxMs});
+const snapshot=()=>({decoded,draws,released,outstanding:leases.size,lastFrameAt,colorSpace,queueMetrics:queueMetrics()});
 function send(message){if(!finished) output.write(encode(message));}
 function closeWindow(){clearTimeout(closeTimer);if(window&&!window.isDestroyed()) window.destroy();}
 function finish(){
@@ -43,7 +44,7 @@ const reader=new Reader((message,bytes)=>{
     !Number.isFinite(message.timestampUs)||message.timestampUs<0||message.timestampUs>9007199254740||
     bytes.length<4||bytes.length>2097152||bytes[0]!==0||bytes[1]!==0||!(bytes[2]===1||(bytes[2]===0&&bytes[3]===1))) throw new Error('Invalid helper packet');
   if(pending.size>=8||inflightBytes+bytes.length>4194304) throw new Error('Helper compressed queue overflow');
-  sequence++;pending.set(sequence,bytes.length);inflightBytes+=bytes.length;
+  sequence++;pending.set(sequence,{bytes:bytes.length,at:performance.now()});inflightBytes+=bytes.length;highWater=Math.max(highWater,pending.size);
   worker.postMessage({kind:'push',sequence,bytes,timestampUs:message.timestampUs,key:message.key});
 });
 input.on('data',chunk=>{try{reader.feed(chunk);}catch(error){fail(error.message);}});
@@ -77,7 +78,8 @@ app.whenReady().then(async()=>{
   worker.on('message',async message=>{
     if(message.kind==='ready'){send({kind:'ready'});}
     else if(message.kind==='ack'){
-      if(pending.has(message.sequence)){inflightBytes-=pending.get(message.sequence);pending.delete(message.sequence);send(message);}
+      if(pending.has(message.sequence)){const item=pending.get(message.sequence);ackCount++;ackMaxMs=Math.max(ackMaxMs,performance.now()-item.at);
+        if(Number.isFinite(message.nativePushMs)&&message.nativePushMs>=0) nativePushMaxMs=Math.max(nativePushMaxMs,message.nativePushMs);inflightBytes-=item.bytes;pending.delete(message.sequence);send(message);}
     }else if(message.kind==='failed') fail(message.reason);
     else if(message.kind==='closed') finish();
     else if(message.kind==='opened') send({kind:'opened',device:message.device});

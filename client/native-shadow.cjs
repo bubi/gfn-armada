@@ -6,14 +6,27 @@ function attachNativeShadow({app,ipcMain,source,addon,report,localTest=false}) {
   if((!localTest&&(process.platform!=='linux'||process.arch!=='arm64'))||!path.isAbsolute(addon)) throw new Error('Native shadow requires Linux ARM64 and an absolute addon path');
   let helper,starting,stopped=false,generation,sequence=0,inflight=0,inflightBytes=0,previous,pts=0;
   let decoded=0,draws=0,released=0,outstanding=0,lastFrameAt=null,helperExited=false,helperExitSignal=null,helperExitCode=null,lastNativeError=null,colorSpace=null;
+  const queueStages={};let stoppedQueues=null;
+  function rememberMetrics(m){
+    if(!m||!["tap","preload","helper-worker"].includes(m.stage)) return;
+    const clean={stage:m.stage};
+    for(const key of ["pending","pendingBytes","highWater","ackCount","ackMaxMs","oldestMs","nativePushMaxMs"]){
+      if(m[key]===undefined&&key==="nativePushMaxMs") continue;
+      if(!Number.isFinite(m[key])||m[key]<0||m[key]>1e9) return;clean[key]=m[key];
+    }
+    if(!Number.isInteger(clean.pending)||clean.pending>8||!Number.isInteger(clean.highWater)||clean.highWater>8||clean.pendingBytes>4194304) return;
+    queueStages[m.stage]=clean;
+  }
+  const queues=()=>stoppedQueues||({...queueStages,...(helper?{"helper-pipe":helper.metrics()}:{}),supervisor:{pending:inflight,pendingBytes:inflightBytes}});
+  let lastProgressReport=0;
   const trusted=event=>{
     try{return event.sender===source&&event.senderFrame===source.mainFrame&&new URL(event.senderFrame.url).origin==='https://play.geforcenow.com';}catch{return false;}
   };
   const evidence=(status,reason)=>report({status,reason,timestamp:new Date().toISOString(),lastFrameAt,mode:'isolated-parallel-shadow',codec:'H264',
     helperPid:helper?.pid,helperExited,helperExitSignal,helperExitCode,lastNativeError,negotiatedColorSpace:colorSpace,encodedFrames:sequence,decodedTransfers:decoded,rendererDraws:draws,releasedSamples:released,outstanding,
-    originalBrowserDecodeEnabled:true,hardwareDecoderActive:'unknown'});
+    queueMetrics:queues(),originalBrowserDecodeEnabled:true,hardwareDecoderActive:'unknown'});
   function stop(reason='stopped') {
-    if(stopped) return;stopped=true;helper?.stop();evidence('stopped',reason);
+    if(stopped) return;stoppedQueues=queues();stopped=true;helper?.stop();evidence('stopped',reason);
   }
   async function start(){
     const profile=fs.mkdtempSync(path.join(os.tmpdir(),'gfn-native-helper-'));
@@ -38,7 +51,8 @@ function attachNativeShadow({app,ipcMain,source,addon,report,localTest=false}) {
         }
         decoded=message.decoded;draws=message.draws;released=message.released;outstanding=message.outstanding;
         lastFrameAt=typeof message.lastFrameAt==='string'?message.lastFrameAt:null;
-        if(message.kind==='closed') evidence('closed');else if(decoded&&decoded%30===0) evidence('transferring');
+        rememberMetrics(message.queueMetrics);
+        if(message.kind==='closed') evidence('closed');else if(decoded&&performance.now()-lastProgressReport>=1000){lastProgressReport=performance.now();evidence('transferring');}
       }else if(message.kind==='exit'){
         helperExited=true;helperExitSignal=message.signal;helperExitCode=message.code;
         // OS reclaims the helper's FDs; this does not count as sample release.
@@ -69,7 +83,9 @@ function attachNativeShadow({app,ipcMain,source,addon,report,localTest=false}) {
     }catch{stop('invalid-packet-or-startup-failed');return false;}
     finally{if(heldBytes){inflight--;inflightBytes-=heldBytes;}}
   });
-  const onStatus=(event,reason)=>{
+  const onStatus=(event,reason,metrics)=>{
+    if(trusted(event)) rememberMetrics(metrics);
+    if(trusted(event)&&reason==="queue-metrics") return;
     if(trusted(event)&&['compressed-queue-overflow','unsupported-access-unit','tap-copy-failed','transform-ended','track-ended'].includes(reason)){stop(reason);return;}
     if(trusted(event)&&reason==='probe-receiver-ended'){
       if(sequence) stop('track-ended');else report({status:reason,hardwareDecoderActive:'unknown'});
@@ -87,7 +103,7 @@ function attachNativeShadow({app,ipcMain,source,addon,report,localTest=false}) {
   const gone=()=>stop('source-renderer-gone'),destroyed=()=>stop('source-destroyed');
   source.on('render-process-gone',gone);source.on('did-start-navigation',navigation);source.once('destroyed',destroyed);
   return {prepare:()=>{starting ||=start();return starting;},stop,
-    snapshot:()=>({sequence,decoded,draws,released,outstanding,stopped,helperPid:helper?.pid,helperExited,helperExitSignal,helperExitCode,lastNativeError,negotiatedColorSpace:colorSpace}),
+    snapshot:()=>({queueMetrics:queues(),sequence,decoded,draws,released,outstanding,stopped,helperPid:helper?.pid,helperExited,helperExitSignal,helperExitCode,lastNativeError,negotiatedColorSpace:colorSpace}),
     inspectTestOutput:()=>{if(!localTest) throw new Error('Pixel readback is restricted to the local test');return helper.inspect();},
     crashTestHelper:()=>{if(!localTest) throw new Error('Fault injection is restricted to the local test');helper.killForTest('SIGSEGV');},
     dispose:()=>{

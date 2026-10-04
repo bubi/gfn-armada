@@ -302,3 +302,35 @@ Keyframe-Recovery und erst dann ein experimenteller Ersatz der Browserausgabe.
 Quellen: [W3C Encoded Transform](https://www.w3.org/TR/webrtc-encoded-transform/),
 [GStreamer appsrc](https://gstreamer.freedesktop.org/documentation/app/appsrc.html),
 [Electron SharedTexture](https://github.com/electron/electron/blob/v44.5.1/docs/api/shared-texture.md).
+
+### Queue-/ACK-Messung (2026-10-04)
+
+`queueMetrics` erfasst je Stufe die aktuelle Paket-/Bytebelegung, den
+Paket-Höchststand, bestätigte Pakete, die maximale ACK-Rundlaufzeit und
+das Alter des ältesten offenen Pakets. Die Tap- und Preload-Zähler sind
+validierte, weiterhin untrusted Beobachtungen aus dem Renderer.
+Helper-Pipe und Helper-Worker messen jeweils mit ihrem lokalen monotonen
+Zeitgeber. `nativePushMaxMs` misst die Dauer der nativen Annahme von
+komprimierten Paketen, **keine Decode-Latenz**. ACK bedeutet Annahme,
+keinen fertig decodierten oder präsentierten Frame. Die Messbereiche
+überlappen; ihre Maxima dürfen nicht addiert werden.
+
+Tap/Preload melden höchstens einmal pro Sekunde; Helper-Statistiken werden
+mit den bestehenden Kontrollsnapshots übertragen. Fortschrittslogs werden
+höchstens einmal pro Sekunde gespeichert, statt bei jedem wiederholten
+Snapshot eines durch 30 teilbaren Framezählers. Ein Abbruch bewahrt den
+letzten Queue-Snapshot vor dem Aufräumen. Tap/Preload/Helper-Worker-Werte
+können wegen der Stichproben älter sein; die Pipe-/Supervisorbelegung
+wird beim Stop direkt erfasst. Grenzen bleiben acht Pakete / 4 MiB;
+keine Delta-Frames werden still verworfen und Originalframes werden
+weitergereicht. Keine Bilddaten, FDs oder Sitzungsinformationen im Export.
+
+32 Tests bestanden auf Mac und Portal, einschließlich verzögertem ACK,
+Queue-Höchststand und vollständigem Drain. Die isolierte ARM64-Instanz
+`bridge-queues-20261004` bestand den synthetischen Iris-H264-Test mit
+150 Transfers/Draws/Freigaben, null offenen Leases und Exit 0.
+Tap-Höchststand 3 Pakete, Tap-ACK-Maximum ca. 11,9 ms;
+Helper-Pipe-Maximum ca. 7,95 ms und native Paketannahme ca. 0,37 ms.
+Dies ist ein synthetischer 1280×720-Test und erklärt den bisherigen
+GFN-Abbruch noch nicht. Modul und native Pipeline bleiben unverändert.
+Der echte GFN-Test dieser Instrumentierung steht noch aus.

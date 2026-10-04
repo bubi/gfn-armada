@@ -40,32 +40,39 @@ if(location.origin==='https://play.geforcenow.com') {
   // Enabled only by Main's explicit native-shadow option. Remote data stays untrusted.
   let pendingEncoded=0,pendingBytes=0,encodedEnabled=false,statusSecond=0,statusCount=0;
   const bufferLength=Object.getOwnPropertyDescriptor(ArrayBuffer.prototype,'byteLength').get;
-  const sendStatus=reason=>{
+  let highWater=0,ackCount=0,ackMaxMs=0,lastMetrics=0;
+  const pendingTimes=new Map();
+  const queueMetrics=()=>({stage:"preload",pending:pendingEncoded,pendingBytes,highWater,ackCount,ackMaxMs,oldestMs:pendingTimes.size?performance.now()-pendingTimes.values().next().value:0});
+  const sendStatus=(reason,metrics)=>{
     const second=Math.floor(Date.now()/1000);
     if(second!==statusSecond){statusSecond=second;statusCount=0;}
-    if(typeof reason==='string' && reason.length<100 && statusCount++<8) ipcRenderer.send('native-shadow-status',reason);
+    if(typeof reason==='string' && reason.length<100 && statusCount++<8) ipcRenderer.send('native-shadow-status',reason,metrics);
   };
   window.addEventListener('message',async event=>{
     if(event.source!==window || event.origin!==location.origin) return;
     if(!encodedEnabled) return;
     const data=event.data;
     if(data?.type==='gfn-armada-encoded-status') {
-      sendStatus(data.reason);
+      sendStatus(data.reason,data.metrics);
       return;
     }
     if(data?.type!=='gfn-armada-encoded') return;
-    if(data.kind==='status'){sendStatus(data.reason);return;}
+    if(data.kind==='status'){sendStatus(data.reason,data.metrics);return;}
     if(data.kind!=='frame' || typeof data.generation!=='string' || data.generation.length!==36) return;
     let byteLength;try{byteLength=bufferLength.call(data.bytes)}catch{return;}
     if(!byteLength || byteLength>2097152) return;
-    if(pendingEncoded>=8 || pendingBytes+byteLength>4194304){sendStatus('compressed-queue-overflow');return;}
-    pendingEncoded++;pendingBytes+=byteLength;
+    if(pendingEncoded>=8 || pendingBytes+byteLength>4194304){sendStatus('compressed-queue-overflow',queueMetrics());return;}
+    pendingEncoded++;pendingBytes+=byteLength;highWater=Math.max(highWater,pendingEncoded);
+    const started=performance.now(),token={};pendingTimes.set(token,started);
     let accepted=false;
     try{
       accepted=await ipcRenderer.invoke('native-shadow-packet',{generation:data.generation,sequence:data.sequence,
         timestamp:data.timestamp,key:data.key,bytes:new Uint8Array(data.bytes)});
     }catch{}finally{
-      pendingEncoded--;pendingBytes-=byteLength;window.postMessage({type:'gfn-armada-encoded-feedback',generation:data.generation,sequence:data.sequence,accepted},location.origin);
+      ackCount++;ackMaxMs=Math.max(ackMaxMs,performance.now()-started);pendingTimes.delete(token);
+      pendingEncoded--;pendingBytes-=byteLength;
+      if(performance.now()-lastMetrics>=1000){lastMetrics=performance.now();sendStatus("queue-metrics",queueMetrics());}
+      window.postMessage({type:'gfn-armada-encoded-feedback',generation:data.generation,sequence:data.sequence,accepted},location.origin);
     }
   });
   ipcRenderer.invoke('native-shadow-bootstrap').then(source=>{

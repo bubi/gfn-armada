@@ -9,10 +9,14 @@ function installEncodedTap() {
       const transformer=event.transformer, generation=transformer.options.generation;
       let pendingBytes=0, enabled=true, started=false, sequence=0,observed=0,codecReported=false;
       const pending=new Map();
-      const report=reason=>postMessage({kind:'status',generation,reason});
+      let highWater=0,ackCount=0,ackMaxMs=0,lastMetrics=0;
+      const metrics=()=>({stage:"tap",pending:pending.size,pendingBytes,highWater,ackCount,ackMaxMs,oldestMs:pending.size?performance.now()-pending.values().next().value.at:0});
+      const report=reason=>postMessage({kind:'status',generation,reason,metrics:metrics()});
       onmessage=e=>{
         if(e.data?.kind==='ack' && pending.has(e.data.sequence)){
-          pendingBytes-=pending.get(e.data.sequence);pending.delete(e.data.sequence);
+          const item=pending.get(e.data.sequence);ackMaxMs=Math.max(ackMaxMs,performance.now()-item.at);ackCount++;
+          pendingBytes-=item.bytes;pending.delete(e.data.sequence);
+          if(performance.now()-lastMetrics>=1000){lastMetrics=performance.now();report("queue-metrics");}
         }
         if(e.data?.kind==='disable') enabled=false;
       };
@@ -42,7 +46,7 @@ function installEncodedTap() {
               if(!annex || bytes.length>2097152 || full) {
                 enabled=false; report(full?'compressed-queue-overflow':'unsupported-access-unit');
               } else {
-                pending.set(++sequence,bytes.length);pendingBytes+=bytes.length;const copy=frame.data.slice(0);
+                pending.set(++sequence,{bytes:bytes.length,at:performance.now()});highWater=Math.max(highWater,pending.size);pendingBytes+=bytes.length;const copy=frame.data.slice(0);
                 postMessage({kind:'frame',generation,sequence,timestamp:metadata.rtpTimestamp??frame.timestamp,key:frame.type==='key',bytes:copy},[copy]);
               }
             }
