@@ -64,6 +64,9 @@ macOS-Electron-Smoke-Test mit Media-Diagnostik bestätigt zunächst Seitenladung
 und Telemetrie, scheitert aber an sauberer Beendigung; nach Korrektur der
 GPU-Update-Rückkopplung überschreitet ein weiterer Versuch das Startzeitlimit.
 Die neue GUI-Diagnostik ist damit noch nicht vollständig validiert.
-Diese Ergänzungen sind noch nicht auf das derzeit per SSH unerreichbare Portal
-übertragen. Die konkrete GFN-Decoderinstanz bleibt deshalb unbestätigt.
+Diese Ergänzungen wurden nach Wiederherstellung des SSH-Zugriffs auf das Portal
+übertragen. Der originale GFN-Webclient liefert dort einen laufenden H.264-Stream
+und Controller-Telemetrie. Die 60-Sekunden-Geräteprobe beobachtet GPU-Zugriffe,
+aber keinen Iris-Zugriff; native Decodermetadaten fehlen weiterhin.
+Die konkrete GFN-Decoderinstanz bleibt unbestätigt.
 Quellbefunde: [electron-decoder-investigation.md](electron-decoder-investigation.md).

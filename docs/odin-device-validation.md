@@ -129,3 +129,25 @@ Lokales unversioniertes VPU-Testlog: `.artifacts/odin/hevc-v4l2.log`.
 Geräteseitige Testdaten: `~/.local/share/gfn-armada-tests/`.
 Chromium-Debuglogs können Seitenmeldungen enthalten und müssen vor Weitergabe
 auf personenbezogene Daten geprüft werden; keine Auth-Logs committen.
+
+## Laufende Decoderdiagnose am 2026-10-04
+
+SSH ist wieder erreichbar. Die ergänzte Diagnose läuft im ursprünglichen
+GFN-Webclient unter XWayland, Electron 44.5.1 / Chromium 152.0.7977.130.
+Um 09:39 UTC meldet der Stream H.264, 12.157 decodierte Frames, 0 gemeldete
+Drops und ca. 5,10 ms kumulative mittlere Decode-Zeit. Der Controller meldet
+Standard-Mapping, 17 Buttons und 4 Achsen.
+
+Eine 60-Sekunden-Probe zwischen 09:35:31 und 09:36:31 UTC liest die zugänglichen
+Dateideskriptoren der Clientprozesse alle 250 ms. Beobachtet wird
+`/dev/dri/renderD128`, kein `/dev/video*` oder `/dev/media*`. Das zeigt GPU-Zugriff,
+aber keinen beobachteten Zugriff auf Iris. Die Probe kann kurzlebige Zugriffe
+oder Zugriffe anderer Prozesse übersehen und beweist allein kein Software-Decoding.
+Weder WebRTC noch die optionale CDP-Media-Diagnose liefern bislang einen
+konkreten Decodernamen. `hardwareDecoderActive` und GFN-DMA-BUF bleiben `unknown`.
+Auch Chromiums Featurestatus `video_decode: enabled` ist kein Hardwarebeweis.
+
+Die Nutzerentscheidung bleibt der originale GFN-Webclient. OpenNOW wurde für
+die Untersuchung heruntergeladen und entpackt, aber nicht als Client gestartet.
+Der getrennte erfolgreiche HEVC-Iris-Test bleibt ein Nachweis des Gerätedecoders,
+kein Nachweis für HEVC im GFN-Stream.
