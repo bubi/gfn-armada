@@ -62,6 +62,10 @@ if(cfg&&request?.resolved) {
       win=new BrowserWindow({width:1280,height:720,title:'gfn-armada',backgroundColor:'#111111',fullscreen:cfg.fullscreen&&request.command==='launch',webPreferences:prefs});
       win.setMenu(null);
       if(process.env.GFN_ARMADA_MEDIA_DIAGNOSTICS==='1') {
+        const disposeInternals=require('./webrtc-internals.cjs').attachWebRTCInternals(BrowserWindow,data=>{
+          runtime.nativeWebRTC=data;save();log('native-webrtc-decoder',data);
+        });
+        win.on('closed',disposeInternals);
         require('./media-diagnostics.cjs').attachMediaDiagnostics(win.webContents,data=>{
           runtime.nativeMedia=runtime.nativeMedia||{};
           if(data.playerId) runtime.nativeMedia[data.playerId]=data.properties;

@@ -5,6 +5,22 @@ const os=require('node:os');
 const path=require('node:path');
 const {processVideo}=require('../launcher/process-video.cjs');
 const {decoderProperties}=require('../client/media-diagnostics.cjs');
+const {videoReports}=require('../client/webrtc-internals.cjs');
+test('native WebRTC stats export video decoder evidence without session identifiers',()=>{
+  const result=videoReports([
+    ['video',{type:'inbound-rtp',kind:'video',codecId:'codec',decoderImplementation:'FFmpeg',
+      powerEfficientDecoder:false,framesDecoded:100,framesDropped:0,totalDecodeTime:0.1,
+      timestamp:1000,trackIdentifier:'secret-track',ssrc:123}],
+    ['codec',{mimeType:'video/H264',sdpFmtpLine:'private-sdp'}],
+    ['audio',{type:'inbound-rtp',kind:'audio',decoderImplementation:'audio'}],
+    ['candidate',{type:'local-candidate',address:'192.168.1.198'}],
+  ]);
+  assert.equal(result.length,1);assert.equal(result[0].decoder,'FFmpeg');
+  assert.equal(result[0].powerEfficientDecoder,false);
+  assert.equal(/secret|private|192\.168|ssrc|codecId/.test(JSON.stringify(result)),false);
+  assert.deepEqual(videoReports(null),[]);
+  assert.equal(videoReports([['v',{type:'inbound-rtp',kind:'video',framesDecoded:NaN}]])[0].decoder,'unknown');
+});
 test('device access probe includes child runtime FDs without leaking unrelated paths',t=>{
   const root=fs.mkdtempSync(path.join(os.tmpdir(),'gfn-proc-'));t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
   for(const [pid,exe] of [['100','gfn-armada-electron'],['101','unrelated']]) {
