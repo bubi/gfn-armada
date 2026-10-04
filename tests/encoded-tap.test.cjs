@@ -76,10 +76,15 @@ for(const [reason,bytes,annexB] of [
   ['empty-access-unit',new Uint8Array(0),0],
   ['non-annexb-access-unit',Uint8Array.from([0x41,1]),0],
   ['oversized-access-unit',new Uint8Array(2097153),0]
-]) test(`tap identifies ${reason} without exporting payload bytes`,async()=>{
-  const {messages}=await burst(false,bytes);
+]) test(`tap recovers from ${reason} on a parameter-set keyframe without exporting payload bytes`,async()=>{
+  const {messages,keyframeRequests}=await burst(true,bytes,20);
   const status=messages.find(m=>m.reason===reason);
   assert.ok(status);assert.equal(status.metrics.accessUnitBytes,bytes.length);
   assert.equal(status.metrics.annexB,annexB);assert.equal(status.bytes,undefined);
-  assert.equal(messages.filter(m=>m.kind==='frame').length,3);
+  const copied=messages.filter(m=>m.kind==='frame');
+  assert.equal(copied.length,23);assert.equal(copied[3].key,true);
+  assert.ok(keyframeRequests>=2);assert.equal(status.metrics.resyncing,1);
+  const resumed=messages.find(m=>m.reason==='queue-resync-resumed');
+  assert.equal(resumed.metrics.dropped,17);assert.equal(resumed.metrics.resyncCount,1);
+  assert.equal(resumed.metrics.resyncing,0);
 });

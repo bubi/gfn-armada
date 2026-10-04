@@ -585,3 +585,42 @@ Exit 0. Dieser Mock-Test belegt weiterhin keine native Burst-Toleranz.
 Der korrigierte Stand ist für den nächsten echten GFN-Test bereitgestellt;
 Stabilität und Glitch-Rate müssen dabei noch gemessen werden.
 Evidenz: [validation-staging-odin.json](../experiments/dmabuf/validation-staging-odin.json).
+
+### Nicht unterstützte Access-Units als Resync behandeln (2026-10-04)
+
+Der GFN-Test des Staging-Fixes lieferte 2.457 H264-Iris-Transfers/Draws/
+Freigaben und stoppte dann mit `non-annexb-access-unit`: 467 Byte, kein
+Startcode an der erwarteten Position. Kein Queue-Overflow, Tap-Höchststand
+3 und zuletzt 13,7 ms ACK-Maximum. Die konkrete alternative Framing-Struktur
+ist weiterhin unbekannt; es wurden keine Payloads gespeichert. Der Helper
+beendete sich mit Exit 0 und null Leases. Der Hauptprozess PID 186999 lebte
+beim Audit noch; danach gemessene Browserstats meldeten 4.046 H264-Frames
+mit FFmpeg und null Drops. Protokolliert ist somit die native Abschaltung,
+kein Hauptprozess-SIGSEGV.
+
+Der Tap behandelt nun auch leere, zu große und nicht mit dem erwarteten
+Startcode beginnende Access-Units als Lücke im nativen Pfad: Originalframes
+weiterreichen, betroffene native Kopie und abhängige Delta-Frames zählen
+und auslassen, best effort einen Keyframe anfordern und erst bei einem
+Annex-B-Keyframe mit SPS/PPS wieder aufnehmen. Kein geratenes Präfix und
+keine angenommene AVCC-Konvertierung. Die erste Fehlermeldung beim Eintritt
+in den Resync bleibt erhalten; wiederholte problematische Frames erzeugen
+keinen Meldungsstorm. `resyncing` (0/1), `resyncCount` und `dropped` zeigen
+Wartezustand und Umfang der Lücke. Bestehende Queue-Grenzen bleiben gleich.
+Main behandelt diese drei Meldungen informativ und stoppt weiter bei
+Codecwechsel, ungültigem Transport, voller Staging-Queue oder nativen Fehlern.
+
+38 Tests bestehen auf Mac und ARM64. Die Worker-Regression provoziert alle
+drei Formate, wartet bis Frame 20 und bestätigt anschließend die Aufnahme
+auf einem Parameter-Set-Keyframe: 17 gezählte ausgelassene Kopien, sämtliche
+40 Originalframes identisch und in Reihenfolge. Ein echter Electron-Port-
+Test mit Mockdecoder bestätigt, dass Main nach diesen Resync-Meldungen
+aktiv bleibt; 60 ACKs kamen während der ersten 150 ms einer 300-ms-Seiten-
+Blockade zurück. Separater lokaler Iris-Test: 151 Transfers/Draws/Freigaben,
+null Leases, Exit 0. Dieser normale lokale Stream enthält keine Lücke und
+belegt deshalb keine Hardware-Recovery nach einem tatsächlichen GFN-Fehler.
+Ohne einen passenden nächsten Keyframe kann das native Fenster weiter
+stehen bleiben. GFN-Keyframe-Anforderung, Wartezeit, mögliche Decoder-
+Artefakte ohne Flush und tatsächliche Wiederaufnahme müssen im nächsten
+GFN-Test gemessen werden. HEVC und Decoder-Ersatz bleiben unbestätigt.
+Evidenz: [validation-bitstream-resync-odin.json](../experiments/dmabuf/validation-bitstream-resync-odin.json).

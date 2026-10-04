@@ -11,9 +11,13 @@ function installEncodedTap() {
       const pending=new Map();
       let highWater=0,ackCount=0,ackMaxMs=0,lastMetrics=0,yieldCount=0,yieldMaxMs=0,accessUnitBytes=0,annexB=0;
       let resyncing=false,dropped=0,resyncCount=0;
-      const metrics=()=>({stage:"tap",pending:pending.size,pendingBytes,highWater,ackCount,ackMaxMs,yieldCount,yieldMaxMs,accessUnitBytes,annexB,dropped,resyncCount,oldestMs:pending.size?performance.now()-pending.values().next().value.at:0});
+      const metrics=()=>({stage:"tap",pending:pending.size,pendingBytes,highWater,ackCount,ackMaxMs,yieldCount,yieldMaxMs,accessUnitBytes,annexB,dropped,resyncCount,resyncing:resyncing?1:0,oldestMs:pending.size?performance.now()-pending.values().next().value.at:0});
       const report=reason=>{port.postMessage({kind:'status',generation,reason,metrics:metrics()});
         if(['encoded-frame-observed','transform-ended-before-stream'].includes(reason)) postMessage({kind:'lifecycle',reason});};
+      const resync=reason=>{
+        if(resyncing) return;resyncing=true;resyncCount++;report(reason);
+        transformer.sendKeyFrameRequest?.().catch(()=>{});
+      };
       port.onmessage=e=>{
         if(e.data?.kind==='ack' && pending.has(e.data.sequence)){
           const item=pending.get(e.data.sequence);ackMaxMs=Math.max(ackMaxMs,performance.now()-item.at);ackCount++;
@@ -49,14 +53,15 @@ function installEncodedTap() {
             }
             if(started) {
               if(!annex || bytes.length>2097152) {
-                enabled=false; report(bytes.length===0?'empty-access-unit':bytes.length>2097152?'oversized-access-unit':'non-annexb-access-unit');
+                // Never guess a different bitstream format or pass dependent deltas after a gap.
+                dropped++;resync(bytes.length===0?'empty-access-unit':bytes.length>2097152?'oversized-access-unit':'non-annexb-access-unit');
               } else {
                 // Congestion is recoverable. A burst can fill the window faster than any
                 // acknowledgement can return, so resynchronise at the next parameter-set
                 // keyframe instead of ending the bridge. Every dropped frame is counted,
                 // never silently discarded, and the original frame is still forwarded.
                 const full=pending.size>=8 || pendingBytes+bytes.length>4194304;
-                if(full && !resyncing){resyncing=true;resyncCount++;report('queue-overflow-resync');transformer.sendKeyFrameRequest?.().catch(()=>{});}
+                if(full) resync('queue-overflow-resync');
                 if(full || (resyncing && !(frame.type==='key' && parameterSets()))) dropped++;
                 else {
                   if(resyncing){resyncing=false;report('queue-resync-resumed');}

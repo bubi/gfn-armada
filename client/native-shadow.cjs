@@ -12,8 +12,8 @@ function attachNativeShadow({app,ipcMain,source,addon,report,localTest=false}) {
   function rememberMetrics(m){
     if(!m||!["tap","preload","helper-worker"].includes(m.stage)) return;
     const clean={stage:m.stage};
-    for(const key of ["pending","pendingBytes","highWater","ackCount","ackMaxMs","oldestMs","nativePushMaxMs","yieldCount","yieldMaxMs","accessUnitBytes","annexB","dropped","resyncCount"]){
-      if(m[key]===undefined&&["nativePushMaxMs","yieldCount","yieldMaxMs","accessUnitBytes","annexB","dropped","resyncCount"].includes(key)) continue;
+    for(const key of ["pending","pendingBytes","highWater","ackCount","ackMaxMs","oldestMs","nativePushMaxMs","yieldCount","yieldMaxMs","accessUnitBytes","annexB","dropped","resyncCount","resyncing"]){
+      if(m[key]===undefined&&["nativePushMaxMs","yieldCount","yieldMaxMs","accessUnitBytes","annexB","dropped","resyncCount","resyncing"].includes(key)) continue;
       if(!Number.isFinite(m[key])||m[key]<0||m[key]>1e9) return;clean[key]=m[key];
     }
     if(!Number.isInteger(clean.pending)||clean.pending>8||!Number.isInteger(clean.highWater)||clean.highWater>8||clean.pendingBytes>4194304) return;
@@ -126,13 +126,13 @@ function attachNativeShadow({app,ipcMain,source,addon,report,localTest=false}) {
   const onStatus=(event,reason,metrics)=>{
     if(trusted(event)) rememberMetrics(metrics);
     if(trusted(event)&&reason==="queue-metrics") return;
-    if(trusted(event)&&['compressed-queue-overflow','unsupported-access-unit','empty-access-unit','oversized-access-unit','non-annexb-access-unit','tap-copy-failed','transform-ended','track-ended'].includes(reason)){stop(reason);return;}
+    if(trusted(event)&&['compressed-queue-overflow','unsupported-access-unit','tap-copy-failed','transform-ended','track-ended'].includes(reason)){stop(reason);return;}
     if(trusted(event)&&reason==='probe-receiver-ended'){
       if(sequence) stop('track-ended');else report({status:reason,hardwareDecoderActive:'unknown'});
       return;
     }
     if(trusted(event) && ['negotiated-codec-not-h264','encoded-transform-unavailable','worker-unavailable-or-csp-blocked','encoded-channel-unavailable'].includes(reason)){stop(reason);return;}
-    if(trusted(event) && ['hook-installed','attached-encoded-shadow','negotiated-h264','encoded-frame-observed','waiting-inband-parameter-sets','negotiated-codec-not-h264','existing-transform-preserved','encoded-transform-unavailable','worker-unavailable-or-csp-blocked','keyframe-request-unavailable','queue-overflow-resync','queue-resync-resumed'].includes(reason)) report({status:reason,hardwareDecoderActive:'unknown'});
+    if(trusted(event) && ['hook-installed','attached-encoded-shadow','negotiated-h264','encoded-frame-observed','waiting-inband-parameter-sets','negotiated-codec-not-h264','existing-transform-preserved','encoded-transform-unavailable','worker-unavailable-or-csp-blocked','keyframe-request-unavailable','queue-overflow-resync','queue-resync-resumed','empty-access-unit','oversized-access-unit','non-annexb-access-unit'].includes(reason)) report({status:reason,queueMetrics:queues(),hardwareDecoderActive:'unknown'});
     else if(trusted(event)) stop('encoded-tap-ended-or-overloaded');
   };
   ipcMain.on('native-shadow-status',onStatus);
