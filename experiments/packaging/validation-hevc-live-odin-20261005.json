@@ -1,0 +1,127 @@
+{
+  "observedAt": "2026-10-05T17:21:32.704505+00:00",
+  "sourceCommit": "2d9ec5c",
+  "appimageSha256": "63f08923c13fdf3199c0e89f8d61972ff7be3322ffde5fa0b9ed491520444093",
+  "driverSha256": "d4708081ceacaafabd78194d3a27c48b86a097ac990140c411802d6b25484251",
+  "nativeWebRTC": {
+    "status": "sampled",
+    "timestamp": 1791220889952,
+    "streams": [
+      {
+        "codec": "video/H265",
+        "decoder": "ExternalDecoder (VaapiVideoDecoder)",
+        "powerEfficientDecoder": true,
+        "framesDecoded": 7638,
+        "framesDropped": 67,
+        "totalDecodeTime": 28.507157,
+        "statsTimestamp": 1791220889342.579,
+        "frameWidth": 1680,
+        "frameHeight": 1050,
+        "framesPerSecond": 60,
+        "meanDecodeMs": 3.7322803089814087,
+        "intervalMeanDecodeMs": 5.01638333333337,
+        "intervalFramesDecoded": 60,
+        "intervalMs": 993.043212890625,
+        "meanJitterBufferMs": 3.7270412719013626
+      }
+    ]
+  },
+  "hevcExperiment": {
+    "enabled": true,
+    "events": [
+      {
+        "event": "installed",
+        "receiveHevc": true
+      },
+      {
+        "event": "server-offer",
+        "codecs": [
+          "H264"
+        ]
+      },
+      {
+        "event": "answer-created",
+        "codecs": [
+          "H264"
+        ]
+      },
+      {
+        "event": "server-offer",
+        "codecs": []
+      },
+      {
+        "event": "server-offer",
+        "codecs": []
+      },
+      {
+        "event": "answer-created",
+        "codecs": []
+      },
+      {
+        "event": "answer-created",
+        "codecs": []
+      },
+      {
+        "event": "server-offer",
+        "codecs": [
+          "H264",
+          "AV1",
+          "H265"
+        ]
+      },
+      {
+        "event": "answer-preferred"
+      },
+      {
+        "event": "answer-created",
+        "codecs": [
+          "H265",
+          "H264",
+          "AV1"
+        ]
+      }
+    ]
+  },
+  "gpuSandboxDisabled": false,
+  "requestedOzone": "wayland",
+  "decoderSessionOpens": [
+    {
+      "codec": "HEVC",
+      "codedWidth": 1920,
+      "codedHeight": 1088,
+      "irisNode": true
+    },
+    {
+      "codec": "HEVC",
+      "codedWidth": 1696,
+      "codedHeight": 1056,
+      "irisNode": true
+    }
+  ],
+  "irisCopyGpuReturns": 7850,
+  "irisDropReturns": 54,
+  "traceSpanMs": 130730,
+  "errorMarkers": {
+    "OUTPUT dequeue error": 0,
+    "CAPTURE dequeue error": 0,
+    "VIDIOC_QBUF failed": 0,
+    "VIDIOC_DQBUF failed": 0,
+    "decode failed": 0,
+    "decode error": 0
+  },
+  "deviceOwners": [
+    {
+      "pid": 85166,
+      "gpuProcess": true,
+      "devices": [
+        "/dev/dri/renderD128",
+        "/dev/video0"
+      ]
+    }
+  ],
+  "video0Name": "qcom-iris-decoder",
+  "gamescope": false,
+  "hardwareDecodeEvidence": "native H265/VaapiVideoDecoder plus HEVC Iris session openings, successful GPU-copy publications and GPU process holding qcom-iris-decoder",
+  "visualCorrectness": "not independently confirmed",
+  "scope": "Live snapshots and counters differ in scope; resolution changed; not a fixed-resolution benchmark or long-term stability test; zero-copy not proven"
+}

@@ -1,5 +1,18 @@
 # PoC results and open work — 2026-10-05
 
+## Latest: original GFN HEVC hardware path verified (2026-10-05)
+
+The opt-in HEVC experiment yielded native `video/H265` / `ExternalDecoder
+(VaapiVideoDecoder)` and 7,850 Iris GPU-copy returns over ~131 seconds. GPU
+process holds `qcom-iris-decoder`; HEVC session opens recorded, sandbox enabled,
+six inspected decoder/ioctl error indicators zero. [Evidence](../experiments/packaging/validation-hevc-live-odin-20261005.json).
+Resolution changed (1080p → 1680×1050/60); mean decode ~3.73 ms is not a fixed-
+resolution or end-to-end latency benchmark. Visual correctness, prolonged
+stability, zero-copy, Gamescope and AV1 remain unverified for this HEVC test.
+The WebRTC preference hook ran; no CloudMatch request rewrite was observed.
+Windows identity was active, but its necessity is untested. Earlier entries
+below describe prior H.264 tests and the pre-experiment HEVC state.
+
 **AI-generated, human-guided, unmaintained research snapshot.** Results apply to tested combinations, not every ArmadaOS image or future NVIDIA client.
 
 ## Device evidence
@@ -33,7 +46,7 @@ Catalog import retains original GFN login, reads all pages before updating mappi
 1. Complete AppImage acceptance testing: persistent-login lifecycle, image artifacts/pixel correctness, detailed controller behavior, Steam/FEX process tracking, overlay and Gamescope. Basic game/gamepad operation is now user-confirmed on KDE/Wayland.
 2. Real account catalog import/direct launch for Steam/Epic/GOG/Xbox. Routes/schema may change; store/login dialogs may require input.
 3. Repeat native H.264 evidence with bundled driver; measure longer stability, CPU load and latency. Flags alone do not prove hardware use.
-4. **HEVC:** verify NVIDIA negotiation and Chromium WebRTC support separately from Iris capability. No original GFN HEVC stream validated.
+4. **HEVC:** first original GFN VPU stream now validated; test visual correctness, longer stability, fixed resolution and whether Windows identity is necessary. Keep preference opt-in until those checks.
 5. **AV1:** Linux/SteamOS GFN configuration disabled it in the inspected snapshot; actual stream/decoder path unproven. Investigate after HEVC.
 6. Zero-copy, artwork downloads, automatic Steam Input/overlay bindings and stale shortcut removal.
 7. Original-code license/publication hygiene; review pending native bridge changes before declaring a reproducible source/release snapshot.

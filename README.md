@@ -38,7 +38,8 @@ Snapshot **2026-10-05**. [Evidence and remaining work](docs/poc-status.md).
 |---|---|
 | Original GFN client | Earlier Odin sessions streamed games; Xbox controller recognition observed. Persistent Chromium profile implemented. |
 | H.264 hardware decode | Original GFN stream: Chromium `VaapiVideoDecoder` and **14,484 Iris CAPTURE frames** over about 234 seconds; no observed driver errors/browser drops. **GPU copy**, not validated zero-copy. Visual correctness and long-term reliability remain unverified. |
-| HEVC / AV1 | **No validated GFN hardware stream.** Synthetic local HEVC decoding is a separate experiment. |
+| HEVC | **First original GFN hardware stream verified with opt-in experiment:** native H.265/VA-API plus 7,850 Iris GPU-copy returns over ~131 seconds. Short test; no zero-copy or Gamescope claim. [Evidence](experiments/packaging/validation-hevc-live-odin-20261005.json). |
+| AV1 | No validated GFN hardware stream. |
 | ARM64 AppImage | Built with pinned Electron and patched Iris driver, notices and modified driver source. Container smoke tests passed. **Now tested on Odin KDE/Wayland:** user reports game and gamepad working; successful Iris hardware-path returns recorded. Gamescope remains untested. |
 | Catalog → Steam | Steam/Epic/GOG/Xbox import and guarded shortcut sync implemented. Public schema checked; account import and Steam writes tested with fixtures. **Real authenticated import and Gaming Mode flow remain untested.** |
 
@@ -95,6 +96,13 @@ GFN_ARMADA_BROWSER_IDENTITY=windows ./gfn-armada-0.1.0-aarch64.AppImage --appima
 ```
 
 This changes the session User-Agent, GFN-page `navigator.platform`/User-Agent Client Hints and matching request hints on `play.geforcenow.com`. It retains the actual Chromium version and CPU architecture in high-entropy hints. Workers are not overridden; this is not complete OS emulation. GPU identity, receive codecs and MediaCapabilities results remain untouched. Diagnostics record requested mode and observed page identity matches. No claim that this enables H.265; the original NVIDIA eligibility rules still apply. See [HEVC follow-up](docs/hevc-follow-up-2026-10-05.md).
+
+**Opt-in HEVC experiment:** `GFN_ARMADA_HEVC_EXPERIMENT=1` prefers H.265 from
+actual server offers while retaining H.264. The first Odin test used Windows
+identity, Wayland and the bundled Iris adapter. Native Chromium H.265 statistics,
+HEVC Iris session opens and successful VPU frame returns agree. No CloudMatch
+request rewrite was observed, so only the WebRTC preference step is evidenced.
+The UI may still report Unsupported. See [scope and measurements](docs/hevc-follow-up-2026-10-05.md).
 
 ## Build and try
 

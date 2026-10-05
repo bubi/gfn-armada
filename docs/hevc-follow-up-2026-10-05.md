@@ -1,5 +1,32 @@
 # HEVC follow-up — 2026-10-05
 
+## First original GFN HEVC hardware stream verified
+
+The opt-in negotiation experiment succeeded on 2026-10-05. The
+[live evidence](../experiments/packaging/validation-hevc-live-odin-20261005.json)
+records native Chromium `video/H265`, `ExternalDecoder (VaapiVideoDecoder)`,
+7,638 decoded browser frames and 7,850 Iris `publish=copy-gpu` returns over a
+130.73-second trace span. The client GPU process holds `/dev/video0`, named
+`qcom-iris-decoder`; driver session openings explicitly name HEVC. GPU sandbox
+remains enabled. No matches for the six listed decoder/ioctl error indicators.
+
+The real server offer includes H.264, AV1 and H.265; the WebRTC preference hook
+runs and the answer places H.265 first. **No `request-preferred` event was
+observed:** success does not prove the CloudMatch body hook ran or was needed.
+No original SDK eligibility flag was changed. Windows identity was also active;
+its independent necessity has not been tested. Do not infer that the original
+UI now exposes HEVC, or make the option default on this evidence alone.
+
+Native dimensions change from 1920×1080 to 1680×1050 at 60 FPS. Iris coded buffer
+sizes are 1920×1088 and 1696×1056. Snapshot mean decode time is 3.73 ms, with
+67 browser drops and 54 driver drop publications; counts have different scopes.
+This is a short live hardware-path validation, not a fixed-resolution comparison,
+end-to-end latency measurement, pixel correctness check or long-term test.
+Output remains GPU-copy, not validated zero-copy. Gamescope/AV1 remain untested.
+
+The following sections retain the investigation sequence and earlier limitations;
+the earlier statements of no GFN HEVC stream describe the pre-experiment state.
+
 ## What we know
 
 - The current original GFN session negotiates **H.264**; the user reports no H.265 option in its settings.

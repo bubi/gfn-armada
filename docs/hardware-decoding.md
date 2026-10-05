@@ -1,5 +1,12 @@
 # Hardware-Decoding: Evidenz, Lücken und Prüfplan
 
+**Update 2026-10-05:** the original GFN WebRTC stream now has a first HEVC
+hardware-path validation through Chromium VA-API and the patched Iris adapter:
+[measurement](../experiments/packaging/validation-hevc-live-odin-20261005.json),
+[experiment and limits](hevc-follow-up-2026-10-05.md). This is the VA-API adapter
+path, not Chromium's direct stateful V4L2 decoder. GPU-copy output; Gamescope,
+zero-copy and AV1 remain unverified. Earlier dated analysis below is retained.
+
 Die versionsgenaue Electron-/Chromium-Untersuchung steht in
 [electron-decoder-investigation.md](electron-decoder-investigation.md).
 Sie identifiziert den standardmäßig ausgeschalteten V4L2-Buildpfad und die
