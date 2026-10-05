@@ -1,0 +1,53 @@
+{
+  "date": "2026-10-05T16:16:40.013675+00:00",
+  "scope": "Live original GFN session with packaged AppImage; partial observation, not final session accounting",
+  "appimageSha256": "e736cacdba65a4e8b4802fa84a666168343a310984b0dedbfbf7a20e99261b70",
+  "driverSha256": "d4708081ceacaafabd78194d3a27c48b86a097ac990140c411802d6b25484251",
+  "gpuSandboxDisabled": false,
+  "requestedOzone": "wayland",
+  "captureTraceCount": 7610,
+  "copyGpuReturns": 7602,
+  "dropReturns": 8,
+  "irisErrorCount": 0,
+  "traceSpanSeconds": 126.749,
+  "h264SyntaxSample": [
+    "h264 syntax nal=5 first_mb=0 slice_type=2 pps_id=15 va_type=2 va_l0=0 va_l1=0 refs=4 frame_num=0 poc_type=2 offset_bits=42 entropy=1 transform8=1",
+    "h264 syntax nal=1 first_mb=0 slice_type=0 pps_id=15 va_type=0 va_l0=0 va_l1=0 refs=4 frame_num=1 poc_type=2 offset_bits=42 entropy=1 transform8=1",
+    "h264 syntax nal=1 first_mb=0 slice_type=0 pps_id=15 va_type=0 va_l0=1 va_l1=0 refs=4 frame_num=2 poc_type=2 offset_bits=44 entropy=1 transform8=1",
+    "h264 syntax nal=1 first_mb=0 slice_type=0 pps_id=15 va_type=0 va_l0=2 va_l1=0 refs=4 frame_num=3 poc_type=2 offset_bits=41 entropy=1 transform8=1"
+  ],
+  "nativeWebRTCStatsEnabled": false,
+  "browserDecoderAndDropCounters": "Native decoder identity unavailable; page reports 51 drops in recorded snapshot",
+  "hevcStreamValidated": false,
+  "humanVisualValidation": "User reports game running; not pixel-accuracy or artifact-free validation",
+  "gamescopeTested": false,
+  "pageReportedStreamSnapshot": {
+    "codec": "video/H264",
+    "decoder": "unknown",
+    "framesDecoded": 7558,
+    "framesDropped": 51,
+    "totalDecodeTime": 24.764202,
+    "meanDecodeMs": 3.2765549087060064
+  },
+  "browserH265CapabilityAdvertised": true,
+  "gfnH265Setting": "User reports option absent; negotiation/server policy cause unconfirmed",
+  "note": "Driver CAPTURE count and page statistics have different scopes; driver drops and browser drops must not be equated. Trace span can include stream reinitialization.",
+  "followupErrorCheck": {
+    "outputErrors": 0,
+    "captureErrorMarkers": 0,
+    "capturePublishErrors": 0,
+    "captureMisplaced": 0
+  },
+  "deviceIdentity": {
+    "videoDevice": "/dev/video0",
+    "name": "qcom-iris-decoder",
+    "driver": "qcom-iris",
+    "openByClientPid": 63992,
+    "nativeShadowEnabled": false
+  },
+  "controllerValidation": {
+    "source": "human user report",
+    "result": "gamepad works in the active game",
+    "scope": "basic gameplay; not exhaustive layout, rumble, overlay or hotplug validation"
+  }
+}

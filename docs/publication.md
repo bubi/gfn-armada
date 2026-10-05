@@ -4,7 +4,7 @@ Suggested GitHub description:
 
 > AI-generated, unmaintained PoC: original GeForce NOW web client on ArmadaOS ARM64, experimental Qualcomm Iris decoding and Steam integration.
 
-Publish source, attribution, patches and sanitized evidence. Label any eventual binary release **experimental**: current AppImage has container validation, not device acceptance. No GitHub repository/release was published during this documentation preparation.
+Publish source, attribution, patches and sanitized evidence. Label any eventual binary release **experimental**: current AppImage has container validation and a limited Odin KDE/Wayland gameplay test, not full Gaming Mode acceptance. Source is published at [bubi/gfn-armada](https://github.com/bubi/gfn-armada); no binary release has been uploaded.
 
 Before publication:
 

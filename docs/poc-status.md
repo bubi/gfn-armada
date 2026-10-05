@@ -22,13 +22,15 @@ Odin 2 Portal, SM8550 / Snapdragon 8 Gen 2, Adreno 740; ArmadaOS `20261002.43c0c
 - Public NVIDIA schema/pagination checked live: two pages, four guest apps, zero eligible imports. **Not an authenticated library test.**
 
 The ~111 MiB AppImage has SHA256 `e736cacdba65a4e8b4802fa84a666168343a310984b0dedbfbf7a20e99261b70`.
-Bundled driver rebuilt in Debian ARM64 from pinned source plus four patches; successful native GFN measurement used an earlier Fedora-built binary. Same source does not validate the new binary. **Latest AppImage not deployed/tested on the Odin.**
+Bundled driver rebuilt in Debian ARM64 from pinned source plus four patches; successful native GFN measurement used an earlier Fedora-built binary. Same source does not validate the new binary. **Subsequently deployed and tested on Odin KDE/Wayland.**
+
+[Subsequent AppImage device evidence](../experiments/packaging/validation-appimage-live-odin-20261005.json): 7,602 Iris `copy-gpu` publications, eight driver drops, no observed Iris error markers, approximately 127-second trace span. Page reports H.264 and 51 browser drops; counters have different scopes. The user confirms game and gamepad operation, not pixel-accurate or exhaustive controller validation. The client held `/dev/video0` (`qcom-iris-decoder`), GPU sandbox enabled, shadow bridge disabled. Native Chromium decoder stats were not enabled in this run; exclusive browser decoder use remains unconfirmed. H.265 browser capability was advertised but the GFN settings did not offer it. Cause unconfirmed. Gamescope was not active.
 
 Catalog import retains original GFN login, reads all pages before updating mappings and separates store-sync/manual ownership. Only bookmarked and owned store editions enter Steam sync. Writes require Steam closed, preserve foreign shortcuts and create checksummed backups/restore. These paths were tested with temporary data, not actual Steam userdata.
 
 ## Remaining work
 
-1. Exact AppImage device test: startup, persistent login, image correctness, controller, Steam/FEX process tracking, overlay and Gamescope.
+1. Complete AppImage acceptance testing: persistent-login lifecycle, image artifacts/pixel correctness, detailed controller behavior, Steam/FEX process tracking, overlay and Gamescope. Basic game/gamepad operation is now user-confirmed on KDE/Wayland.
 2. Real account catalog import/direct launch for Steam/Epic/GOG/Xbox. Routes/schema may change; store/login dialogs may require input.
 3. Repeat native H.264 evidence with bundled driver; measure longer stability, CPU load and latency. Flags alone do not prove hardware use.
 4. **HEVC:** verify NVIDIA negotiation and Chromium WebRTC support separately from Iris capability. No original GFN HEVC stream validated.
