@@ -96,7 +96,7 @@ The original UI said Unsupported despite available H.265 receive/decoder probes.
 Its public SDK has platform/remote flags, power-efficiency and Windows GPU
 allowlist gates. Windows UA/navigator emulation alone did not enable the UI.
 
-The [OpenNOW source comparison](opennow-evaluation.md#hevc-verhandlung-vergleich-vom-2026-10-05)
+The [OpenNOW source comparison](opennow-evaluation.md#hevc-negotiation-comparison-on-2026-10-05)
 identified a useful pattern in its old Electron version: explicit codec selection
 and WebRTC `setCodecPreferences`. Current Qt OpenNOW uses native NVST/RTSP,
 which is a different architecture. No OpenNOW code was copied in this experiment.

@@ -1,33 +1,33 @@
 # Linux ARM64 build
 
-Der separate, noch nicht kompilierte V4L2-Electron-Sourcebuild ist in
-[electron-v4l2-experiment.md](electron-v4l2-experiment.md) dokumentiert.
-Er verändert den hier beschriebenen normalen Bundle-Build nicht.
+The separate, not yet compiled V4L2 Electron source build is documented in
+[electron-v4l2-experiment.md](electron-v4l2-experiment.md). It does not change
+the ordinary bundle build described here. Dated test results below preserve
+historical snapshots; see [current summary](project-summary-2026-10-05.md).
 
-## Eingaben
+## Inputs
 
-- `package-lock.json` mit exakten npm-Versionen und Integrity-Hashes.
+- `package-lock.json` with exact npm versions and integrity hashes.
 - Electron `44.5.1`, Packager `20.3.0`, TOML `2.2.5`.
-- Containerbasis `node:24.18.0-bookworm-slim` mit Index-Digest
+- Container base `node:24.18.0-bookworm-slim`, index digest
   `sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d`.
-- Linux ARM64-Manifest des Index:
+- Linux ARM64 manifest within that index:
   `sha256:af01d58b748ec92b1d6e8e11429aad424fd1e68c848185399dca0596a1ab8f5c`.
 
-Der Container baut keine eigene Chromium-Version: er paketiert offizielle
-Electron-Linux-ARM64-Binaries und die JS-Anwendung. Downloadverifikation erfolgt
-über den Electron-Downloader mit den Prüfsummen aus dem exakt gepinnten
-Electron-npm-Paket. Ein Cachetreffer wird damit ohne erneuten, potenziell
-hängenden SHASUMS-Netzwerkabruf geprüft. Netzwerk wird beim ersten
-Build benötigt. Input-Reproduzierbarkeit ist vorbereitet; Byte-identische
-Output-Reproduzierbarkeit über zwei kalte Builds ist noch nicht geprüft.
+The container does not build custom Chromium: it packages official Electron
+Linux ARM64 binaries and the JS application. The Electron downloader verifies
+downloads using checksums from the exactly pinned Electron npm package. A cache
+hit is verified without another potentially hanging SHASUMS network request.
+The first build needs network access. Input reproducibility is prepared;
+byte-identical output across two cold builds has not been checked.
 
-Die Build-Scripts legen bei Bedarf zusätzlich einen Linux-ARM64-Electron-Cache
-`gfn-armada-electron-cache:44.5.1` an. `Containerfile.electron-cache` verwendet
-denselben Lockfile-Stand und die Prüfsummen des gepinnten Electron-Pakets.
-Der Bundle-Build übernimmt ausschließlich dessen Downloadcache; kein Benutzer-
-oder Chromium-Profil. So müssen Änderungen am Launcher den großen Runtime-
-Download nicht wiederholen. Direktes `docker build -f build/Containerfile` setzt
-diesen Cache voraus; auf einer neuen Maschine die Build-Scripts verwenden.
+The scripts create a Linux ARM64 Electron cache,
+`gfn-armada-electron-cache:44.5.1`, when needed.
+`Containerfile.electron-cache` uses the same lockfile and pinned Electron
+checksums. The bundle build copies only its download cache, not user or Chromium
+profiles. Launcher changes therefore do not repeat the large runtime download.
+Direct `docker build -f build/Containerfile` requires this cache; use the build
+scripts on a new machine.
 
 ## Apple Silicon
 
@@ -36,87 +36,85 @@ diesen Cache voraus; auf einer neuen Maschine die Build-Scripts verwenden.
 npm test
 ./scripts/build
 ./scripts/build-appimage
-# Podman, bei laufender Linux ARM64 machine:
+# Podman, with its Linux ARM64 machine running:
 CONTAINER_ENGINE=podman ./scripts/build
 ```
 
-Eine laufende Linux-VM/Containerengine ist erforderlich. Das installierte Docker
-CLI allein genügt nicht. Am 2026-10-04 wurde das bereits installierte OrbStack
-mit `open -a OrbStack` gestartet. Docker 28.5.2 meldet `aarch64`; der komplette
-Containerbau mit 14 Tests und Paketexport ist jetzt verifiziert.
-`./scripts/build` zeigt bei einer nicht erreichbaren Engine auch deren ursprüngliche
-Fehlermeldung. Der Packager erzeugt als root zunächst private Ausgabeverzeichnisse;
-der Container macht das distributierbare Bundle vor dem Export lesbar für den
-normalen macOS-Benutzer. Das Systemprofil und Login-Daten sind nicht Teil des Builds.
+A running Linux VM/container engine is required; the Docker CLI alone is not
+enough. On 2026-10-04, the already installed OrbStack was started with
+`open -a OrbStack`. Docker 28.5.2 reported `aarch64`; a complete container build
+with 14 tests and package export was verified.
+`./scripts/build` also shows the engine's original error when unavailable.
+The packager initially creates private output directories as root; before
+export, the container makes the distributable bundle readable by the ordinary
+macOS user. System profiles and login data are not part of the build.
 
-Alternativ ist weiterhin hostseitige Cross-Paketierung möglich:
+Host-side cross-packaging remains available:
 
 ```sh
 ./scripts/package
 ```
 
-Optional `./scripts/archive` erzeugt mit Python 3 ein transportierbares
-`dist/gfn-armada-0.1.0-linux-arm64.tar.gz` plus SHA256-Datei. Die Archivmetadaten
-sind normalisiert; vollständige Byte-Reproduzierbarkeit der gesamten Buildkette
-ist damit noch nicht nachgewiesen.
+Optional `./scripts/archive` uses Python 3 to create a transportable
+`dist/gfn-armada-0.1.0-linux-arm64.tar.gz` and SHA256 file. Archive metadata is
+normalized; this does not establish byte reproducibility of the entire chain.
 
-Diese Cross-Paketierung baut dasselbe Architekturziel, führt den Linux-Client auf macOS aber nicht
-aus und ersetzt keinen erfolgreichen Linux-Containerlauf. Die Packager-Tests
-laufen auf Node; Electron-GUI-Tests sind separat. Kein Containerdaemon wird
-unaufgefordert gestartet oder umkonfiguriert.
+Cross-packaging targets the same architecture but does not run the Linux
+client on macOS or replace a successful Linux container run. Packager tests run
+on Node; Electron GUI tests are separate. Container daemons are not started or
+reconfigured without authorization.
 
-## Packaging-Wahl
+## Packaging choice
 
-Zuerst portables Bundle: kein FUSE nötig, Profil außerhalb des Bundles,
-kein Basissystempaket, direkte Steam-Launch-Datei. Das Bundle enthält den Wrapper
-`gfn-armada`, den Runtimeprozess `gfn-armada-electron` und `resources/app`.
-CLI-Diagnostik läuft über Electron im Node-Modus; Node muss am Ziel nicht
-separat installiert werden. GUI startet mit entfernter `ELECTRON_RUN_AS_NODE`-
-Variable. Das Bundle nicht als root starten. Chromium-Sandbox bleibt eingeschaltet.
-Armada muss die Sandbox unterstützen; Probleme prüfen, nicht einfach abschalten.
+Initially a portable bundle: no FUSE, profile outside the bundle, no base-system
+package, direct Steam launch file. It contains wrapper `gfn-armada`, runtime
+process `gfn-armada-electron`, and `resources/app`. CLI diagnostics run through
+Electron in Node mode; the target needs no separate Node installation. GUI
+launch removes `ELECTRON_RUN_AS_NODE`. Do not run the bundle as root. Chromium's
+sandbox remains enabled. Armada must support it; investigate problems instead
+of simply disabling it.
 
-`./scripts/build-appimage` baut zusätzlich `dist/gfn-armada-0.1.0-aarch64.AppImage`
-und dessen SHA256-Datei. Tool und Type-2-Runtime sind in
-`build/appimage-sources.json` anhand der SHA256-Werte gepinnt; ein abweichender
-Download bricht den Build ab. Die Continuous-URLs können sich ändern; ein
-Update erfordert eine ausdrücklich geprüfte neue Prüfsumme. Der Build-Container
-installiert `file=1:5.44-3`; Debian-Abhängigkeiten stammen aus dem Paketarchiv,
-das derzeit noch nicht auf einen historischen Snapshot gepinnt ist.
-Byte-identische AppImage-Ausgaben sind nicht nachgewiesen.
+`./scripts/build-appimage` additionally produces
+`dist/gfn-armada-0.1.0-aarch64.AppImage` and its SHA256 file. The tool and Type-2
+runtime are pinned by SHA256 in `build/appimage-sources.json`; mismatching
+downloads abort the build. Continuous URLs can change; updates require an
+explicitly verified new checksum. The build container installs `file=1:5.44-3`;
+Debian dependencies come from a package archive not yet pinned to a historical
+snapshot. Byte-identical AppImage output has not been demonstrated.
 
-Start ohne FUSE: `./gfn-armada-0.1.0-aarch64.AppImage --appimage-extract-and-run help`.
-Steam-Sync setzt diesen Runtimeparameter selbst. Profil und Cookies bleiben
-außerhalb des Pakets, das Basissystem wird nicht verändert. Der Iris-VA-API-Treiber
-ist inzwischen enthalten und wird für die erkannte Zielhardware unter Wayland
-ausgewählt; siehe [Decoder-Paketierung](appimage-decoder.md). Die Auswahl meldet
-keinen erfolgreichen Hardwaredecode. Der neue Build muss am Gerät geprüft werden.
-Flatpak bietet Runtimeverteilung, braucht aber sorgfältige
-Video-/DRM-/Controller- und Wayland-Berechtigungen und ein passendes ARM64-SDK.
-Ein Armada-RPM verändert das bootc-System und ist für das erste Experiment
-unnötig. Keine dieser Varianten garantiert Hardware-Decoding.
+Launch without FUSE:
+`./gfn-armada-0.1.0-aarch64.AppImage --appimage-extract-and-run help`.
+Steam sync supplies that runtime argument automatically. Profiles and cookies
+remain outside the package; the base system is unchanged. The Iris VA-API driver
+is now included and selected for detected target hardware under Wayland;
+see [decoder packaging](appimage-decoder.md). Selection is not successful
+hardware-decoding evidence. At this build snapshot, device validation remained
+required. Flatpak supplies runtimes but needs careful video/DRM/controller and
+Wayland permissions and a suitable ARM64 SDK. An Armada RPM modifies the bootc
+system and is unnecessary for the initial experiment. None of these formats
+guarantees hardware decoding.
 
-Zielbibliotheken: glibc, GTK, NSS, ATK, GBM/EGL, Wayland/X11 und ALSA bzw.
-Audiointegration. ABI-/Sandbox-/Treiberprüfung auf Armada steht aus.
-Das Paketieren auf Debian beweist keine Armada-Laufzeitkompatibilität.
+Target libraries: glibc, GTK, NSS, ATK, GBM/EGL, Wayland/X11, ALSA/audio
+integration. ABI/sandbox/driver validation on Armada was outstanding at this
+stage. Packaging on Debian does not prove Armada runtime compatibility.
 
-Runtime-Smokecheck des tatsächlich gebauten AppImage ohne reale Steam-Dateien:
+Runtime smoke test of the actual AppImage without real Steam files:
 
 ```sh
 docker build --platform linux/arm64 -f build/Containerfile.appimage-test -t gfn-armada-appimage-test .
 docker run --rm --platform linux/arm64 gfn-armada-appimage-test
 ```
 
-Dieser Test läuft als unprivilegierter Benutzer und prüft CLI, Diagnose,
-unbekannte Mappings und Review/Apply/Idempotenz/Restore in einer temporären
-Steam-Bibliothek. GUI, Controller, NVIDIA-Anmeldung und Gamescope benötigen den Odin.
+It runs as an unprivileged user and checks CLI, diagnostics, unknown mappings,
+and review/apply/idempotence/restore in a temporary Steam library. GUI,
+controllers, NVIDIA login, and Gamescope require Odin.
 
-Am 2026-10-05 erfolgreich ausgeführt: 48 Unit-Tests auf macOS und Linux ARM64,
-anschließend der tatsächliche AppImage-Runtimecheck als UID 1000. Artefakt-
-Prüfsumme und genaue Testgrenzen stehen in
-[`validation-appimage-20261005.json`](../experiments/packaging/validation-appimage-20261005.json).
-Dieses Paket wurde noch nicht auf dem Odin installiert.
+Successfully run on 2026-10-05: 48 unit tests on macOS and Linux ARM64, followed
+by the actual AppImage runtime check as UID 1000. Artifact checksum and exact
+limits: [validation-appimage-20261005.json](../experiments/packaging/validation-appimage-20261005.json).
+That particular package had not yet been installed on Odin at this snapshot.
 
-## Zieltest
+## Target test
 
 ```sh
 /path/to/gfn-armada-linux-arm64/gfn-armada diagnostics
@@ -124,6 +122,6 @@ Dieses Paket wurde noch nicht auf dem Odin installiert.
 GFN_ARMADA_LOG=debug /path/to/gfn-armada-linux-arm64/gfn-armada launch
 ```
 
-Login persistieren, erneut starten, Controller in einem Stream testen. Erst nach
-expliziter Zuordnung aus Steam starten und anschließend den Decoderpfad gemäß
-[hardware-decoding.md](hardware-decoding.md) nachweisen.
+Persist login, restart, and test controllers in a stream. Launch from Steam
+only after explicit mapping, then establish the decoder path following
+[hardware-decoding.md](hardware-decoding.md).

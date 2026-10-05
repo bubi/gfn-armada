@@ -1,156 +1,151 @@
-# GFN Armada – Zusammenfassung, 2026-10-05
+# GFN Armada – summary, 2026-10-05
 
-**Unmaintained Proof of Concept.** Projektspezifischer Code, lokale Patches und
-Dokumentation wurden zu 100 % durch AI erstellt, unter menschlicher Anleitung
-und mit Tests am Gerät. Drittanbieter-Code stammt von den genannten Autoren
-und behält deren Lizenzen. Keine Zusage für Wartung, Support oder zukünftige
-Kompatibilität; kein offizieller NVIDIA-, AYN- oder ArmadaOS-Client.
+**Unmaintained Proof of Concept.** Project-specific code, local patches and documentation
+were created entirely by AI, under human guidance and with device tests. Third-party
+code belongs to the credited authors and retains their licenses. No commitment to
+maintenance, support or future compatibility; this is not an official NVIDIA, AYN
+or ArmadaOS client.
 
-## Ergebnis
+## Result
 
-Auf dem AYN Odin 2 Portal mit ArmadaOS lässt sich das ARM64-AppImage als
-**Non-Steam-Game „GFN Armada“** aus Steam Gaming Mode starten. Es verwendet
-weiterhin die originale GeForce-NOW-Webanwendung mit persistentem Login.
-Der Nutzer bestätigt Controller-Bedienung und die korrigierte Darstellung
-ohne störenden Fensterrahmen oder Verzerrung.
+The ARM64 AppImage starts as the **“GFN Armada” Non-Steam game** from Steam Gaming
+Mode on the AYN Odin 2 Portal running ArmadaOS. It uses the original GeForce NOW
+web application with persistent login. The user confirms controller operation and
+correct display without a distracting window frame or distortion.
 
-Der finale Lauf meldet **H.265, 1920×1080, 60 FPS und
-`ExternalDecoder (VaapiVideoDecoder)`**. Im aufgezeichneten Snapshot: 9.979
-decodierte Frames, sechs Browser-Drops, mittlere Chromium-Decodezeit 3,53 ms;
-der GPU-Prozess hält `/dev/video0`. Das ist keine Ende-zu-Ende-Latenz und
-kein kontrollierter Performancevergleich. In diesem finalen Lauf wurde kein
-zusätzlicher Treiber-Completion-Trace erfasst. Die früheren HEVC-Traces belegen
-separat erfolgreiche Iris-VPU-Ausgabe.
+The final run reports **H.265, 1920×1080, 60 FPS and
+`ExternalDecoder (VaapiVideoDecoder)`**. The recorded snapshot contains 9,979 decoded
+frames, six browser drops and a mean Chromium decode time of 3.53 ms; the GPU process
+holds `/dev/video0`. This is not end-to-end latency or a controlled performance
+comparison. No additional driver completion trace was captured in this final run.
+Earlier HEVC traces separately establish successful Iris VPU output.
 
-[Finale AppImage-/Steam-Evidenz](../experiments/packaging/validation-steam-client-borderless-odin-20261005.json)
-· [Vorheriger Steam-HEVC-Lauf](../experiments/vaapi-iris/validation-steam-shortcut-hevc-odin-20261005.json)
+[Final AppImage/Steam evidence](../experiments/packaging/validation-steam-client-borderless-odin-20261005.json)
+· [Previous Steam HEVC run](../experiments/vaapi-iris/validation-steam-shortcut-hevc-odin-20261005.json)
 
-## Architektur und Entscheidungen
+## Architecture and decisions
 
-- Electron/Chromium ARM64 lädt die originale NVIDIA-Webanwendung. Kein
-  OpenNOW-Backend, eigener NVIDIA-Login oder vollständiger Chromium-Fork.
-- Login-Profil: `~/.local/share/gfn-armada/chromium`; Konfiguration:
-  `~/.config/gfn-armada/config.toml`; Diagnostik: `runtime.json` im State-Verzeichnis.
-- Der gepatchte Iris-VA-API-Adapter verbindet Chromiums VA-API-Decoder mit
-  Qualcomms **stateful Iris/V4L2**-Decoder. Mesa-GPU-Beschleunigung allein
-  hätte diesen VPU-Pfad nicht hergestellt.
-- Video: GFN → WebRTC → VaapiVideoDecoder → libva/Iris-Adapter → Qualcomm
-  VPU → DMA-BUF/GPU-Kopie → ANGLE GL/Wayland. **Keine validierte Zero-Copy-Ausgabe.**
-- Im getesteten Steam-Start läuft verschachteltes Gamescope innerhalb von
-  Steams Prozessverfolgung. Sein SDL/X11-Ausgabefenster wird von Steam erkannt;
-  Chromium verwendet darin Wayland. Diese zusätzliche Compositor-Stufe ist
-  nicht hinsichtlich Latenz oder Energieverbrauch qualifiziert.
-- Der experimentelle Decoder samt Patches, Quellen und Lizenzmaterial steckt
-  im AppImage; keine systemweite Treiber- oder Kernelinstallation erforderlich.
+- Electron/Chromium ARM64 loads NVIDIA's original web application. No OpenNOW
+  backend, custom NVIDIA login or full Chromium fork.
+- Login profile: `~/.local/share/gfn-armada/chromium`; configuration:
+  `~/.config/gfn-armada/config.toml`; diagnostics: `runtime.json` in the state directory.
+- The patched Iris VA-API adapter connects Chromium's VA-API decoder to Qualcomm's
+  **stateful Iris/V4L2** decoder. Mesa GPU acceleration alone would not establish
+  this VPU path.
+- Video: GFN → WebRTC → VaapiVideoDecoder → libva/Iris adapter → Qualcomm VPU
+  → DMA-BUF/GPU copy → ANGLE GL/Wayland. **Zero-copy output is not validated.**
+- The tested Steam launch runs nested Gamescope inside Steam's process tracking.
+  Steam recognizes its SDL/X11 output window; Chromium uses Wayland inside it.
+  The latency and power consumption of this additional compositor stage have
+  not been qualified.
+- The experimental decoder, patches, sources and license material are included
+  in the AppImage; no system-wide driver or kernel installation is required.
 
-## Quellen, Dank und lokale Treiberpatches
+## Sources, thanks and local driver patches
 
-Besonderer Dank an **[phxinyang/qualcomm-iris-vaapi](https://github.com/phxinyang/qualcomm-iris-vaapi)**:
-Der vorhandene Treiber ist die Grundlage, nicht eine Eigenentwicklung von GFN
-Armada. Pin: `f587b14e6b22955c7250a45ff5f43588bbce2114`.
+Special thanks to **[phxinyang/qualcomm-iris-vaapi](https://github.com/phxinyang/qualcomm-iris-vaapi)**:
+its existing driver is the foundation, not an original GFN Armada implementation.
+Pin: `f587b14e6b22955c7250a45ff5f43588bbce2114`.
 
-Die vier lokalen Patches ergänzen DRM_PRIME_2-Import, begrenzte H.264-Slice-
-Diagnostik, die Erhaltung der tatsächlichen H.264-PPS-ID und eine gemeinsame
-Exp-Golomb-Grenzprüfung gegen einen undefinierten 32-Bit-Shift. Alle Patches
-und ihre Grenzen sind in der [README](../README.md#what-we-patched) erklärt.
+The four local patches add DRM_PRIME_2 import, bounded H.264 slice diagnostics,
+preservation of the actual H.264 PPS ID, and a shared Exp-Golomb bounds check
+against an undefined 32-bit shift. All patches and their limitations are explained
+in the [README](../README.md#what-we-patched).
 
-Warum es anfangs nicht funktionierte:
+Why it initially failed:
 
-1. Electron hatte den erforderlichen direkten Linux-V4L2-Pfad nicht eingebaut;
-   es brauchte den externen VA-API-Adapter.
-2. Chromiums automatische Render-Node-Suche übersah das SoC-Gerät. Der
-   Launcher übergibt den vorhandenen Render-Node ausdrücklich.
-3. X11/default GL verlangte einen nicht implementierten VA-ImageProcessor.
-   Die gemeinsam getestete Kombination Wayland + ANGLE GL ermöglichte den Pfad.
-4. Der Adapter erzeugte PPS 0, während echte GFN-Slices PPS 15 bzw. 16
-   referenzierten. Der Fix übernimmt die PPS-ID aus dem Slice. Vorher: 1.475
-   Submissions, null Completions; nachher erfolgreiche Iris-CAPTURE-Ausgabe.
+1. Electron did not include the required direct Linux V4L2 path; an external
+   VA-API adapter was needed.
+2. Chromium's automatic render-node discovery missed the SoC device. The launcher
+   explicitly passes the existing render node.
+3. X11/default GL required an unimplemented VA-ImageProcessor. The tested
+   combination of Wayland and ANGLE GL enabled the path.
+4. The adapter generated PPS 0 while real GFN slices referenced PPS 15 or 16.
+   The fix takes the PPS ID from the slice. Before: 1,475 submissions, zero
+   completions; afterwards: successful Iris CAPTURE output.
 
-Danke auch an aanze/geforcenow-arm64, ArmadaOS, die libva-v4l2/Bootlin-Linie,
+Thanks also to aanze/geforcenow-arm64, ArmadaOS, the libva-v4l2/Bootlin lineage,
 strongtz, Electron, Chromium/WebRTC, Linux, Mesa, libva/libdrm, FFmpeg,
-GStreamer, Gamescope und die weiteren Build-/Referenzprojekte. OpenNOW und
-nextclient wurden als Referenzen untersucht, ihre Clientimplementierungen
-werden nicht eingesetzt. Vollständige Zuordnung und Lizenzhinweise:
-[README-Danksagung](../README.md#upstream-projects-and-thanks),
+GStreamer, Gamescope and the other build/reference projects. OpenNOW and nextclient
+were investigated as references; their client implementations are not used.
+Full attribution and license notes:
+[README acknowledgements](../README.md#upstream-projects-and-thanks),
 [THIRD_PARTY_NOTICES](../THIRD_PARTY_NOTICES.md).
 
-## Was getestet wurde
+## What was tested
 
-| Bereich | Nachweis und Einschränkung |
+| Area | Evidence and limitation |
 |---|---|
-| H.264 | Originaler GFN-Stream: 14.484 erfolgreiche Iris-CAPTURE-Frames über etwa 234 s, korreliert mit Chromium-VA-API; GPU-Kopie. |
-| HEVC | Originaler GFN-Stream: 7.850 Iris-GPU-Copy-Returns über etwa 131 s; anschließend Gamescope- und reguläre Steam-Tests. |
-| AV1 | Originaler GFN-Stream: 16.639 Iris-Returns über etwa 278 s mit ausdrücklich aktivierten experimentellen Profilen. Nutzer beobachtet Flackern; visuelle Abnahme fehlgeschlagen. |
-| Steam/AppImage | Finaler AppImage-Start unter Steams Reaper, korrekte Gamescope-AppID/Fokus, Wayland, 1920×1080-Inhaltsfläche; Nutzer bestätigt Darstellung. |
-| Controller | Xbox-Controller-Erkennung und grundlegende Spiel-/UI-Bedienung beobachtet; keine vollständige Steam-Input-/Overlay-Testmatrix. |
-| Builds/Tests | Finaler sauberer Code-Commit: 72/72 Linux-ARM64-Tests; AppImage-Smoke als UID 1000 einschließlich Treiberhash/dlopen, synthetischem Katalog und Steam-Backup/Restore. Lokaler Arbeitsbaum: 73 Tests, davon einer aus separaten, noch nicht veröffentlichten Bridge-Änderungen. |
-| Katalog/Sync | Schema/Pagination und temporäre Steam-Dateien getestet; keine vollständige echte Konto-Bibliothek automatisch importiert und abgenommen. |
+| H.264 | Original GFN stream: 14,484 successful Iris CAPTURE frames over approximately 234 s, correlated with Chromium VA-API; GPU copy. |
+| HEVC | Original GFN stream: 7,850 Iris GPU-copy returns over approximately 131 s; followed by Gamescope and regular Steam tests. |
+| AV1 | Original GFN stream: 16,639 Iris returns over approximately 278 s with experimental profiles explicitly enabled. The user observed flicker; visual acceptance failed. |
+| Steam/AppImage | Final AppImage launch under Steam's reaper, correct Gamescope AppID/focus, Wayland, 1920×1080 content area; display confirmed by the user. |
+| Controller | Xbox controller detection and basic game/UI operation observed; no complete Steam Input/overlay test matrix. |
+| Builds/tests | Final clean code commit: 72/72 Linux ARM64 tests; AppImage smoke test as UID 1000, including driver hash/dlopen, synthetic catalog and Steam backup/restore. Local working tree: 73 tests, one from separate unpublished bridge changes. |
+| Catalog/sync | Schema/pagination and temporary Steam files tested; no complete real account library automatically imported and accepted. |
 
-Alle Messungen gelten für die beobachteten Gerätesitzungen und Versionen,
-nicht pauschal für beliebige NVIDIA-, Electron- oder ArmadaOS-Versionen.
-[Codec-Erkenntnisse und Einzelbelege](codec-findings-2026-10-05.md).
+Measurements apply to the observed device sessions and versions, not arbitrary
+NVIDIA, Electron or ArmadaOS versions.
+[Codec findings and individual evidence](codec-findings-2026-10-05.md).
 
-## Steam starten und Spiele integrieren
+## Starting from Steam and integrating games
 
-Das AppImage selbst ist das Non-Steam-Ziel. Native Linux-Ausführung, **kein
-Proton**. Startoptionen für den getesteten Odin-Pfad:
+The AppImage itself is the Non-Steam target. Run it natively on Linux, **without
+Proton**. Launch options for the tested Odin path:
 
 ```text
 GFN_ARMADA_GAMESCOPE=nested GFN_ARMADA_BROWSER_IDENTITY=windows %command% --appimage-extract-and-run launch
 ```
 
-`codec = "hevc"` aktiviert die experimentelle WebRTC-HEVC-Präferenz;
-H.264 bleibt als Fallback erhalten. Die Windows-Browseridentität ist ein
-Kompatibilitätsexperiment, keine Decoder-Emulation. Ihre Notwendigkeit wurde
-nicht isoliert nachgewiesen. Auflösung/FPS/Bitrate werden in der originalen
-GFN-Oberfläche eingestellt; lokale Konfigurationswerte werden nicht als
-erfundene NVIDIA-API-Parameter ausgegeben. Der getestete Stream ist 1080p/60.
+`codec = "hevc"` enables the experimental WebRTC HEVC preference; H.264 remains
+available as fallback. The Windows browser identity is a compatibility experiment,
+not decoder emulation. Its necessity has not been independently established.
+Resolution/FPS/bitrate are configured in the original GFN UI; local configuration
+values are not presented as invented NVIDIA API parameters. The tested stream
+is 1080p/60.
 
-Der Launcher verwendet echte Server-Codecangebote, keine erfundenen SDP-Codecs
-oder Deep Links. `launch steam:<appid>` und entsprechende Epic/GOG/Xbox-Ziele
-benötigen ein verifiziertes Mapping; unbekannte IDs schlagen sauber fehl.
+The launcher uses actual server codec offers, without invented SDP codecs or deep
+links. `launch steam:<appid>` and corresponding Epic/GOG/Xbox targets require a
+verified mapping; unknown IDs fail cleanly.
 
-`library` liest den GFN-Katalog und vorgemerkte, als besessen gemeldete
-Store-Editionen. `sync` zeigt zunächst einen Plan; `sync --apply` benötigt
-beendetes Steam und schreibt mit Backup. Manuell bestätigter Besitz wird
-separat gekennzeichnet. Automatischer Sync bei jedem Clientstart, Artwork-
-Downloads und eine vollständig abgenommene echte Bibliothek sind noch offen.
-Der einzelne getestete Client-Shortcut wurde über Steams eigene UI angelegt,
-mit vorherigem Backup; keine direkten Schreibzugriffe auf die laufende VDF.
+`library` reads the GFN catalog and bookmarked store editions reported as owned.
+`sync` initially displays a plan; `sync --apply` requires Steam to be stopped and
+writes with a backup. Manually confirmed ownership is marked separately.
+Automatic sync at every client start, artwork downloads and a fully accepted
+real library remain open. The single tested client shortcut was created through
+Steam's own UI after a backup; no direct writes to the live VDF.
 
-[Steam-Startanleitung und Stolpersteine](steam-client-launch.md)
-· [Katalog](catalog-import.md) · [Steam-Sync](steam-integration.md)
+[Steam launch guide and pitfalls](steam-client-launch.md)
+· [Catalog](catalog-import.md) · [Steam sync](steam-integration.md)
 
-## Stolpersteine beim Steam-Test
+## Steam test pitfalls
 
-Der erste direkte Wayland-Start lief im Hintergrund, während Steam seinen
-Spinner zeigte. Eine manuell erzwungene Fokuszuordnung war nur eine Diagnose
-und verursachte zeitweise Fokusverlust. Der funktionierende Pfad führt
-Gamescope innerhalb von Steams Reaper/AppID-Verfolgung aus.
+The first direct Wayland launch ran in the background while Steam displayed its
+spinner. Manually forcing focus was only a diagnostic and caused intermittent
+focus loss. The working path runs Gamescope inside Steam's reaper/AppID tracking.
 
-Ein geerbter Gamescope-WSI-Layer verursachte einen konkreten Vulkan-Swapchain-
-Fehlerdialog. Im verschachtelten Modus wird er deaktiviert. Steam-Overlay-
-Preloads werden für dessen Kindprozess entfernt, andere Preloads bleiben
-bestehen; die Rolle des Overlays bei einem beobachteten Chromium-Startabsturz
-wurde nicht vollständig isoliert. Der Launcher beendet sich jetzt mit seinem
-Kindprozess, statt Steam ein scheinbar weiterlaufendes Spiel zu hinterlassen.
+An inherited Gamescope WSI layer caused a specific Vulkan swapchain error dialog.
+It is disabled in nested mode. Steam overlay preloads are removed for that child
+process; other preloads remain. The overlay's role in an observed Chromium startup
+crash was not fully isolated. The launcher now exits with its child process rather
+than leaving Steam with an apparently running game.
 
-Steam wurde während der Fehlversuche unbedienbar. Der Webhelper-Neustart allein
-reichte nicht; Neustart des vorhandenen Gaming-Mode-Dienstes stellte Steam
-wieder her. Das frühere kleinere dekorierte Clientfenster wurde skaliert und
-verzerrte die Ausgabe. Der finale Client startet rahmenlos mit nativer
-1920×1080-Inhaltsfläche; der Nutzer hat die Korrektur bestätigt.
+Steam became unresponsive during failed attempts. Restarting its webhelper alone
+was insufficient; restarting the existing Gaming Mode service restored Steam.
+The earlier small decorated client window was scaled and distorted the output.
+The final client starts without a frame and with a native 1920×1080 content area;
+the user confirmed the correction.
 
-## Artefakt und Reproduktion
+## Artifact and reproduction
 
-Getesteter Implementierungs-Commit: `8fb071d`; spätere Commits ergänzen
-Dokumentation. AppImage-SHA256:
+Tested implementation commit: `8fb071d`; later commits add documentation.
+AppImage SHA256:
 
 ```text
 ab6d0d9f42f6c30d09a78fbed43a5ab7af18c24490eceda7e55fdf8725fb1713
 ```
 
-Entwicklung am Apple-Silicon-Mac; Zielbuild im Linux-ARM64-Container:
+Development on an Apple Silicon Mac; target build in a Linux ARM64 container:
 
 ```sh
 ./scripts/bootstrap
@@ -158,28 +153,28 @@ npm test
 ./scripts/build-appimage
 ```
 
-Electron 44.5.1 und Treiberquellen/Patches sind gepinnt. Der Workflow ist
-wiederholbar; byteidentische oder komplett offline reproduzierbare Builds
-sind nicht bewiesen. [Build-Dokumentation](build.md).
+Electron 44.5.1 and driver sources/patches are pinned. The workflow is repeatable;
+byte-identical or completely offline reproducible builds are not established.
+[Build documentation](build.md).
 
-Die separate native Shadow-Bridge ist nicht der Default-Videopfad. Noch lokale
-Bridge-/Queue-Änderungen sind nicht Bestandteil dieses sauberen AppImages oder
-der hier veröffentlichten Implementierungs-Commits.
+The separate native shadow bridge is not the default video path. Local bridge/queue
+changes are not included in this clean AppImage or the implementation commits
+published here.
 
-## Offen für andere Entwickler
+## Open work for other developers
 
-- Langzeitstabilität, Fokus-/Suspend-/Reconnect-Verhalten und Login-Lebenszyklus.
-- Steam-Overlay und passende Controller-/Overlay-Tastenbelegung.
-- Echte authentifizierte Katalogübernahme und direkter Einzelspielstart für
-  Steam/Epic/GOG/Xbox; gewünschter automatischer Sync mit kontrollierten Writes.
-- Artwork, veraltete Shortcuts und vollständig getestete Steam-Input-Layouts.
-- Saubere HEVC-Integration ohne experimentelle Identität/Präferenzhooks;
-  NVIDIA-Eligibility kann sich ändern.
-- AV1-Flackern/Hidden-Frame-Behandlung; AV1 bleibt experimentell.
-- Zero-/Low-Copy, kontrollierte Latenz-, CPU- und Leistungsaufnahme-Messungen.
-- Upstream-Meldung des Bitreader-Befunds: bisher nur Entwurf, nicht eingereicht.
-- Lizenzwahl für den projektspezifischen Code und Prüfung vor Distribution.
+- Long-term stability, focus/suspend/reconnect behavior and login lifecycle.
+- Steam overlay and suitable controller/overlay bindings.
+- Real authenticated catalog import and direct individual-game launch for
+  Steam/Epic/GOG/Xbox; the desired automatic sync with controlled writes.
+- Artwork, stale shortcuts and fully tested Steam Input layouts.
+- Clean HEVC integration without experimental identity/preference hooks;
+  NVIDIA eligibility can change.
+- AV1 flicker/hidden-frame handling; AV1 remains experimental.
+- Zero/low-copy and controlled latency, CPU and power measurements.
+- Upstream bitreader report: drafted but not submitted.
+- A license choice for project-specific code and review before distribution.
 
-Codec-Experimente wurden auf Wunsch des Nutzers für diesen Snapshot beendet.
-Der nächste Schwerpunkt ist ein verlässlicher, schlanker GFN-Client mit
-Bibliotheksintegration; die Ergebnisse stehen als Grundlage für andere bereit.
+Codec experiments were stopped for this snapshot at the user's request. The next
+focus is a reliable, lightweight GFN client with library integration; these results
+are available as a foundation for others.

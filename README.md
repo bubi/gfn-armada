@@ -31,7 +31,7 @@ Thank you to all the authors and contributors below for making their work and re
 
 This table lists the principal incorporated, inherited and researched projects; transitive runtime/npm dependencies retain their own notices. Exact pins, licenses and incorporation scope: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), `package-lock.json` and the source manifests.
 
-**Start here:** [Consolidated project summary: implementation, provenance, tests and open work](docs/project-summary-2026-10-05.md) (German). [Detailed codec findings and reproduction](docs/codec-findings-2026-10-05.md). Codec research is concluded for this snapshot; reliable client/library integration is the next focus.
+**Start here:** [Consolidated project summary: implementation, provenance, tests and open work](docs/project-summary-2026-10-05.md). [Detailed codec findings and reproduction](docs/codec-findings-2026-10-05.md). Codec research is concluded for this snapshot; reliable client/library integration is the next focus.
 
 ## What is demonstrated?
 

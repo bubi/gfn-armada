@@ -1,164 +1,151 @@
-# Schlanker Videopfad mit originaler GFN-Oberfläche
+# Lightweight video path with the original GFN UI
 
-Stand 2026-10-04. Der Nutzer möchte Login, Katalog und Bedienung möglichst nah
-am originalen GFN halten. Ein eigener Streamer ist erlaubt, ein Wechsel zur
-OpenNOW-Oberfläche ist nicht vorgesehen. Keine hier untersuchte Alternative
-ist bislang als HEVC-GFN-Lösung auf Iris validiert.
+Status on 2026-10-04. The user wants login, catalog and interaction to remain
+close to original GFN. A custom streamer is permitted; switching to the OpenNOW
+UI is not planned. None of the alternatives below had yet been validated as a
+GFN HEVC solution on Iris. This is a historical investigation; later results
+are in [the project summary](project-summary-2026-10-05.md).
 
-## Entscheidung für den nächsten Versuch
+## Decision for the next experiment
 
-Die bestehende Electron-Anwendung bleibt der funktionierende Vergleichsclient.
-Zuerst die neue native Decoderdiagnose in einem echten GFN-Spiel prüfen.
-Danach einen **Decoderadapter mit GStreamer** als begrenzten Versuch untersuchen,
-bevor der gesamte Sitzungsaufbau oder ein Chromium-Build ersetzt wird.
+The existing Electron application remains the working comparison client.
+First test the new native decoder diagnostics in a real GFN game. Then investigate
+a **GStreamer decoder adapter** as a bounded experiment before replacing all
+session setup or building Chromium.
 
-Der vielversprechende Pfad behält GFN-WebRTC für Verbindung, Audio und Eingaben:
+The promising path retains GFN WebRTC for connection, audio and input:
 
 ```mermaid
 flowchart LR
-  GFN[Originale GFN-Web-App] --> RTC[Chromium WebRTC]
-  RTC --> Encoded[Komprimierte Video-Frames]
-  Encoded --> Bridge[Begrenzte native Decoderbrücke]
-  Bridge --> GST[GStreamer appsrc + Parser + stateful V4L2]
+  GFN[Original GFN web app] --> RTC[Chromium WebRTC]
+  RTC --> Encoded[Compressed video frames]
+  Encoded --> Bridge[Bounded native decoder bridge]
+  Bridge --> GST[GStreamer appsrc + parser + stateful V4L2]
   GST --> Iris[Qualcomm Iris]
   Iris --> DMA[DMA-BUF]
   DMA --> Texture[Electron nativePixmap / SharedTexture]
-  Texture --> Canvas[VideoFrame / GPU-Canvas]
-  Canvas --> Screen[Originales Clientfenster]
+  Texture --> Canvas[VideoFrame / GPU canvas]
+  Canvas --> Screen[Original client window]
 ```
 
-Das ist ein zu prüfender Entwurf, keine implementierte Pipeline. Insbesondere
-ist noch kein Encoded-Frame aus einer echten GFN-Sitzung abgegriffen worden.
+This is a design to investigate, not an implemented pipeline at this stage.
+No encoded frames from a real GFN session had yet been captured.
 
-## Was bereits mit Primärquellen und Tests belegt ist
+## Established by primary sources and tests
 
-Die [WebRTC Encoded Transform API](https://www.w3.org/TR/webrtc-encoded-transform/)
-liegt auf Empfangsseite zwischen Depacketizer und Decoder. Sie erlaubt Zugriff
-auf komprimierte Frames, ersetzt aber allein keinen Decoder und fügt keinen
-fehlenden Codec zur SDP-Verhandlung hinzu.
+The [WebRTC Encoded Transform API](https://www.w3.org/TR/webrtc-encoded-transform/)
+sits between receiver depacketizer and decoder. It exposes compressed frames,
+but alone neither replaces a decoder nor adds missing codecs to SDP negotiation.
 
-`tests/smoke-encoded-transform.cjs` besteht auf Apple Silicon mit Electron 44.5.1:
-30 H.264-Frames, 32.304 Bytes, ein Keyframe, alle 30 mit Annex-B-Startcode;
-49 Video-Frames werden während der Messung angezeigt. Der Worker gibt die
-Originalframes unverändert weiter. Es werden nur Zähler exportiert, keine
-Bilddaten gespeichert. Dieser Test belegt die API im lokalen synthetischen
-Stream, nicht die GFN-Content-Security-Policy, Frameformate anderer Codecs oder
-die Kompatibilität der GFN-Streamerlogik.
+`tests/smoke-encoded-transform.cjs` passes on Apple Silicon with Electron 44.5.1:
+30 H.264 frames, 32,304 bytes, one keyframe, all 30 with Annex-B start codes;
+49 video frames displayed during measurement. The worker forwards originals
+unchanged. Only counters are exported; no image data saved. This establishes
+the API in a local synthetic stream, not GFN CSP, other codec frame formats
+or compatibility with GFN streamer logic.
 
-Derselbe Test besteht auf dem Portal mit 30 Frames / 32.766 Bytes und
-43 angezeigten Frames. Ein zusätzlicher lokaler HEVC-Test belegt dort Iris →
-NV12-DMA-BUF → Wayland-`wl_buffer`; Details in
-[odin-device-validation.md](odin-device-validation.md). Der tatsächliche
-GFN-H.264-Stream wurde inzwischen mit dem Reader als FFmpeg-Softwaredecode
-identifiziert. Damit sind die lokale Decoderbasis und die Browserlücke getrennt.
+The same test passes on the Portal: 30 frames / 32,766 bytes, 43 displayed frames.
+A separate local HEVC test demonstrates Iris → NV12 DMA-BUF → Wayland `wl_buffer`;
+see [odin-device-validation.md](odin-device-validation.md). The actual GFN H.264
+stream has meanwhile been identified by the reader as FFmpeg software decode.
+The local decoder foundation and browser gap are therefore separate findings.
 
-Electron 44.5.1 bietet tatsächlich einen Linux-Import für DMA-BUF-Planes:
+Electron 44.5.1 provides Linux DMA-BUF plane import:
 [SharedTextureHandle](https://github.com/electron/electron/blob/v44.5.1/docs/api/structures/shared-texture-handle.md)
-beschreibt `nativePixmap` mit FD, Stride, Offset, Größe und Modifier;
-[Implementierung](https://github.com/electron/electron/blob/v44.5.1/shell/common/api/electron_api_shared_texture.cc)
-dupliziert die FDs in `NativePixmapPlane` und importiert das SharedImage.
+describes `nativePixmap` with FD, stride, offset, size and modifier;
+the [implementation](https://github.com/electron/electron/blob/v44.5.1/shell/common/api/electron_api_shared_texture.cc)
+duplicates FDs into `NativePixmapPlane` and imports the SharedImage.
 [SharedTexture API](https://github.com/electron/electron/blob/v44.5.1/docs/api/shared-texture.md)
-fordert, dass die Ressource bis `allReferencesReleased` gültig bleibt.
-Damit ist ein kleiner nativer Adapter plausibler als eine Annahme, externe
-Texturen seien unter Linux prinzipiell nicht importierbar. Iris-NV12, Modifier,
-Fences und der Transfer zum sandboxed Preload sind jedoch noch nicht getestet.
+requires resources to remain valid until `allReferencesReleased`. A small native
+adapter is therefore plausible; assuming Linux cannot import external textures
+is unjustified. Iris NV12, modifiers, fences and transfer to sandboxed preload
+had not yet been tested.
 
-## Konkrete Grenzen des Decoderadapters
+## Specific adapter limits
 
-1. Die GFN-Seite muss einen Empfänger rechtzeitig instrumentieren lassen.
-   CSP, vorhandene Transform-Nutzung und Worker-Lebensdauer prüfen; keine
-   Sandbox oder Web-Security abschalten, um ein Experiment zu erzwingen.
-2. Eine gebundene Queue für komprimierte Frames und eindeutige Sessiongeneration
-   sind nötig. IPC kopiert zunächst komprimierte Bytes, keine rohen Videoframes.
-   Bytekopien und Queue-Latenz messen, statt Zero-Copy für den ganzen Pfad zu behaupten.
-3. `appsrc ! h264parse ! v4l2h264dec` zunächst lokal prüfen, danach HEVC analog.
-   Decoder explizit wählen; kein `decodebin`, das unbemerkt Software auswählt.
-4. Erst nach validiertem DMA-BUF-Import auf eine GPU-Canvas-Ausgabe umstellen.
-   FD-Besitz, Pufferrückgabe, Auflösungswechsel und GPU-Fertigstellung müssen
-   stimmen; ein wiederverwendeter CAPTURE-Puffer darf kein sichtbares Bild überschreiben.
-5. Ein erster Doppelpfad kann Frames beobachten und parallel decodieren,
-   spart aber noch keine CPU. Erst später Chromium-Decoding auslassen.
-   Prüfen, ob GFN ohne eigene decodierte Video-Frames weiterläuft, ob Overlay,
-   Fokus, Controller, Videozeit und Audio-Synchronität erhalten bleiben.
-6. Bei Fehlern Browser-Decoding über ein neues Keyframe sauber fortsetzen;
-   die Sitzung nicht als erfolgreich melden, wenn nur Audio oder ein altes Bild läuft.
+1. GFN must allow timely receiver instrumentation. Check CSP, existing transforms
+   and worker lifetime; do not disable sandbox/web security to force an experiment.
+2. Compressed frames need a bounded queue and explicit session generation. IPC
+   initially copies compressed bytes, not raw video frames. Measure byte copies
+   and queue latency rather than claiming zero-copy for the whole path.
+3. Test `appsrc ! h264parse ! v4l2h264dec` locally first, then HEVC similarly.
+   Select the decoder explicitly; no `decodebin` silently choosing software.
+4. Switch to GPU canvas only after DMA-BUF import is validated. FD ownership,
+   buffer return, resolution changes and GPU completion must be correct; reused
+   CAPTURE buffers must not overwrite a visible image.
+5. An initial parallel path observes/decodes frames without saving CPU. Skip
+   Chromium decode only later. Check whether GFN runs without its own decoded
+   video frames and preserves overlay, focus, controller, video time and audio sync.
+6. Resume browser decoding cleanly from a new keyframe after errors; do not
+   report success when only audio or a stale image remains.
 
-**HEVC bleibt separat:** das jetzige Linux-Binary bietet kein H.265 in seinen
-WebRTC-Fähigkeiten. Ein externer HEVC-Decoder ändert das nicht. Falls NVIDIA
-dieser Webclient-Sitzung kein HEVC liefert, endet der Decoderadapter zunächst
-bei echtem H.264-Hardwaredecode. Für HEVC kann zusätzlich eine kleine native
-WebRTC-Decoderfabrik-Anbindung oder ein Streamerersatz nötig werden. AV1 erst
-nach validiertem HEVC-/Gerätepfad untersuchen.
+**HEVC is separate:** the current Linux binary does not offer H.265 in its WebRTC
+capabilities. An external HEVC decoder alone does not change that. If NVIDIA
+provides no HEVC to this web session, the adapter initially ends at real H.264
+hardware decode. HEVC could require a small native WebRTC decoder-factory connection
+or streamer replacement. Investigate AV1 only after a validated HEVC/device path.
 
-## Andere Wege und warum sie noch nicht übernommen werden
+## Other routes and why they were not adopted
 
-| Weg | Was bleibt original? | Ergebnis / fehlende Komponente |
+| Route | What remains original? | Result / missing component |
 |---|---|---|
-| Fedora-Chromium im App-Modus | gesamte GFN-Web-App und WebRTC | fertiges ARM64-Binary getestet, bisher FFmpeg-Fallback; Decodeprofile leer. Weitere Geräteprobe nötig |
-| kleiner Chromium/Electron-V4L2-Patch | gesamte Web-App, Transport, Videoelemente | sauberste Browserintegration; Build und stateful HEVC-Lücke bleiben Aufwand |
-| GStreamer `webrtcbin` hinter Web-API-Adapter | GFN-Oberfläche, Login und Sitzungserstellung könnten bleiben | RTCPeerConnection, ICE, SDP, SCTP/Input und Videoausgabe müssen kompatibel adaptiert werden; kein Drop-in-Ersatz |
-| nativer NVST-Streamer | Web-Login/Katalog könnten bleiben | WebRTC-Session ist nicht automatisch eine native NVST-Session; Übergabe und Protokollkompatibilität erst belegen |
-| WebKitGTK / WPE | originale Webseite in anderer Engine | GFN-/Input-Kompatibilität ungeprüft; aktuelles WPE 2.54 deaktiviert WebRTC |
+| Fedora Chromium app mode | Entire GFN web app and WebRTC | Existing ARM64 binary tested; FFmpeg fallback, empty decode profiles. Further device probe needed |
+| Small Chromium/Electron V4L2 patch | Entire web app, transport, video elements | Cleanest browser integration; build and stateful HEVC gap require work |
+| GStreamer `webrtcbin` behind a web API adapter | GFN UI, login and session creation could remain | RTCPeerConnection, ICE, SDP, SCTP/input and presentation need compatible adapters; not drop-in |
+| Native NVST streamer | Web login/catalog could remain | WebRTC sessions are not automatically native NVST sessions; handoff/protocol compatibility needs proof |
+| WebKitGTK / WPE | Original website in another engine | GFN/input compatibility untested; current WPE 2.54 disables WebRTC |
 
 [NEXTCLIENT](https://github.com/clarkarch/nextclient/tree/5989551cc8ab1042c7bf86723d92b9084192501d)
-wurde als Streamerreferenz untersucht, nicht als neue Oberfläche ausgewählt.
-Sein [GStreamer-C-Bridge](https://github.com/clarkarch/nextclient/blob/5989551cc8ab1042c7bf86723d92b9084192501d/native/gst_bridge/gst_bridge.c)
-zeigt offer/answer, ICE und Data-Channel-Anbindung. Er verwendet eigene
-GFN-Sitzungslogik, `decodebin` und für den GPU-Pfad VA-API/VAMemory; der
-[C-ABI](https://github.com/clarkarch/nextclient/blob/5989551cc8ab1042c7bf86723d92b9084192501d/native/gst_bridge/gst_bridge.h)
-hat außerdem einen CPU-RGBA-Callback. Das ist kein fertiger Iris-Adapter.
-Keine Codeübernahme, Installation oder Anmeldung erfolgt.
+was investigated as a streamer reference, not selected as a new UI. Its
+[GStreamer C bridge](https://github.com/clarkarch/nextclient/blob/5989551cc8ab1042c7bf86723d92b9084192501d/native/gst_bridge/gst_bridge.c)
+shows offer/answer, ICE and data-channel integration. It uses custom GFN session
+logic, `decodebin` and VA-API/VAMemory for the GPU path; the
+[C ABI](https://github.com/clarkarch/nextclient/blob/5989551cc8ab1042c7bf86723d92b9084192501d/native/gst_bridge/gst_bridge.h)
+also has a CPU RGBA callback. It is not a complete Iris adapter. No code copied,
+installation or login performed.
 
-OpenNOW bleibt ausschließlich die bereits dokumentierte NVST-Referenz.
-Moonlight/GameStream sind andere Server-/Sitzungsprotokolle und kein belegter
-GFN-Streamerersatz.
+OpenNOW remains solely the documented NVST reference. Moonlight/GameStream use
+other server/session protocols and are not demonstrated GFN streamer replacements.
 
-[WPE 2.54 Releasehinweise](https://wpewebkit.org/blog/2026-09-16-wpewebkit-2.54.html)
-beschreiben deaktiviertes WebRTC während des Backendwechsels. Die dort genannte
-Qualcomm-Unterstützung über `qtic2vdec` belegt nicht den auf Armada verfügbaren
-Iris-V4L2-Pfad. Deshalb jetzt kein Browserengine-Wechsel auf diese Basis.
+[WPE 2.54 release notes](https://wpewebkit.org/blog/2026-09-16-wpewebkit-2.54.html)
+describe WebRTC disabled during a backend transition. Qualcomm support through
+`qtic2vdec` does not establish Armada's Iris V4L2 path. No engine switch on that basis.
 
-## Nächster Gerätetest
+## Next device test at this stage
 
-Der Portalzugriff brach während des experimentellen Blocklistenvergleichs
-ab; dessen Ergebnis fehlt weiterhin, ein ursächlicher Zusammenhang mit dem
-Browser wurde nicht festgestellt. Nach Wiederherstellung von SSH wurden
-der Reader im originalen GFN-Client und der Linux-Encoded-Transform-Test
-erfolgreich geprüft. Der nächste Schritt ist der GStreamer-Adapter mit
-synthetischen Frames und Electron-DMA-BUF-Import, anschließend der echte
-GFN-Encoded-Framezugriff. Kein HEVC-Angebot durch Flags vortäuschen.
+Portal access failed during the experimental blocklist comparison; its result
+remains missing, with no established browser-related cause. After SSH recovery,
+the reader in original GFN and the Linux Encoded Transform test passed. Next:
+GStreamer adapter with synthetic frames and Electron DMA-BUF import, then real
+GFN encoded-frame access. Do not fake an HEVC offer through flags.
 
-### Update: DMA-BUF-Import auf dem Portal bestätigt
+### Update: DMA-BUF import confirmed on the Portal
 
-Der isolierte [GStreamer-/Node-API-Prototyp](../experiments/dmabuf/README.md)
-ist implementiert und unter nativem Wayland mit einem HEVC-Testclip validiert.
-Iris liefert 1280×736-NV12-Capturebuffer mit sichtbaren 1280×720 Pixeln.
-Electron 44.5.1 importiert die zwei linearen DMA-BUF-Planes und stellt das
-Testmuster im GPU-Canvas dar. Der Renderer bleibt sandboxed; 60 Transfers
-und Draw-Aufrufe, alle 60 Sample-Leases freigegeben. Die Screenshot-/Pixel-
-Readbacks dienen ausschließlich der Prüfung. Keine Rohpixelkopie im Addon,
-aber keine Messung aller internen GPU-/Compositor-Kopien.
+The isolated [GStreamer/Node-API prototype](../experiments/dmabuf/README.md) is
+implemented and validated under native Wayland with an HEVC clip. Iris provides
+1280×736 NV12 CAPTURE buffers with visible 1280×720 pixels. Electron 44.5.1
+imports two linear DMA-BUF planes and displays the pattern in a GPU canvas.
+Renderer remains sandboxed; 60 transfers/draw calls, all 60 leases released.
+Screenshot/pixel readbacks are checks only. No raw pixel copy in the addon,
+but no measurement of all internal GPU/compositor copies.
 
-XWayland-Vergleiche scheiterten am SharedImage-Backing; der letzte meldete
-zusätzlich Software-GPU-Features. Deshalb Wayland als nachgewiesenen Pfad
-verwenden und XWayland nicht als unterstützt melden. Die genaue Ursache
-dieses Vergleichsfehlers ist noch nicht isoliert. `ExtSamplerOff` im Fehler
-allein rechtfertigt keinen Formatpatch: derselbe NV12-Import klappt unter
-Wayland ohne Patch. GPU-Features müssen nach Initialisierung geprüft werden.
+XWayland comparisons failed on SharedImage backing; the last also reported
+software GPU features. Use Wayland as the demonstrated path and do not report
+XWayland supported. The precise comparison failure cause is not isolated.
+`ExtSamplerOff` alone does not justify a format patch: the same NV12 import
+works under Wayland without one. Check GPU features after initialization.
 
-Jetzt folgt `appsrc` mit komprimierten lokalen H.264-Frames, anschließend
-die isolierte Beobachtung eines echten GFN-Encoded-Transforms. Erst nach
-diesem Nachweis dessen Ausgabe an die native Queue anbinden. Ein anfänglicher
-Doppelpfad spart noch keine CPU; Softwaredecode erst mit funktionierender
-Fehlerbehandlung und Audio-Synchronisation ersetzen. HEVC-Negotiation bleibt
-eine eigene Grenze und AV1 weiterhin nachrangig.
+Next: `appsrc` with local compressed H.264 frames, then isolated observation
+of a real GFN Encoded Transform. Connect its output to the native queue only
+after that proof. The initial parallel path saves no CPU; replace software decode
+only with working error handling/audio sync. HEVC negotiation is separate;
+AV1 remains lower priority.
 
-### Update: H264-Anschluss implementiert
+### Update: H264 connection implemented
 
-`GFN_ARMADA_NATIVE_SHADOW=1` aktiviert den Anschluss des originalen
-GFN-Empfängers an die native appsrc-Brücke. Worker-Preflight, Codec-/Keyframe-
-Gate, begrenzte Queues und separater Decoderthread sind implementiert.
-Originalframes werden weitergereicht. Reale lokale Mac-WebRTC-Tap- und
-Fallbacktests bestehen; ein echter Portal/GFN-Stream ist noch nicht validiert.
-Details: [native-bridge.md](native-bridge.md). Noch kein Softwaredecode-Ersatz
-oder HEVC-Angebot an NVIDIA.
+`GFN_ARMADA_NATIVE_SHADOW=1` connects the original GFN receiver to the native
+appsrc bridge. Worker preflight, codec/keyframe gate, bounded queues and a separate
+decoder thread are implemented. Originals are forwarded. Real local Mac WebRTC
+tap/fallback tests pass; a real Portal/GFN stream is not yet validated at this
+stage. See [native-bridge.md](native-bridge.md). No software-decode replacement
+or HEVC offer to NVIDIA yet.

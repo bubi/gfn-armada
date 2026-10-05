@@ -70,7 +70,7 @@ The [Windows identity AppImage](../experiments/packaging/validation-browser-iden
 
 ## OpenNOW comparison
 
-The [pinned native and legacy Electron source comparison](opennow-evaluation.md#hevc-verhandlung-vergleich-vom-2026-10-05) finds an important distinction: legacy Electron OpenNOW owns CloudMatch codec selection and WebRTC signaling; current Qt OpenNOW selects the codec via native NVST/RTSP. Neither is merely the original website with another User-Agent. No codec forcing or OpenNOW runtime was introduced by this research.
+The [pinned native and legacy Electron source comparison](opennow-evaluation.md#hevc-negotiation-comparison-on-2026-10-05) finds an important distinction: legacy Electron OpenNOW owns CloudMatch codec selection and WebRTC signaling; current Qt OpenNOW selects the codec via native NVST/RTSP. Neither is merely the original website with another User-Agent. No codec forcing or OpenNOW runtime was introduced by this research.
 
 ## Narrow negotiation experiment
 

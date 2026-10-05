@@ -1,218 +1,208 @@
-# OpenNOW als nativer Vergleichskandidat
+# OpenNOW as a native comparison candidate
 
-**Entscheidung des Nutzers am 2026-10-04:** beim originalen GFN-Webclient mit
-Electron/Chromium bleiben. Die unten stehende Empfehlung wurde damit verworfen.
-OpenNOW wurde nur heruntergeladen, auf dem Portal per SHA256 geprüft und im
-Benutzer-Testverzeichnis entpackt; nicht gestartet oder angemeldet. Kein
-OpenNOW-Backend für gfn-armada implementieren. Die Analyse bleibt als Referenz.
+**User decision on 2026-10-04:** retain the original GFN web client with
+Electron/Chromium. This superseded the recommendation below. OpenNOW was only
+downloaded, SHA256-verified on the Portal and extracted into a user test directory;
+it was not launched or logged into. Do not implement an OpenNOW backend for
+gfn-armada. This analysis remains a reference.
 
-Stand: 2026-10-04. Untersucht:
+Status: 2026-10-04. Investigated:
 [OpenCloudGaming/OpenNOW](https://github.com/OpenCloudGaming/OpenNOW),
-Commit `bee18c118dbc89f42319436dcdb172d5b9e15e0c`.
-Der stabile Tag `v1.0.2` zeigt auf denselben Commit wie der heruntergeladene
-`main`-Stand. Keine OpenNOW-Programme oder Build-/Installationsskripte ausgeführt.
+commit `bee18c118dbc89f42319436dcdb172d5b9e15e0c`.
+Stable tag `v1.0.2` points to the same commit as the downloaded `main` snapshot.
+No OpenNOW programs or build/install scripts executed.
 
-## Empfehlung
+## Recommendation at that stage
 
-OpenNOW zuerst auf dem Portal als unabhängigen nativen Vergleichsclient testen,
-bevor wir einen Chromium-/Electron-Sourcebuild anfangen. Seine Qt/Rust-
-Architektur umgeht die Chromium-WebRTC-Decoderfabrik vollständig. Der notwendige
-stateful HEVC-/DMA-BUF-Pfad für Iris ist allerdings auch dort noch nicht fertig.
-Damit ist OpenNOW eine plausible kleinere Erweiterungsbasis, keine bereits
-validierte Lösung für das Odin-HEVC-Ziel.
+Test OpenNOW first on the Portal as an independent native comparison client,
+before a Chromium/Electron source build. Its Qt/Rust architecture bypasses
+Chromium's WebRTC decoder factory entirely. However, the stateful HEVC/DMA-BUF
+path needed by Iris is also incomplete there. OpenNOW is a plausible smaller
+extension base, not an already validated solution for Odin HEVC.
 
-Der vorhandene funktionierende gfn-armada-Electron-Client bleibt die H.264-
-Vergleichsbasis. Noch kein Backendwechsel und keine Steam-Dateien geändert.
+The working gfn-armada Electron client remains the H.264 comparison baseline.
+No backend switch or Steam file changes yet.
 
-## Was tatsächlich anders ist
+## What actually differs
 
-Die aktuelle Qt-Version ersetzt das frühere Electron-Projekt:
+The current Qt version replaces the earlier Electron project:
 [README](https://github.com/OpenCloudGaming/OpenNOW/blob/bee18c118dbc89f42319436dcdb172d5b9e15e0c/README.md).
-Qt Quick zeichnet die Oberfläche; ein Rust-Core verwaltet Account, Katalog und
-Sitzungen. Der native Rust-Streamer verarbeitet GFN-NVST-Transport, Decoder,
-Audio und Eingaben und wird über eine C ABI eingebunden. Kein Browser und kein
-Chromium/WebRTC-Fallback im aktuellen Qt-Client. Ältere Forks und Releases
-beschreiben noch Electron und sind hierfür keine passende Referenz.
+Qt Quick renders the UI; a Rust core manages account, catalog and sessions.
+The native Rust streamer handles GFN NVST transport, decoding, audio and input
+through a C ABI. No browser or Chromium/WebRTC fallback in the current Qt client.
+Older forks/releases still describe Electron and are unsuitable references here.
 
-Linux ARM64 ist als AppImage und Debian-Paket veröffentlicht. Für das Fedora-
-basierte ArmadaOS ist das AppImage der erste Vergleichskandidat; ein `.deb`
-ist kein ArmadaOS-Paket. Ob gebündelte Bibliotheken und Qt/Vulkan-Plugins auf
-ArmadaOS funktionieren, muss am Gerät getestet werden.
+Linux ARM64 is published as AppImage and Debian package. AppImage is the first
+comparison candidate for Fedora-based ArmadaOS; `.deb` is not an ArmadaOS package.
+Bundled libraries and Qt/Vulkan plugins require device testing.
 
-## Codec- und Speicherpfade getrennt
+## Separate codec and memory paths
 
-| Pfad im geprüften Quellcode | Umsetzung | Konsequenz für Odin/Iris |
+| Path in reviewed source | Implementation | Consequence for Odin/Iris |
 |---|---|---|
-| stateful V4L2 H.264 | direkter Rust-V4L2-M2M-Decoder | plausibler erster VPU-Spieltest, noch nicht ausgeführt |
-| V4L2 HEVC | FFmpeg Request API, HEVC_SLICE und SAND128 NV12 | passt nicht zum bisher beobachteten stateful Iris-Knoten |
-| VA-API HEVC | eigener FFmpeg-/VA-API-Pfad | kein belegter Qualcomm-Iris-Pfad |
-| Vulkan Video | FFmpeg-Vulkan-Backend | Turnip-Rendering allein beweist keine Vulkan-Video-Decodierung |
-| Softwaredecode | FFmpeg-Fallback | erfolgreiche Wiedergabe beweist keine Hardwareverwendung |
-| DMA-BUF-Import | vorhandener Linux-Vulkan-Frameimport | nützliche Infrastruktur, aber kein automatischer Zero-Copy-Iris-Nachweis |
+| Stateful V4L2 H.264 | Direct Rust V4L2 M2M decoder | Plausible first VPU game test, not run |
+| V4L2 HEVC | FFmpeg Request API, HEVC_SLICE and SAND128 NV12 | Does not match the observed stateful Iris node |
+| VA-API HEVC | Separate FFmpeg/VA-API path | No demonstrated Qualcomm Iris path |
+| Vulkan Video | FFmpeg Vulkan backend | Turnip rendering alone does not establish Vulkan Video decode |
+| Software decode | FFmpeg fallback | Playback success does not establish hardware use |
+| DMA-BUF import | Existing Linux Vulkan frame import | Useful infrastructure, not automatic Iris zero-copy proof |
 
-Quellbelege:
+Source evidence:
 
 - [session.rs](https://github.com/OpenCloudGaming/OpenNOW/blob/bee18c118dbc89f42319436dcdb172d5b9e15e0c/native/opennow-streamer/crates/opennow-streamer-platform-linux/src/session.rs):
-  `open_decoder` wählt bei V4L2/H.264 den direkten Decoder, bei HEVC dagegen
-  den FFmpeg-Request-Pfad. AV1 ist in diesem V4L2-Zweig nicht implementiert.
+  `open_decoder` selects the direct decoder for V4L2/H.264, but FFmpeg Request
+  for HEVC. AV1 is not implemented in this V4L2 branch.
 - [v4l2.rs](https://github.com/OpenCloudGaming/OpenNOW/blob/bee18c118dbc89f42319436dcdb172d5b9e15e0c/native/opennow-streamer/crates/opennow-streamer-platform-linux/src/video/v4l2.rs):
-  Geräteprobe und OUTPUT-FourCC sind auf H.264 begrenzt; SDR NV12/I420.
-  CAPTURE verwendet MMAP; die Frameausgabe erzeugt CPU-Planes und setzt
-  `dmabuf: None`. Hardwaredecode ist damit von Zero-Copy zu unterscheiden.
+  Device probe and OUTPUT FourCC are limited to H.264; SDR NV12/I420. CAPTURE
+  uses MMAP; output creates CPU planes with `dmabuf: None`. Hardware decode
+  must therefore be distinguished from zero-copy.
 - [v4l2_request.rs](https://github.com/OpenCloudGaming/OpenNOW/blob/bee18c118dbc89f42319436dcdb172d5b9e15e0c/native/opennow-streamer/crates/opennow-streamer-platform-linux/src/video/v4l2_request.rs):
-  prüft `HEVC_SLICE` (`S265`), Media-Requests und SAND-NV12-Formate.
+  Checks `HEVC_SLICE` (`S265`), media requests and SAND NV12 formats.
 - [capability.rs](https://github.com/OpenCloudGaming/OpenNOW/blob/bee18c118dbc89f42319436dcdb172d5b9e15e0c/native/opennow-streamer/crates/opennow-streamer-platform-linux/src/capability.rs):
-  meldet diese getrennten Decoderproben. Ein erfolgreicher Capability-Probe
-  ersetzt keinen laufenden Streamtest.
+  Reports these separate decoder probes. Capability success does not replace
+  a live stream test.
 - [presentation.rs](https://github.com/OpenCloudGaming/OpenNOW/blob/bee18c118dbc89f42319436dcdb172d5b9e15e0c/native/opennow-streamer/crates/opennow-streamer-platform-linux/src/presentation.rs)
-  und `frame_producer.rs`: Vulkan-Import und Synchronisierung externer DMA-BUF-
-  Frames. Layout-, Modifier-, Lebensdauer- und Synchronisationsanforderungen
-  müssen zu den Iris-Puffern passen.
+  and `frame_producer.rs`: Vulkan import/synchronization of external DMA-BUF
+  frames. Layout, modifier, lifetime and synchronization must match Iris buffers.
 
-## Direkter Spielstart und Controller
+## Direct game launch and controller
 
 [AppController.cpp](https://github.com/OpenCloudGaming/OpenNOW/blob/bee18c118dbc89f42319436dcdb172d5b9e15e0c/opennow-qt/src/app/AppController.cpp)
-verarbeitet `--launch-app-id`, `--app-id`, `--launch-title` und weitere
-Titelargumente. Die App-ID ist die OpenNOW/GFN-Katalog-ID, **kein belegter
-Steam-AppID-Ersatz**. Den vorhandenen gfn-armada-Mappinglayer erst nach Prüfung
-der Katalogidentitäten anbinden; keine IDs gleichsetzen.
+handles `--launch-app-id`, `--app-id`, `--launch-title` and other title arguments.
+App ID means OpenNOW/GFN catalog ID, **not a demonstrated Steam AppID substitute**.
+Connect the existing mapping layer only after catalog identities are checked;
+do not equate IDs.
 
-`--console` wird in `ApplicationStartup.cpp` ausgewertet. Qt bietet eine
-Controlleroberfläche und eigene Streammenüs; das kann unsere Overlay-
-Bedienprobleme verkleinern. Kein Laufzeittest auf dem Portal bisher.
+`ApplicationStartup.cpp` handles `--console`. Qt supplies controller UI and
+stream menus that could reduce our overlay interaction problems. No Portal
+runtime test so far.
 
-## Vorbereitetes Testpaket
+## Prepared test package
 
-Die GitHub-API meldet am 2026-10-04 `v1.0.2` als stabile Veröffentlichung und
-zusätzlich `v1.0.3-nightly.853.1`. Zwischengespeicherte Webansichten von
-`releases/latest` zeigten teilweise noch `v0.5.5`; die API und der stabile
-Git-Tag wurden deshalb unabhängig geprüft.
+On 2026-10-04, the GitHub API reports `v1.0.2` as stable and also
+`v1.0.3-nightly.853.1`. Cached `releases/latest` views sometimes showed `v0.5.5`,
+so API and stable Git tag were independently checked.
 
-[Stabiles Release v1.0.2](https://github.com/OpenCloudGaming/OpenNOW/releases/tag/v1.0.2)
-enthält `OpenNOW-Qt-1.0.2-Linux-arm64.AppImage`, 105.892.360 Bytes, SHA256:
+[Stable release v1.0.2](https://github.com/OpenCloudGaming/OpenNOW/releases/tag/v1.0.2)
+contains `OpenNOW-Qt-1.0.2-Linux-arm64.AppImage`, 105,892,360 bytes, SHA256:
 
 ```text
 55b57e7c2c5b1343266ce1741e15de1f2cf5fee15c92c189677e1b0ea016a59a
 ```
 
-`python3 scripts/fetch-opennow` lädt genau dieses Artefakt nach
-`.artifacts/opennow/`, prüft den gepinnten Hash und legt Herkunftsmetadaten ab.
-Es installiert und startet nichts. Eine passende Prüfsumme allein ist keine
-Prüfung der separat vorhandenen Update-Manifestsignatur.
+`python3 scripts/fetch-opennow` downloads exactly this artifact into
+`.artifacts/opennow/`, verifies its pinned hash and records provenance. It installs
+or launches nothing. A matching checksum alone does not validate the separate
+update-manifest signature.
 
-## Geräteexperiment und mögliche kleine Erweiterung
+## Device experiment and possible small extension
 
-1. AppImage getrennt vom Electron-Profil in einem Benutzer-Testverzeichnis
-   starten und die OpenNOW-Decoderdiagnose aufnehmen. Login führt der Nutzer
-   aus; bestehende Electron-Cookies werden nicht kopiert.
-2. Einen H.264-GFN-Stream mit explizitem V4L2-Backend testen. Decodername,
-   Iris-Gerätezugriff und Queueaktivität korrelieren; Softwarefallback erkennen.
-3. HEVC-stateful zunächst lokal ergänzen: Codec/FourCC und Geräteprobe
-   generalisieren, vollständige Access Units, Auflösungswechsel und Flush
-   gegen den bereits funktionierenden Iris/GStreamer-Test vergleichen.
-4. Anschließend CAPTURE-DMA-BUF-Export und Lebensdauerhaltung statt CPU-Planes
-   an den vorhandenen Vulkan-Import anbinden. Keine Wiederverwendung von Puffern
-   vor abgeschlossener GPU-Nutzung; Format/Modifier und Synchronisation prüfen.
-5. Erst dann echten HEVC-GFN-Stream und später AV1 testen.
+1. Launch AppImage separately from Electron's profile in a user test directory,
+   recording OpenNOW decoder diagnostics. User performs login; do not copy
+   existing Electron cookies.
+2. Test a GFN H.264 stream with an explicit V4L2 backend. Correlate decoder name,
+   Iris access and queue activity; detect software fallback.
+3. Add stateful HEVC locally first: generalize codec/FourCC and device probes;
+   compare complete access units, resolution changes and flush against the
+   working Iris/GStreamer test.
+4. Connect CAPTURE DMA-BUF export and lifetime retention, replacing CPU planes,
+   to existing Vulkan import. Do not reuse buffers before GPU completion;
+   check format/modifier and synchronization.
+5. Then test real GFN HEVC and later AV1.
 
-Diese Schritte wären Änderungen am nativen Decoderbackend, nicht an einem
-vollständigen Chromium-Fork. Aufwand und Zuverlässigkeit werden erst nach dem
-ersten Gerätetest belastbar. OpenNOW nutzt ein inoffizielles GFN-Protokoll;
-Upstream-/Serveränderungen können Sitzungsaufbau und Codecverhandlung beeinflussen.
+These would change the native decoder backend, not require a complete Chromium
+fork. Effort/reliability become assessable after the first device test. OpenNOW
+uses an unofficial GFN protocol; upstream/server changes may affect session
+setup and codec negotiation.
 
-Das Projekt ist MIT-lizenziert; bei Codeübernahme Copyright/Lizenz erhalten.
-Abhängigkeiten haben separate Lizenzhinweise. Bisher kein Upstream-Code kopiert.
+The project is MIT-licensed; preserve copyright/license when copying code.
+Dependencies have separate license notices. No upstream code copied so far.
 
-## HEVC-Verhandlung: Vergleich vom 2026-10-05
+## HEVC negotiation: comparison on 2026-10-05
 
-Anlass: Der Windows-Identitätstest von gfn-armada meldet passende UA-/Plattform-
-Werte, aber der Nutzer berichtet weiterhin keine auswählbare H.265-Option.
-Nur Quellcode gelesen; OpenNOW weder gestartet noch angemeldet. Aktuelles `main`
-bleibt `bee18c118dbc89f42319436dcdb172d5b9e15e0c`. Zusätzlich untersucht:
-frühere Electron-Version `v0.5.5`, Commit
-`44b80f207e84a2e4a6cda58205aa54e67aacb56f`.
-Danke an OpenCloudGaming und die OpenNOW-Mitwirkenden für den offen zugänglichen
-Code. In dieser Untersuchung kein Code übernommen, keine laufende Sitzung geändert.
+Trigger: gfn-armada's Windows identity test reports appropriate UA/platform
+values, but the user still sees no selectable H.265 option. Source read only;
+OpenNOW not launched or logged into. Current `main` remains
+`bee18c118dbc89f42319436dcdb172d5b9e15e0c`. Also reviewed: earlier Electron
+`v0.5.5`, commit `44b80f207e84a2e4a6cda58205aa54e67aacb56f`.
+Thanks to OpenCloudGaming and OpenNOW contributors for their open source.
+No code copied or running session changed in this investigation.
 
-### Frühere Electron-Version: eigene WebRTC-Sitzung statt originaler Web-App
+### Earlier Electron version: custom WebRTC session instead of the original web app
 
-Diese Version ist für die Frage nach Chromium besonders relevant. Sie verwendet
-Chromium/WebRTC, implementiert aber eigene GFN-Oberfläche, Sitzungsanforderungen
-und Signalisierung. Sie lädt nicht einfach die originale Web-App mit anderer UA.
+This version is particularly relevant to Chromium. It uses Chromium/WebRTC but
+implements its own GFN UI, session requests and signaling. It does not simply
+load the original web app with another UA.
 
 - [clientHeaders.ts](https://github.com/OpenCloudGaming/OpenNOW/blob/44b80f207e84a2e4a6cda58205aa54e67aacb56f/opennow-stable/src/main/platforms/gfn/clientHeaders.ts):
-  auf Linux ebenfalls Windows-Chrome-UA mit `NVIDIACEFClient`/`GFN-PC`-Zusatz;
-  CloudMatch-Header `nv-client-type=NATIVE`, `nv-client-streamer=NVIDIA-CLASSIC`,
-  `nv-browser-type=CHROME`. Trotz dieser Header setzt der Sitzungsbody ausdrücklich
-  `GSStreamerType=WebRTC`. Header allein identifizieren also nicht den Videotransport.
+  Windows Chrome UA on Linux too, with `NVIDIACEFClient`/`GFN-PC`; CloudMatch
+  headers `nv-client-type=NATIVE`, `nv-client-streamer=NVIDIA-CLASSIC`,
+  `nv-browser-type=CHROME`. Nevertheless the session body explicitly sets
+  `GSStreamerType=WebRTC`. Headers alone do not identify video transport.
 - [deviceIdentity.ts](https://github.com/OpenCloudGaming/OpenNOW/blob/44b80f207e84a2e4a6cda58205aa54e67aacb56f/opennow-stable/src/main/platforms/gfn/deviceIdentity.ts):
-  normaler Linux-Desktop sendet `nv-device-os=LINUX`, aber
-  `clientPlatformName=windows`. Optionales Steam-Deck-Profil meldet SteamOS,
-  CONSOLE, VALVE und STEAMDECK. Das ist mehr als `navigator.platform`.
+  Normal Linux desktop sends `nv-device-os=LINUX` but `clientPlatformName=windows`.
+  Optional Steam Deck profile reports SteamOS, CONSOLE, VALVE and STEAMDECK.
+  This extends beyond `navigator.platform`.
 - [cloudmatchFeatures.ts](https://github.com/OpenCloudGaming/OpenNOW/blob/44b80f207e84a2e4a6cda58205aa54e67aacb56f/opennow-stable/src/main/platforms/gfn/cloudmatchFeatures.ts):
-  eigener Sitzungsbody enthält `requestedStreamingFeatures.codec`: H.264=1,
-  H.265=2, AV1=3. Die HEVC-Fallbackleiter ist `[2,1]`, gefiltert anhand gemeldeter
-  Decoderfähigkeiten. Das ist ein im Referenzcode vorhandenes Protokollfeld,
-  keine dokumentierte öffentliche NVIDIA-CLI-Option.
+  Custom session body has `requestedStreamingFeatures.codec`: H.264=1, H.265=2,
+  AV1=3. HEVC fallback `[2,1]` is filtered by reported decoder capability.
+  A field in reference protocol code, not a documented public NVIDIA CLI option.
 - [codecDiagnostics.ts](https://github.com/OpenCloudGaming/OpenNOW/blob/44b80f207e84a2e4a6cda58205aa54e67aacb56f/opennow-stable/src/renderer/src/lib/codecDiagnostics.ts):
-  eigene Codec-Verfügbarkeit aus Decoderprobe und WebRTC-Receive-Capabilities;
-  AV1 zusätzlich hardwaregeprüft, HEVC in `resolveSupportedStreamCodecs` ohne
-  zusätzliche Hardwarepflicht. Diese eigene Auswahl ruft den originalen
-  Web-App-Predicate mit `enableH265Support`/GPU-Allowlist nicht auf. Upstream-
-  Kommentare zu damaligen offiziellen Regeln sind keine Prüfung heutiger Regeln.
+  Custom availability from decoder probe and WebRTC receive capabilities.
+  AV1 additionally requires hardware; HEVC in `resolveSupportedStreamCodecs`
+  does not. This selection does not call the original app's
+  `enableH265Support`/GPU-allowlist predicate. Upstream comments about past
+  official rules do not verify today's rules.
 - [webrtcClient.ts](https://github.com/OpenCloudGaming/OpenNOW/blob/44b80f207e84a2e4a6cda58205aa54e67aacb56f/opennow-stable/src/renderer/src/platforms/gfn/webrtcClient.ts):
-  liest tatsächlich angebotene Codecs, bevorzugt HEVC im vorhandenen SDP und
-  per `RTCRtpTransceiver.setCodecPreferences`; behält Fallbacks, behandelt
-  HEVC-Profil/Level/Tier und prüft die resultierende Answer. Ein H.264-only-
-  Serverangebot erhält dadurch keinen erfundenen HEVC-Payload. Level-/Tier-
-  Umschreiben ist keine Garantie für passende tatsächliche Bitstreamparameter.
+  Reads offered codecs, prefers HEVC within existing SDP and through
+  `RTCRtpTransceiver.setCodecPreferences`; retains fallbacks, handles HEVC
+  profile/level/tier and validates the answer. An H.264-only server offer does
+  not gain an invented HEVC payload. Level/tier rewriting does not guarantee
+  matching actual bitstream parameters.
 
-Der Ansatz umgeht lokale Auswahlregeln der originalen Web-App, nicht die
-Entscheidung des GFN-Servers. Quellcode, Verfügbarkeitsprobe und erfolgreich
-verhandelter Hardwarestream sind drei getrennte Belege. Keine eigene OpenNOW-
-Laufzeitmessung und kein HEVC-Nachweis auf Odin in dieser Untersuchung.
+This bypasses local selection rules in the original app, not the GFN server's
+decision. Source code, availability probes and a negotiated hardware stream
+are distinct evidence. No OpenNOW runtime measurement or Odin HEVC proof in
+this investigation.
 
-### Aktuelles Qt/Rust: anderer Transport und andere Zahlen
+### Current Qt/Rust: different transport and numbering
 
 [streamer.rs](https://github.com/OpenCloudGaming/OpenNOW/blob/bee18c118dbc89f42319436dcdb172d5b9e15e0c/native/opennow-core/src/streamer.rs)
-wählt anhand des Decoderbackends und Farbprofils einen verfügbaren Codec.
-Für normales SDR-Auto ist die Kandidatenreihenfolge AV1, HEVC, H.264;
-explizite Auswahl wird gegen Backendfähigkeiten geprüft.
+selects an available codec by backend and color profile. Normal SDR auto tries
+AV1, HEVC, H.264; explicit selection is checked against backend capabilities.
 
 [cloudmatch.rs](https://github.com/OpenCloudGaming/OpenNOW/blob/bee18c118dbc89f42319436dcdb172d5b9e15e0c/native/opennow-core/src/cloudmatch.rs)
-sendet `clientIdentification=GFN-PC`, einen Bifrost-UA und auf Linux
-`clientPlatformName=Linux` beziehungsweise optional SteamOS. Anders als die
-Electron-Version enthält `build_create_body` ausdrücklich **kein Codec-Feld**
-in `requestedStreamingFeatures`; Auswahl wird für Farb-/HDR-Grenzen verwendet.
-Ein älterer Kommentar in `codec_wire` zur Auto-Auswahl widerspricht dieser
-konkreten Body-Konstruktion; hier wurde die Konstruktion selbst geprüft.
+sends `clientIdentification=GFN-PC`, a Bifrost UA, and Linux or optional SteamOS
+as `clientPlatformName`. Unlike Electron, `build_create_body` explicitly has
+**no codec field** in `requestedStreamingFeatures`; selection sets color/HDR
+limits. An older auto-selection comment in `codec_wire` contradicts this body
+construction; the construction itself was checked here.
 
 [nvst_rtsp.rs](https://github.com/OpenCloudGaming/OpenNOW/blob/bee18c118dbc89f42319436dcdb172d5b9e15e0c/native/opennow-streamer/crates/opennow-streamer-core/src/nvst_rtsp.rs)
-sendet die Wahl im RTSP ANNOUNCE über
-`a=x-nv-vqos[0].bitStreamFormat`: **H.264=0, HEVC=1, AV1=2**.
-Diese Zahlen nicht mit CloudMatch der Electron-Version verwechseln.
-Der native NVST-Pfad bietet keinen kleinen Chromium-Schalter und ersetzt
-wesentliche Streamer-/Signalisierungsteile. Die oben dokumentierten fehlenden
-stateful-Iris-HEVC-Komponenten bleiben relevant.
+sends selection in RTSP ANNOUNCE via `a=x-nv-vqos[0].bitStreamFormat`:
+**H.264=0, HEVC=1, AV1=2**. Do not confuse these with Electron CloudMatch numbers.
+Native NVST is not a small Chromium switch; it replaces substantial signaling/
+streamer components. Missing stateful Iris HEVC components documented above
+remain relevant.
 
-### Konsequenz für gfn-armada
+### Consequence for gfn-armada
 
-Beim originalen GFN-Client bleiben. Der aktuelle UA-/Plattformtest ändert weder
-CloudMatch-Codecpräferenz noch WebRTC-Präferenz noch originale SDK-Eligibility.
-OpenNOW zeigt daher einen begründeten nächsten Versuch, aber keinen bewiesenen
-Einzeiler zur Freischaltung:
+Retain original GFN. The current UA/platform test changes neither CloudMatch
+codec preference, WebRTC preference nor original SDK eligibility. OpenNOW
+suggests a justified experiment, not a proven one-line unlock:
 
-1. Bei einem frischen originalen Sitzungsaufbau nur erlaubte Diagnosefelder
-   erfassen: tatsächliche Plattform-/Codecpräferenz und angebotene H.265-
-   Profile. Keine vollständigen Bodies, Tokens, URLs, SDP oder ICE-Daten exportieren.
-2. Den vorhandenen originalen SDK-Override-Pfad für `enableH265Support` bis
-   zum Aufrufer verfolgen; erst dann eine abschaltbare experimentelle Anpassung
-   wählen. Nicht wahllos alle Requests als NATIVE oder Steam Deck markieren.
-3. Falls nötig eine eng auf den nachgewiesenen WebRTC-Sitzungsrequest begrenzte
-   HEVC-Präferenz plus vorhandene Codec-Präferenzen testen, H.264-Fallback behalten.
-   Keine HEVC-Payloads hinzufügen, die der Server nicht angeboten hat.
-4. Erfolg erst mit aktivem `video/H265`, Chromium-Plattformdecoder und
-   erfolgreichen Iris-CAPTURE-Frames für diese HEVC-Sitzung melden.
+1. In a fresh original session setup, capture only permitted diagnostic fields:
+   actual platform/codec preference and offered H.265 profiles. Export no full
+   bodies, tokens, URLs, SDP or ICE data.
+2. Trace the original SDK override path for `enableH265Support` to its caller;
+   only then choose a disableable experimental adaptation. Do not indiscriminately
+   mark requests as NATIVE or Steam Deck.
+3. If needed, test an HEVC preference narrowly scoped to the demonstrated WebRTC
+   session request, plus existing codec preferences, retaining H.264 fallback.
+   Add no HEVC payloads absent from the server offer.
+4. Report success only with active `video/H265`, Chromium platform decoder and
+   successful Iris CAPTURE frames for that session.
 
-Diese Schritte sind ein Experimentplan; in dieser Recherche kein solcher Hook
-implementiert. H.264 bleibt der validierte GFN-Hardwarepfad, HEVC unbestätigt.
+These were experimental next steps; no such hook implemented during this review.
+H.264 was the validated GFN hardware path and HEVC unconfirmed at that stage.
+Later codec results are in [the project summary](project-summary-2026-10-05.md).

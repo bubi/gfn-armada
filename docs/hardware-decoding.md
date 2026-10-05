@@ -1,4 +1,4 @@
-# Hardware-Decoding: Evidenz, Lücken und Prüfplan
+# Hardware decoding: evidence, gaps, and test plan
 
 **Concluded research snapshot:** [codec handover](codec-findings-2026-10-05.md)
 consolidates source ownership, four patches, tests and remaining limitations.
@@ -19,208 +19,203 @@ hardware-path validation through Chromium VA-API and the patched Iris adapter:
 path, not Chromium's direct stateful V4L2 decoder. GPU-copy output; Gamescope,
 zero-copy and AV1 remain unverified. Earlier dated analysis below is retained.
 
-Die versionsgenaue Electron-/Chromium-Untersuchung steht in
+The version-specific Electron/Chromium investigation is in
 [electron-decoder-investigation.md](electron-decoder-investigation.md).
-Sie identifiziert den standardmäßig ausgeschalteten V4L2-Buildpfad und die
-explizite HEVC-Ablehnung im stateful Decoder von Chromium 152 und aktuellem main.
+It identifies the V4L2 build path disabled by default and the explicit HEVC
+rejection in the stateful decoder of Chromium 152 and current main.
 
-Stand: 2026-10-04. HEVC-VPU-Decoding bis zur Wayland-DMA-BUF-Übergabe ist auf dem
-Portal für einen synthetischen GStreamer-Testclip nachgewiesen. Der aktuelle
-GFN-H.264-Spielstream wurde dagegen eindeutig als **FFmpeg-Softwaredecode**
-bestimmt. HEVC im GFN-Stream, AV1, Gamescope und der Electron-DMA-BUF-Import
-bleiben unbestätigt. Die neue Diagnose klassifiziert eindeutig gemeldetes
-FFmpeg-Softwaredecode als `no`; sie leitet aus Plattformnamen/Effizienzflags
-keinen Qualcomm-Hardwareerfolg ab. Historische Snapshots können noch `unknown`
-enthalten; Zeitpunkt und `nativeWebRTC`-Beleg prüfen.
-Weder GPU-Rendering noch niedrige CPU-Last allein beweisen Hardware-Decoding.
+Snapshot: 2026-10-04. Portal demonstrated HEVC VPU decoding through Wayland
+DMA-BUF handoff for a synthetic GStreamer clip. In contrast, the GFN H.264 game
+stream at this stage was clearly identified as **FFmpeg software decoding**.
+GFN HEVC, AV1, Gamescope, and Electron DMA-BUF import remained unconfirmed.
+Diagnostics classify explicitly reported FFmpeg software decoding as `no`;
+platform names/efficiency flags do not imply Qualcomm hardware success.
+Historical snapshots may still contain `unknown`; check timestamps and
+`nativeWebRTC` evidence. GPU rendering or low CPU load alone does not prove
+hardware decoding. Later results: [current project summary](project-summary-2026-10-05.md).
 
-## Armada-Stack aus dem Quellcode
+## Armada stack from source
 
-Untersucht wurde Armada-Commit `43c0cca880cefbb963d5fdc1554816ffd0a5691f`.
-Die jeweiligen Dateien sind genaue Quellbelege, keine Messungen des installierten OS:
+Inspected Armada commit: `43c0cca880cefbb963d5fdc1554816ffd0a5691f`.
+These are precise source references, not measurements of the installed OS:
 
-- [Kernel BASE.env](https://github.com/armada-os/armada/blob/43c0cca880cefbb963d5fdc1554816ffd0a5691f/packages/kernel/BASE.env) pinnt `7.2.6`.
-- [Mesa BASE.env](https://github.com/armada-os/armada/blob/43c0cca880cefbb963d5fdc1554816ffd0a5691f/packages/mesa/BASE.env) pinnt Mesa `26.2.3`, mit Fedora-Paketierung.
-- [Portal DTS](https://github.com/armada-os/armada/blob/43c0cca880cefbb963d5fdc1554816ffd0a5691f/packages/kernel/dts/qcs8550-ayn-odin2portal.dts) nennt `qcom,qcs8550` und `qcom,sm8550` und inkludiert das gemeinsame AYN-DTSI.
-- [AYN-DTSI](https://github.com/armada-os/armada/blob/43c0cca880cefbb963d5fdc1554816ffd0a5691f/packages/kernel/dts/qcs8550-ayn-common.dtsi) setzt `&iris { status = "okay"; }`.
-- [Config overrides](https://github.com/armada-os/armada/blob/43c0cca880cefbb963d5fdc1554816ffd0a5691f/packages/kernel/config/armada-kernel.config.overrides) setzen SM8550-Videoclocks. Sie werden über ARM64-defconfig gemerged; das Fehlen eines Iris-Overrides bedeutet weder enabled noch disabled im fertigen Kernel.
-- [Basis-Pakete](https://github.com/armada-os/armada/blob/43c0cca880cefbb963d5fdc1554816ffd0a5691f/build_files/10-base-packages.sh) umfassen FFmpeg und GStreamer-Plugins.
+- [Kernel BASE.env](https://github.com/armada-os/armada/blob/43c0cca880cefbb963d5fdc1554816ffd0a5691f/packages/kernel/BASE.env) pins `7.2.6`.
+- [Mesa BASE.env](https://github.com/armada-os/armada/blob/43c0cca880cefbb963d5fdc1554816ffd0a5691f/packages/mesa/BASE.env) pins Mesa `26.2.3` with Fedora packaging.
+- [Portal DTS](https://github.com/armada-os/armada/blob/43c0cca880cefbb963d5fdc1554816ffd0a5691f/packages/kernel/dts/qcs8550-ayn-odin2portal.dts) lists `qcom,qcs8550` and `qcom,sm8550` and includes the shared AYN DTSI.
+- [AYN DTSI](https://github.com/armada-os/armada/blob/43c0cca880cefbb963d5fdc1554816ffd0a5691f/packages/kernel/dts/qcs8550-ayn-common.dtsi) sets `&iris { status = "okay"; }`.
+- [Config overrides](https://github.com/armada-os/armada/blob/43c0cca880cefbb963d5fdc1554816ffd0a5691f/packages/kernel/config/armada-kernel.config.overrides) set SM8550 video clocks. They are merged into ARM64 defconfig; a missing Iris override implies neither enabled nor disabled in the final kernel.
+- [Base packages](https://github.com/armada-os/armada/blob/43c0cca880cefbb963d5fdc1554816ffd0a5691f/build_files/10-base-packages.sh) include FFmpeg and GStreamer plugins.
 
-Aus Quellen allein lassen sich ausgelieferte Version, finale `.config`, Firmware,
-Treiberbindung und Device-Permissions nicht ableiten. Der inzwischen gemessene
-Gerätestand ist in [odin-device-validation.md](odin-device-validation.md)
-dokumentiert. Das Pinning ist kein
-Beweis, dass das genannte Kernel-Tarball alle untersuchten Mainline-Änderungen
-enthält oder derzeit extern abrufbar ist. Eine angefragte Upstream-v7.2-Quelldatei
-war nicht abrufbar; aktuelle Iris-Quellen wurden separat auf `master` gelesen.
+Sources alone cannot establish shipped versions, final `.config`, firmware,
+driver binding, or device permissions. Measured device state is documented in
+[odin-device-validation.md](odin-device-validation.md). Pinning does not prove
+that the named kernel tarball includes every inspected mainline change or is
+currently downloadable. A requested upstream v7.2 source file was unavailable;
+current Iris sources were separately inspected on `master`.
 
-## Qualcomm: stateful V4L2 zuerst
+## Qualcomm: stateful V4L2 first
 
-Der aktuelle [Iris-Kconfig](https://github.com/torvalds/linux/blob/master/drivers/media/platform/qcom/iris/Kconfig)
-selektiert V4L2 mem2mem und DMA-contiguous videobuf2. Die
-[VPU3x-Plattformtabelle](https://github.com/torvalds/linux/blob/master/drivers/media/platform/qcom/iris/iris_platform_vpu3x.c)
-enthält H.264, HEVC, VP9 und AV1 sowie SM8550-Plattformdaten. Das zeigt eine
-Quellcodeperspektive; verfügbare Codecs sind über das tatsächliche Device zu
-enumerieren. Gemeinsame Tabellen garantieren nicht jede Kombination von Profil,
-Bit-Tiefe, Auflösung, Framerate und Firmware auf jedem Board.
+Current [Iris Kconfig](https://github.com/torvalds/linux/blob/master/drivers/media/platform/qcom/iris/Kconfig)
+selects V4L2 mem2mem and DMA-contiguous videobuf2.
+The [VPU3x platform table](https://github.com/torvalds/linux/blob/master/drivers/media/platform/qcom/iris/iris_platform_vpu3x.c)
+contains H.264, HEVC, VP9, AV1, and SM8550 platform data. This is a source-level
+view; available codecs must be enumerated on the actual device. Shared tables
+do not guarantee every profile, bit depth, resolution, frame rate, and firmware
+combination on every board.
 
-Für Iris ist der erste Integrationskandidat **stateful V4L2 mem2mem**: komprimierte
-Streams auf der OUTPUT-Queue, dekodierte Bilder auf CAPTURE. Die Media Request API
-mit Slice-Controls ist ein anderer, stateless Pfad. Eine `/dev/media*`-Node oder
-ein Chromium-H265-stateless Delegate macht Iris nicht zum Request-API-Decoder.
-Venus älterer SoCs und Androids downstream `msm_vidc` dürfen nicht mit dem
-hier aus dem Device-Tree abgeleiteten Iris-Pfad gleichgesetzt werden.
+For Iris the first integration candidate is **stateful V4L2 mem2mem**:
+compressed streams on OUTPUT, decoded pictures on CAPTURE. The Media Request
+API with slice controls is a different stateless path. A `/dev/media*` node or
+Chromium H265 stateless delegate does not make Iris a Request API decoder.
+Venus on older SoCs and Android downstream `msm_vidc` must not be equated with
+the Iris path inferred from this device tree.
 
-Für den ersten HEVC-Test 8-Bit Main / SDR bevorzugen. Linear NV12 ist ein
-vernünftiger Integrationskandidat, **falls der konkrete Treiber es ausgibt**.
-UBWC, Modifier, Plane-Layouts, P010 und Cache-/Fence-Synchronisation sind getrennt
-zu testen. Die Adreno-740-GPU rendert; die Qualcomm-VPU decodiert. Turnip allein
-liefert keinen VA-API-Decoder und keinen Nachweis von Vulkan-Video-Decoding.
+Prefer 8-bit Main/SDR for the initial HEVC test. Linear NV12 is a reasonable
+integration candidate **if the actual driver outputs it**. Test UBWC, modifiers,
+plane layouts, P010, and cache/fence synchronization separately. Adreno 740
+renders; Qualcomm's VPU decodes. Turnip alone supplies neither a VA-API decoder
+nor evidence of Vulkan Video decoding.
 
-## Chromium / Electron: fehlende Verbindung
+## Chromium / Electron: missing connection
 
 [Chromium media/gpu/args.gni](https://chromium.googlesource.com/chromium/src/+/main/media/gpu/args.gni)
-setzt `use_v4l2_codec=false` als Standard. VA-API ist ein anderer Backendpfad,
-auch wenn ARM64 für den Linux-VA-API-Build zulässig ist. Ein VA-API-Schalter
-verbindet Electron daher nicht automatisch mit Iris.
+defaults to `use_v4l2_codec=false`. VA-API is a different backend path, even
+though ARM64 is permitted for Linux VA-API builds. A VA-API flag therefore does
+not automatically connect Electron to Iris.
 
-Aktuelles Chromium hat bereits:
+Current Chromium already has:
 
-- [V4L2StatefulVideoDecoder](https://chromium.googlesource.com/chromium/src/+/main/media/gpu/v4l2/v4l2_stateful_video_decoder.cc): stateful Codec-/Queue-Verwaltung und DMA-BUF/MMAP-Pfade; HEVC wird im untersuchten Stand ausdrücklich abgelehnt.
-- [VideoDecoderPipeline](https://chromium.googlesource.com/chromium/src/+/main/media/gpu/chromeos/video_decoder_pipeline.cc): V4L2-Backend-Auswahl mit Linux-spezifischer Frameallokation. Der Verzeichnisname `chromeos` ist kein Beweis einer ausschließlich ChromeOS-basierten Ausführung.
-- [PlatformVideoFrameUtils](https://chromium.googlesource.com/chromium/src/+/main/media/gpu/chromeos/platform_video_frame_utils.cc): Linux/V4L2-spezifischer Zugriff auf Rendernodes für GBM.
-- [PlatformVideoFramePool](https://chromium.googlesource.com/chromium/src/+/main/media/gpu/chromeos/platform_video_frame_pool.cc): DMA-BUF-basierte Frame-Ressourcen.
-- [GpuVideoDecodeAcceleratorFactory](https://chromium.googlesource.com/chromium/src/+/main/media/gpu/gpu_video_decode_accelerator_factory.cc): V4L2-Guard für Linux oder ChromeOS, wenn der Buildflag gesetzt ist.
+- [V4L2StatefulVideoDecoder](https://chromium.googlesource.com/chromium/src/+/main/media/gpu/v4l2/v4l2_stateful_video_decoder.cc): stateful codec/queue management and DMA-BUF/MMAP paths; explicitly rejects HEVC in the inspected revision.
+- [VideoDecoderPipeline](https://chromium.googlesource.com/chromium/src/+/main/media/gpu/chromeos/video_decoder_pipeline.cc): V4L2 backend selection with Linux-specific frame allocation. The `chromeos` directory name does not prove ChromeOS-only execution.
+- [PlatformVideoFrameUtils](https://chromium.googlesource.com/chromium/src/+/main/media/gpu/chromeos/platform_video_frame_utils.cc): Linux/V4L2 render-node access for GBM.
+- [PlatformVideoFramePool](https://chromium.googlesource.com/chromium/src/+/main/media/gpu/chromeos/platform_video_frame_pool.cc): DMA-BUF frame resources.
+- [GpuVideoDecodeAcceleratorFactory](https://chromium.googlesource.com/chromium/src/+/main/media/gpu/gpu_video_decode_accelerator_factory.cc): V4L2 guard for Linux/ChromeOS when enabled at build time.
 
-Diese `main`-Quellen sind beweglich und **nicht** der Nachweis, dass das gebündelte
-Electron-44-Binary genau diese Revision oder aktivierte Buildflags enthält.
-[Electron-Buildargumente](https://github.com/electron/electron/blob/v44.5.1/build/args/all.gn)
-aktivieren proprietäre Codecs und Chrome-FFmpeg-Branding. Das allein aktiviert
-keinen V4L2-Decoder. System-FFmpeg und Electron-internes FFmpeg sind getrennte
-Builds. Die Installation eines FFmpeg-V4L2-Decoders ändert WebRTC nicht.
+These `main` sources move and do **not** prove that bundled Electron 44 has
+this exact revision or enabled flags. [Electron build arguments](https://github.com/electron/electron/blob/v44.5.1/build/args/all.gn)
+enable proprietary codecs and Chrome FFmpeg branding. That does not enable
+V4L2 decoding. System FFmpeg and Electron's internal FFmpeg are separate builds;
+installing an FFmpeg V4L2 decoder does not change WebRTC.
 
-Die WebRTC-HEVC-Buildentscheidung ist in
+The WebRTC HEVC build decision in
 [webrtc.gni](https://webrtc.googlesource.com/src/+/refs/heads/main/webrtc.gni)
-an `enable_hevc_parser_and_hw_decoder` gekoppelt. Zusätzlich müssen Browser-
-Decoderfähigkeiten in die WebRTC-Decoderfactory und SDP-Angebote gelangen.
-Ein HEVC-MP4, WebCodecs oder `canPlayType()` sind kein Beweis für WebRTC HEVC.
-AV1 in `getCapabilities()` kann auf einem Softwaredecoder beruhen.
+is tied to `enable_hevc_parser_and_hw_decoder`. Browser decoder capabilities
+must also reach the WebRTC decoder factory and SDP offers. HEVC MP4, WebCodecs,
+or `canPlayType()` does not prove WebRTC HEVC. AV1 in `getCapabilities()` may
+represent a software decoder.
 
-## HEVC und AV1 getrennt
+## HEVC and AV1 separately
 
-| Ebene | H.264 | HEVC | AV1 |
+| Layer | H.264 | HEVC | AV1 |
 |---|---|---|---|
-| Produktpriorität | funktionaler Fallback | erster VPU-Nachweis | erst nach HEVC |
-| aktueller Iris-Quellpfad | vorhanden | vorhanden | gemeinsame VPU3x-Tabelle enthält AV1 |
-| konkretes Portal / Firmware / finale Config | unknown | unknown | unknown |
-| gebündeltes Electron / V4L2 Backend | unbestätigt | unbestätigt | unbestätigt |
-| WebRTC Codecangebot | zur Laufzeit erheben | zur Laufzeit erheben | zur Laufzeit erheben |
-| GFN-Verhandlung in dieser App | unknown | unknown | unknown |
-| Hardwaredecoder tatsächlich aktiv | unknown | unknown | unknown |
+| Product priority | Functional fallback | First VPU proof | After HEVC |
+| Current Iris source path | Present | Present | Shared VPU3x table contains AV1 |
+| Actual Portal / firmware / final config | unknown | unknown | unknown |
+| Bundled Electron / V4L2 backend | Unconfirmed | Unconfirmed | Unconfirmed |
+| WebRTC codec offer | Collect at runtime | Collect at runtime | Collect at runtime |
+| GFN negotiation in this app | unknown | unknown | unknown |
+| Hardware decoder actually active | unknown | unknown | unknown |
 
-Die [aktuelle NVIDIA-Codecdokumentation](https://nvidia.custhelp.com/app/answers/detail/a_id/5824)
-beschreibt automatische Auswahl und Codecoptionen mit OS-/Browser-/GPU-
-Abhängigkeiten; Browser-HEVC verlangt dort 8-Bit-Farbqualität. Das widerlegt eine
-pauschale Aussage, GFN-Browser könnten niemals HEVC anbieten. Es bestätigt
-**nicht** HEVC oder AV1 für Linux ARM64 Electron auf dem Portal. Deshalb kein
-fest erzwungener HEVC/AV1-SDP-Patch, kein gefälschter Decoderfähigkeitsbericht.
+[Current NVIDIA codec documentation](https://nvidia.custhelp.com/app/answers/detail/a_id/5824)
+describes automatic selection and codec options depending on OS/browser/GPU;
+browser HEVC requires 8-bit color quality there. This contradicts a blanket
+claim that GFN browsers can never offer HEVC. It does **not** confirm HEVC or
+AV1 for Linux ARM64 Electron on Portal. Consequently, no hard-forced HEVC/AV1
+SDP patch or fabricated decoder capability report.
 
-## Videopfad und Zero-/Low-Copy
+## Video path and zero-/low-copy
 
 ```text
-GFN-Server (tatsächlich gewählter Codec)
+GFN server (actually selected codec)
   → WebRTC depacketize / jitter buffer
   → Chromium WebRTC decoder factory / media decoder
-  → stateful V4L2 OUTPUT (komprimierte Daten)
-  → Iris / Firmware / Qualcomm-VPU
-  → CAPTURE (NV12 oder unterstütztes alternatives Layout)
+  → stateful V4L2 OUTPUT (compressed data)
+  → Iris / firmware / Qualcomm VPU
+  → CAPTURE (NV12 or another supported layout)
   → DMA-BUF export/import / NativePixmap / SharedImage
-  → EGL oder passendes GPU-Backend, YUV→RGB
+  → EGL or suitable GPU backend, YUV→RGB
   → Ozone Wayland / Gamescope
-  → DRM/KMS Display
+  → DRM/KMS display
 ```
 
-Dies ist die **Zielarchitektur**, nicht der aktuelle Ist-Pfad des Electron-Bundles.
-Ein Low-Copy-Pfad benötigt kompatible DMA-BUF-Plane-Offsets, Strides, Modifier,
-GBM-/EGL-Imports und Synchronisation. GPU-Farbkonvertierung oder Compositor-
-Komposition sind nicht automatisch CPU-Kopien. Direct Scanout ist ein weiteres,
-separates Kriterium; Gamescope kann weiterhin komponieren. Keine pauschale
-Null-Kopien-Behauptung anhand eines Chromium-Schalters.
+This is the **target architecture**, not the Electron bundle's actual path at
+this snapshot. Low-copy requires compatible DMA-BUF plane offsets, strides,
+modifiers, GBM/EGL imports, and synchronization. GPU color conversion or
+compositor composition does not automatically mean CPU copies. Direct scanout
+is another separate criterion; Gamescope may still composite. A Chromium flag
+alone does not establish zero copies.
 
-## Prüfplan auf dem Gerät
+## Device test plan
 
-1. `gfn-armada diagnostics` sichern; Kernel/Image-Version ergänzen. `/dev/video*`
-   und `/dev/media*` prüfen, finale Kernelconfig (`/proc/config.gz` oder
-   `/boot/config-$(uname -r)`) lesen. Iris-Bindung und Firmwarefehler mit Kernel-
-   Log kontrollieren. Fehlende Rechte sind `unknown`, nicht Hardwareausfall.
-2. Für jede Video-Node `v4l2-ctl -d /dev/videoN --all` und getrennte OUTPUT-/
-   CAPTURE-Formatlisten für Single-/Multiplanar queues erheben. M2M, H264/HEVC/AV1,
-   Auflösung und Bit-Tiefe dokumentieren. Mit `media-ctl -p` Topologie prüfen,
-   falls vorhanden. Die Diagnose verpackt auch nicht verfügbare Tools als Evidenz.
-3. Lokalen bekannten 8-Bit HEVC-Teststream explizit mit
-   `ffmpeg -c:v hevc_v4l2m2m -i sample.hevc -f null -` prüfen, **falls dieser
-   Decoder im Build existiert**. Decoderlog und Iris-Queueaktivität korrelieren.
-   Analog H264. `-hwaccels` allein genügt nicht; V4L2m2m erscheint auch als Decoder.
-   Dieser Null-Ausgabe-Test beweist keine DMA-BUF-Renderingkette.
-4. Optional GStreamer `gst-inspect-1.0 video4linux2` / `v4l2codecs` und passende
-   Decoder prüfen. GStreamer kann unabhängige Decoder-/Importtests liefern;
-   Austausch von WebRTC in Electron ist damit nicht implementiert.
-5. Chromium-Build zuerst gegen denselben lokalen HEVC-Stream testen. GPU-
-   Prozess-/Sandboxzugriff auf Video- und DRM-Nodes prüfen. Danach WebRTC
-   HEVC mit kontrolliertem Gegenüber prüfen. Erst dann GFN starten.
-6. `GFN_ARMADA_LOG=debug gfn-armada launch` + `chrome://gpu` + WebRTC-Snapshot
-   auswerten: Codec, Decodername, Frames, Drops und mittlere Decodezeit.
-   `totalDecodeTime/framesDecoded` ist ein Mittel seit Streambeginn, keine
-   Ende-zu-Ende-Latenz. Nicht ausgefüllte Statistikfelder bleiben unbekannt.
-7. V4L2-Queue- und Iris-Aktivität per Trace/strace oder geeigneten Kernel-
-   Tracepoints **zeitlich mit genau diesem Stream** korrelieren. Softwaredecoder
-   ausschließen. Erst Codec + ausgewählter Hardwarepfad + aktive Iris-VPU ergeben
-   einen Nachweis. `powerEfficientDecoder` ist nur ein Browserhinweis.
-8. DMA-BUF-Import und CPU-Mappings separat erfassen. GPU/Compositor-Traces,
-   Format/Modifier, CPU-Last und Dropped Frames vor/nach Änderung vergleichen.
-   HEVC-Nachweis sichern; danach denselben Ablauf für AV1 durchführen.
+1. Save `gfn-armada diagnostics`; add kernel/image versions. Inspect `/dev/video*`
+   and `/dev/media*`, read final kernel config (`/proc/config.gz` or
+   `/boot/config-$(uname -r)`). Check Iris binding and firmware errors in kernel
+   logs. Missing permissions mean `unknown`, not hardware failure.
+2. For every video node collect `v4l2-ctl -d /dev/videoN --all` and separate
+   OUTPUT/CAPTURE formats for single-/multiplanar queues. Record M2M,
+   H264/HEVC/AV1, resolution, and bit depth. Inspect topology with `media-ctl -p`
+   if available. Diagnostics also record unavailable tools as evidence.
+3. Explicitly test a known local 8-bit HEVC stream with
+   `ffmpeg -c:v hevc_v4l2m2m -i sample.hevc -f null -` **if the build contains
+   that decoder**. Correlate decoder logs and Iris queue activity; likewise for
+   H264. `-hwaccels` alone is insufficient; V4L2m2m also appears as a decoder.
+   Null output does not prove a DMA-BUF rendering chain.
+4. Optionally inspect GStreamer `gst-inspect-1.0 video4linux2` / `v4l2codecs` and
+   suitable decoders. GStreamer can provide independent decode/import tests;
+   it does not implement a replacement for Electron WebRTC.
+5. First test the Chromium build against the same local HEVC stream. Check GPU
+   process/sandbox access to video/DRM nodes. Then test WebRTC HEVC with a
+   controlled peer, and only afterwards start GFN.
+6. Evaluate `GFN_ARMADA_LOG=debug gfn-armada launch`, `chrome://gpu`, and WebRTC
+   snapshots: codec, decoder, frames, drops, mean decode time.
+   `totalDecodeTime/framesDecoded` averages since stream start, not end-to-end
+   latency. Missing statistics remain unknown.
+7. Correlate V4L2 queues and Iris activity through trace/strace or suitable
+   kernel tracepoints **in time with this exact stream**. Exclude software
+   decoders. Only codec + selected hardware path + active Iris VPU establish
+   proof. `powerEfficientDecoder` is merely a browser indication.
+8. Record DMA-BUF imports and CPU mappings separately. Compare GPU/compositor
+   traces, formats/modifiers, CPU load, and dropped frames before/after changes.
+   Save HEVC proof, then repeat for AV1.
 
-## Kleinstmöglicher nächster Build-/Patchschritt
+## Smallest next build/patch step
 
-Kein Patch ohne reproduzierten Fehler. Zuerst den konkreten Electron-Chromium-
-Commit und `args.gn` sichern. Prüfen, ob `use_v4l2_codec=true`, passendes Ozone-
-Wayland/GBM und `enable_hevc_parser_and_hw_decoder` im Build möglich sind und
-`IsV4L2DecoderStateful()` den richtigen Decoder auswählt. `use_vaapi`-/AV1-
-Flagabhängigkeiten im konkreten GN-Graph prüfen, keine ungeprüften Rezeptflags.
+No patch without reproducing a failure. First save the actual Electron Chromium
+commit and `args.gn`. Check whether `use_v4l2_codec=true`, suitable Ozone
+Wayland/GBM, and `enable_hevc_parser_and_hw_decoder` can be built, and whether
+`IsV4L2DecoderStateful()` chooses correctly. Check `use_vaapi`/AV1 flag dependencies
+in the actual GN graph; do not use unverified recipe flags.
 
-Falls lokale HEVC-VPU-Decodierung funktioniert, Chromium aber scheitert, den
-Fehler eingrenzen: Backendauswahl / SupportedConfigs, Iris-Queueformate,
-HEVC-Bitstreamkonvertierung, Sandbox-Devicezugriff, Framepool oder GPU-Import.
-Daraus ergibt sich ein kleiner Patch nur an der nachgewiesen fehlenden Verbindung.
-Die relevanten Komponenten stehen oben. Keine Android-/MediaCodec-Brücke und
-kein vollständiger dauerhaft gepflegter Chromium-Fork als erster Schritt.
+If local HEVC VPU decoding works but Chromium fails, isolate backend selection/
+SupportedConfigs, Iris queue formats, HEVC bitstream conversion, sandbox device
+access, frame pool, or GPU import. Patch only the demonstrated missing
+connection. Relevant components are listed above. Neither an Android/MediaCodec
+bridge nor a full permanently maintained Chromium fork is the initial step.
 
-## Grenzen der implementierten Telemetrie
+## Implemented telemetry limits
 
-Preload beobachtet neu erstellte `RTCPeerConnection`s im Hauptfenster und ruft
-`getStats()` auf. Worker, andere Frames, vorher erstellte Verbindungen und ein
-proprietärer Streamtransport können unsichtbar bleiben. Main-World-Hooking ist
-best effort; GFN kann es durch Änderungen umgehen. Die Remote-Seite kann Reports
-beeinflussen. IPC ist auf Sender/Origin/Größe begrenzt; solche Reports bleiben
-als **page-reported** markiert und setzen Hardwarestatus niemals auf `yes`.
-`runtime.json` ist eine historische, timestamped Momentaufnahme, kein Live-
-Hardwareattest. `active` ist nur die zuletzt gespeicherte Sitzungsbeobachtung;
-bei Crash kann es veraltet sein. Die Diagnose liest es ohne Frischebehauptung.
-# Nachtrag: Gerätetest 2026-10-04
+Preload observes new `RTCPeerConnection`s in the main window and calls
+`getStats()`. Workers, other frames, existing connections, or proprietary
+transport can remain invisible. Main-world hooking is best effort; GFN changes
+can bypass it. The remote page can influence reports. IPC is bounded by
+sender/origin/size; these reports remain **page-reported** and never set hardware
+status to `yes`. `runtime.json` is a historical timestamped snapshot, not a live
+hardware attestation. `active` is only the last saved session observation and
+may be stale after a crash. Diagnostics do not claim freshness when reading it.
 
-Der Iris-HEVC-Pfad wurde auf dem Portal mit einem synthetischen Clip und
-GStreamer erfolgreich getestet, einschließlich DMA-BUF-Ausgang. Das getestete
-Electron-Bundle bietet jedoch kein H.265 in WebRTC an. Details und Grenzen:
-[odin-device-validation.md](odin-device-validation.md). GFN-Hardwaredecodierung
-bleibt beim originalen GFN-Stream aus: dieser wurde als FFmpeg-H.264-
-Softwaredecode identifiziert.
+## Addendum: device test 2026-10-04
 
-Die lokale Testbrücke `experiments/dmabuf` wurde anschließend unter Wayland
-validiert: Iris → lineares NV12-DMA-BUF → Electron SharedTexture → VideoFrame
-→ GPU-Canvas. 60 Transfers und Renderer-Draw-Aufrufe, sichtbares Testmuster,
-60 freigegebene Samples, keine verbleibenden Leases. GPU-Renderer:
-`ANGLE (freedreno, FD740, OpenGL ES 3.2)`. Der Adapter mappt keine Rohpixel.
-Das belegt weder die Anzahl interner Chromium-/Compositor-Kopien noch
-120-Hz-Leistung oder HEVC von NVIDIA. XWayland-Import scheiterte in den
-Vergleichstests. Für diesen lokalen Wayland-Pfad ist bisher kein Chromium-
-Patch erforderlich; die GFN-Codec-Aushandlung wird dadurch nicht erweitert.
+The Iris HEVC path succeeded on Portal with a synthetic clip and GStreamer,
+including DMA-BUF output. The tested Electron bundle did not offer H.265 in
+WebRTC. Details/limits: [odin-device-validation.md](odin-device-validation.md).
+The original GFN stream at this stage was identified as FFmpeg H.264 software
+decoding, without GFN hardware decoding.
+
+The local `experiments/dmabuf` bridge was subsequently validated on Wayland:
+Iris → linear NV12 DMA-BUF → Electron SharedTexture → VideoFrame → GPU canvas.
+60 transfers/renderer draws, visible pattern, 60 released samples, no remaining
+leases. GPU renderer: `ANGLE (freedreno, FD740, OpenGL ES 3.2)`. The adapter maps
+no raw pixels. This does not prove internal Chromium/compositor copy counts,
+120 Hz performance, or NVIDIA HEVC. XWayland import failed in comparison tests.
+No Chromium patch has yet been required for this local Wayland path; it does
+not extend GFN codec negotiation.

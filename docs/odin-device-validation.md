@@ -1,36 +1,39 @@
-# Odin 2 Portal: Gerätetest vom 2026-10-04
+# Odin 2 Portal: device test on 2026-10-04
 
-SSH-Zugriff als normaler Benutzer; keine Basissystempakete installiert und keine
-Steam-Dateien geändert. Client als portables Bundle unter
-`~/.local/opt/gfn-armada-0.1.0/gfn-armada-linux-arm64` ausgepackt.
-Das übertragene Archiv wurde per SHA256 geprüft. Anschließend wurden Main und
-Launcher mit der Wayland-Startkorrektur aus dem Repository aktualisiert.
+SSH access as a regular user; no base-system packages installed or Steam files
+changed. The client was unpacked as a portable bundle under
+`~/.local/opt/gfn-armada-0.1.0/gfn-armada-linux-arm64`.
+The transferred archive was verified by SHA256. Main and launcher were then
+updated with the repository's Wayland launch correction.
+
+This document records successive historical tests. For the final result, see
+[the project summary](project-summary-2026-10-05.md).
 
 ## System
 
-- Gerät: AYN Odin 2 Portal, aarch64
+- Device: AYN Odin 2 Portal, aarch64
 - ArmadaOS: `20261001.72f2a63`, Fedora 44
 - Kernel: `7.2.6`
-- Grafik: Turnip Adreno 740, Mesa `26.2.3`
-- Sitzung: KDE/KWin Wayland; kein Gamescope-Prozess beim Test
-- `/dev/video0`: `qcom-iris-decoder`, Treiber `qcom-iris`
+- Graphics: Turnip Adreno 740, Mesa `26.2.3`
+- Session: KDE/KWin Wayland; no Gamescope process during the test
+- `/dev/video0`: `qcom-iris-decoder`, driver `qcom-iris`
 - `/dev/video1`: `qcom-iris-encoder`
-- Keine `/dev/media*` beim Test; `v4l2-ctl` nicht installiert
-- FFmpeg bietet `hevc_v4l2m2m` und `h264_v4l2m2m`; diese wurden nicht getestet.
+- No `/dev/media*` during the test; `v4l2-ctl` not installed
+- FFmpeg offers `hevc_v4l2m2m` and `h264_v4l2m2m`; these were not tested.
 - GStreamer `1.28.7`: `v4l2h264dec`, `v4l2h265dec`, `v4l2av1dec`
 
-## HEVC: VPU-Test erfolgreich
+## HEVC: successful VPU test
 
-Ein selbst erzeugter HEVC Main / 8-bit / 720p30-Testclip mit 60 Frames wurde
-erfolgreich durch `v4l2h265dec` bis EOS decodiert. Das Debuglog bestätigt
-`Opened device 'Iris Decoder' (/dev/video0) successfully` und auf dem
-Decoder-Ausgang `video/x-raw(memory:DMABuf)`, `DMA_DRM`, `NV12`.
-Die Pipeline enthält keinen Softwaredecoder. Das ist ein erfolgreicher
-Qualcomm-VPU-Test für diesen Clip, kein Nachweis eines GFN-Hardwarestreams.
-`fakesink` prüft nicht den DMA-BUF-Import in Wayland/GPU, Bildkorrektheit oder
-die Zahl der Frame-Kopien bis zur Anzeige. Noch kein 1080p/120-Hz-Leistungstest.
+A locally generated HEVC Main / 8-bit / 720p30 test clip with 60 frames was
+successfully decoded to EOS by `v4l2h265dec`. The debug log confirms
+`Opened device 'Iris Decoder' (/dev/video0) successfully` and decoder output
+`video/x-raw(memory:DMABuf)`, `DMA_DRM`, `NV12`.
+The pipeline contains no software decoder. This demonstrates Qualcomm VPU
+operation for this clip, not a GFN hardware stream. `fakesink` does not check
+DMA-BUF import into Wayland/GPU, image correctness or the number of frame copies
+to display. No 1080p/120 Hz performance test yet.
 
-Reproduktion auf dem Portal:
+Reproduction on the Portal:
 
 ```sh
 mkdir -p ~/.local/share/gfn-armada-tests
@@ -44,203 +47,183 @@ GST_DEBUG=v4l2*:4 timeout 20 gst-launch-1.0 -v \
   ! h265parse ! v4l2h265dec ! fakesink sync=false
 ```
 
-Die `device`-Eigenschaft dieses generierten GStreamer-Decoders ist nicht
-schreibbar. Ein erster Test mit `device=/dev/video0` erzeugte einen Warnhinweis;
-der bestätigende Test oben wurde ohne diese Eigenschaft wiederholt.
-AV1 und H.264 wurden noch nicht tatsächlich decodiert.
+The `device` property of this generated GStreamer decoder is not writable.
+An initial test with `device=/dev/video0` generated a warning; the confirming
+test above was repeated without that property. AV1 and H.264 had not yet been decoded.
 
-## Electron: GFN lädt, HEVC fehlt im WebRTC-Angebot
+## Electron: GFN loads, HEVC absent from the WebRTC offer
 
-Electron `44.5.1` / Chromium `152.0.7977.130` läuft mit explizitem
-`--ozone-platform=wayland`. Die Auswahl erst in Main-JavaScript kam bei diesem
-Bundle zu spät: der erste Start scheiterte am X11-Zugriff. Der Launcher setzt
-den Schalter jetzt beim Prozessstart; Argumente für Erst- und Zweitinstanz
-werden passend ausgewertet. Zusammen mit der Apple-Login-Korrektur bestehen
-17 Tests auf dem Mac.
+Electron `44.5.1` / Chromium `152.0.7977.130` runs with explicit
+`--ozone-platform=wayland`. Setting this only in main JavaScript was too late
+for this bundle: the first launch failed on X11 access. The launcher now sets
+the switch at process startup; first- and second-instance arguments are parsed
+appropriately. Together with the Apple login correction, 17 tests pass on Mac.
 
-Die geladene GFN-Seite meldet über die Telemetrie
-`ANGLE (freedreno, FD740, OpenGL ES 3.2)` und WebRTC-Empfangscodecs H.264,
-VP8, VP9 und AV1. **H.265 fehlt in diesem Laufzeitangebot.** Der erfolgreiche
-GStreamer-Test macht HEVC deshalb noch nicht im Electron-Client nutzbar.
-Das Startlog enthält außerdem `vaInitialize failed`; VA-API ist kein bestätigter
-Pfad zur Iris-VPU. Frühe GPU-Feature-Snapshots vor abgeschlossener Initialisierung
-meldeten Software/disabled und dürfen nicht allein als Endzustand gelesen werden.
+The loaded GFN page reports `ANGLE (freedreno, FD740, OpenGL ES 3.2)` through
+telemetry, with H.264, VP8, VP9 and AV1 WebRTC receive codecs.
+**H.265 is absent from these runtime capabilities.** The successful GStreamer
+test therefore does not yet make HEVC usable in Electron. The startup log also
+contains `vaInitialize failed`; VA-API was not a confirmed Iris VPU path at this
+stage. Early GPU feature snapshots before initialization reported software/disabled
+and must not be interpreted alone as the final state.
 
-NVIDIA-Loginseite wurde geladen. Beim Apple-Login blockierte die ursprüngliche
-Navigationskontrolle externe Anmeldeseiten. `appleid.apple.com` wurde entsprechend
-Apples [offizieller Autorisierungsdokumentation](https://developer.apple.com/documentation/signinwithapplerestapi/request-an-authorization-to-the-sign-in-with-apple-server.)
-explizit erlaubt und die Testinstanz neu gestartet. Keine pauschale Freigabe
-aller Apple-Domains. Blockierte Navigationen melden nur die Origin, keine
-OAuth-Queryparameter. Erfolgreicher Login bleibt durch den Nutzer zu prüfen.
-Der Nutzer bestätigt, dass die Apple-Seite nach der Korrektur erreichbar ist.
-„Sign in with iPhone“ zeigt jedoch keinen QR-Code. Kein weiterer blockierter
-Redirect/Popup wurde bei diesem Versuch protokolliert. Das ist somit kein
-belegter weiterer Allowlist-Fehler. Electron besitzt nicht automatisch die
-Chrome-Oberfläche für den WebAuthn-Hybridtransport. Im
-[WebAuthn-Delegate von Electron 44.5.1](https://github.com/electron/electron/blob/v44.5.1/shell/browser/webauthn/electron_authenticator_request_client_delegate.cc)
-werden Bluetooth-Aktionscallbacks nicht an eine QR-/Transportoberfläche
-angebunden. Diese Einschränkung passt zum beobachteten Verhalten; der konkrete
-WebAuthn-Request der Apple-Seite wurde noch nicht instrumentiert.
-Als erster Loginversuch bleibt Apples Anmeldung mit Apple-Account und Passwort
-innerhalb derselben Sitzung. Ein voller Chromium-Browser wäre eine Alternative
-für Hybrid-Passkeys, würde aber ein eigenes persistentes Profil benötigen.
-Ein Login im externen Browser überträgt nicht automatisch eine Sitzung an
-Electron; keine Cookies oder Auth-Tokens kopieren oder einen Callback erfinden.
-Controller-Liste war leer: es gab noch keinen bestätigten Gamepad-Test.
-Bei diesem ersten Login-Test noch kein aktiver Stream; der spätere
-Spielstart ist im folgenden Abschnitt dokumentiert.
-Hardwaredecoder und DMA-BUF im GFN-Client bleiben `unknown`.
+The NVIDIA login page loaded. The original navigation policy blocked external
+Apple sign-in pages. `appleid.apple.com` was explicitly allowed according to
+Apple's [official authorization documentation](https://developer.apple.com/documentation/signinwithapplerestapi/request-an-authorization-to-the-sign-in-with-apple-server.),
+and the test instance restarted. No blanket allowance for all Apple domains.
+Blocked navigation logs contain only origins, not OAuth query parameters.
+Successful login still needed user verification. The user confirmed that the
+Apple page became accessible. “Sign in with iPhone” did not display a QR code;
+no further blocked redirect/popup was logged, so another allowlist error was
+not established. Electron does not automatically provide Chrome's UI for
+WebAuthn hybrid transport. The
+[Electron 44.5.1 WebAuthn delegate](https://github.com/electron/electron/blob/v44.5.1/shell/browser/webauthn/electron_authenticator_request_client_delegate.cc)
+does not connect Bluetooth action callbacks to a QR/transport UI. This limitation
+matches the observation; the Apple page's specific WebAuthn request had not been
+instrumented. The initial alternative remains Apple account/password sign-in
+within the same session. A full Chromium browser could support hybrid passkeys
+but would require its own persistent profile. External browser login does not
+automatically transfer a session to Electron; do not copy cookies/auth tokens
+or invent a callback. The controller list was empty, with no confirmed gamepad
+test. No active stream during this first login test; subsequent game launch is
+recorded below. Hardware decoder and DMA-BUF in the GFN client remained `unknown`.
 
-## Erster Spielstream und Absturz
+## First game stream and crash
 
-Der Nutzer konnte sich anmelden und ein Spiel starten. Am 2026-10-04 um
-09:10 CEST meldete WebRTC `video/H264`, 136 decodierte Frames, 0 gemeldete
-Drops und durchschnittlich ca. 5,45 ms Decode-Zeit (kumulativer kurzer Snapshot).
-Decodername und `powerEfficientDecoder` wurden nicht geliefert.
-Wenige Sekunden später stürzte der Electron-Hauptprozess mit SIGSEGV ab.
-Der System-Core ist abgeschnitten und bietet bisher keinen verwertbaren Stack.
-Damit ist weder ein VPU-Fehler noch ein spezifischer Wayland-Bug bewiesen.
+The user signed in and started a game. At 09:10 CEST on 2026-10-04, WebRTC reported
+`video/H264`, 136 decoded frames, 0 reported drops and approximately 5.45 ms mean
+decode time (a short cumulative snapshot). Decoder name and `powerEfficientDecoder`
+were not supplied. Seconds later the Electron main process crashed with SIGSEGV.
+The system core is truncated and has no useful stack so far. Neither a VPU failure
+nor a specific Wayland bug is established.
 
-Für einen kontrollierten Vergleich wurde dieselbe Profilsitzung mit
-`GFN_ARMADA_OZONE=x11`, `DISPLAY=:0` und dem vorhandenen Sitzungs-`XAUTHORITY`
-neu gestartet. Der Renderer meldet dort Freedreno FD740 / OpenGL 4.6;
-GFN lädt. Der Nutzer bestätigt einen erfolgreichen Spielstart und einen als
-Xbox-Controller erkannten eingebauten Controller. Im letzten Stream-Snapshot
-wurden 19.334 H.264-Frames, 0 gemeldete Drops und ca. 5,32 ms durchschnittliche
-Decode-Zeit gemeldet. Gamepad: Standard-Mapping, 17 Buttons, 4 Achsen.
-Der Prozess blieb nach diesem Test am Leben. Das belegt diesen erfolgreichen
-XWayland-Test, keine langfristige Stabilität oder genaue Wayland-Absturzursache.
-Der Standard bleibt natives Wayland. `GFN_ARMADA_OZONE` akzeptiert nur `x11`
-oder `wayland` und verändert weder NVIDIA-Streamparameter noch Sandbox.
-Der Launcher protokolliert jetzt auch Exit-Code/Signal des GUI-Prozesses.
-18/18 lokale Tests bestehen. Keine Debuggerpakete ins Basissystem installiert.
+For a controlled comparison, the same profile session was restarted with
+`GFN_ARMADA_OZONE=x11`, `DISPLAY=:0` and the session's existing `XAUTHORITY`.
+The renderer reports Freedreno FD740 / OpenGL 4.6; GFN loads. The user confirmed
+successful game launch and the built-in controller detected as an Xbox controller.
+The final snapshot reported 19,334 H.264 frames, 0 drops and approximately 5.32 ms
+mean decode time. Gamepad: standard mapping, 17 buttons, 4 axes. The process
+remained alive after this test. This demonstrates this successful XWayland test,
+not long-term stability or the precise Wayland crash cause. Native Wayland remains
+the default. `GFN_ARMADA_OZONE` accepts only `x11` or `wayland` and changes neither
+NVIDIA stream parameters nor the sandbox. The launcher now logs GUI exit code/signal.
+18/18 local tests pass. No debugger packages installed in the base system.
 
-## GFN-Overlay mit Controller
+## GFN overlay with a controller
 
-NVIDIA dokumentiert langes Halten der START-/Menütaste als Standardshortcut.
-Im Overlay kann die Kombination unter Einstellungen → Shortcuts → Gamepad
-geändert werden. Der Shortcut wird seit GFN 2.0.83 auch auf Linux und den
-meisten Browserplattformen angeboten. Quelle:
+NVIDIA documents holding START/menu as the default shortcut. It can be changed
+under Settings → Shortcuts → Gamepad in the overlay. Since GFN 2.0.83, this
+shortcut is also available on Linux and most browser platforms. Source:
 [NVIDIA Support](https://nvidia.custhelp.com/app/answers/detail/a_id/5827).
-Noch nicht auf diesem Gerät bestätigt; deshalb keine zweite Belegung injiziert,
-die den vorhandenen GFN-Shortcut doppelt auslösen könnte.
+Not yet confirmed on this device; no second binding was injected that could
+trigger the existing shortcut twice.
 
-Lokales unversioniertes VPU-Testlog: `.artifacts/odin/hevc-v4l2.log`.
-Geräteseitige Testdaten: `~/.local/share/gfn-armada-tests/`.
-Chromium-Debuglogs können Seitenmeldungen enthalten und müssen vor Weitergabe
-auf personenbezogene Daten geprüft werden; keine Auth-Logs committen.
+Local unversioned VPU log: `.artifacts/odin/hevc-v4l2.log`.
+Device test data: `~/.local/share/gfn-armada-tests/`.
+Chromium debug logs may contain page messages and must be checked for personal
+data before sharing; do not commit authentication logs.
 
-## Laufende Decoderdiagnose am 2026-10-04
+## Ongoing decoder diagnostics on 2026-10-04
 
-SSH ist wieder erreichbar. Die ergänzte Diagnose läuft im ursprünglichen
-GFN-Webclient unter XWayland, Electron 44.5.1 / Chromium 152.0.7977.130.
-Um 09:39 UTC meldet der Stream H.264, 12.157 decodierte Frames, 0 gemeldete
-Drops und ca. 5,10 ms kumulative mittlere Decode-Zeit. Der Controller meldet
-Standard-Mapping, 17 Buttons und 4 Achsen.
+SSH is reachable again. Extended diagnostics run in the original GFN web client
+under XWayland, Electron 44.5.1 / Chromium 152.0.7977.130. At 09:39 UTC, the stream
+reports H.264, 12,157 decoded frames, 0 drops and approximately 5.10 ms cumulative
+mean decode time. Controller: standard mapping, 17 buttons, 4 axes.
 
-Eine 60-Sekunden-Probe zwischen 09:35:31 und 09:36:31 UTC liest die zugänglichen
-Dateideskriptoren der Clientprozesse alle 250 ms. Beobachtet wird
-`/dev/dri/renderD128`, kein `/dev/video*` oder `/dev/media*`. Das zeigt GPU-Zugriff,
-aber keinen beobachteten Zugriff auf Iris. Die Probe kann kurzlebige Zugriffe
-oder Zugriffe anderer Prozesse übersehen und beweist allein kein Software-Decoding.
-Weder WebRTC noch die optionale CDP-Media-Diagnose liefern bislang einen
-konkreten Decodernamen. `hardwareDecoderActive` und GFN-DMA-BUF bleiben `unknown`.
-Auch Chromiums Featurestatus `video_decode: enabled` ist kein Hardwarebeweis.
+A 60-second probe from 09:35:31 to 09:36:31 UTC reads accessible client process
+file descriptors every 250 ms. It observes `/dev/dri/renderD128`, but no
+`/dev/video*` or `/dev/media*`. This shows GPU access, without observed Iris access.
+The probe may miss short-lived access or other processes and does not alone prove
+software decoding. Neither WebRTC nor optional CDP media diagnostics supplied a
+specific decoder name. `hardwareDecoderActive` and GFN DMA-BUF remain `unknown`.
+Chromium's `video_decode: enabled` feature status is also not hardware proof.
 
-Die Nutzerentscheidung bleibt der originale GFN-Webclient. OpenNOW wurde für
-die Untersuchung heruntergeladen und entpackt, aber nicht als Client gestartet.
-Der getrennte erfolgreiche HEVC-Iris-Test bleibt ein Nachweis des Gerätedecoders,
-kein Nachweis für HEVC im GFN-Stream.
+The user chose the original GFN web client. OpenNOW was downloaded and extracted
+for investigation but not launched as a client. The separate successful HEVC Iris
+test demonstrates the device decoder, not HEVC in a GFN stream.
 
-## GFN-Decoder eindeutig bestimmt / HEVC bis Wayland
+## GFN decoder identified / HEVC through to Wayland
 
-Nach erneutem Verbindungsaufbau wurde der native WebRTC-Internals-Reader mit
-Backup in den originalen Client übertragen und bei beendetem Spielstream
-neu gestartet. Am 2026-10-04 um 10:13:50 UTC meldet er für die GFN-Origin:
-H.264, Decoder **FFmpeg**, `powerEfficientDecoder: false`, 3.260 decodierte
-Frames, 0 Drops, kumulative Decode-Zeit 10,384172 s. Die Seitenstatistik desselben
-Streams bleibt bei Decoder `unknown`, meldet inzwischen 3.338 Frames und
-ca. 3,17 ms mittlere Decode-Zeit. Die Zeitversetzung entsteht durch getrennte
-Statistikintervalle. Damit ist Software-Decoding für diesen echten GFN-Test
-festgestellt; die frühere fehlende native Evidenz ist geschlossen.
+After reconnecting, the native WebRTC-internals reader was transferred into the
+original client with a backup and restarted after the game stream ended.
+At 10:13:50 UTC on 2026-10-04, it reports for the GFN origin: H.264, decoder
+**FFmpeg**, `powerEfficientDecoder: false`, 3,260 decoded frames, 0 drops and
+10.384172 s cumulative decode time. The same stream's page statistics retain
+`unknown` for decoder, now reporting 3,338 frames and approximately 3.17 ms mean
+decode time. Separate statistics intervals explain the time offset. Software
+decoding is established for this real GFN test, closing the earlier evidence gap.
 
-Der Encoded-Transform-Smoke-Test besteht nun auch auf Linux ARM64:
-30 weitergereichte synthetische H.264-Frames, 32.766 Bytes, zwei Keyframes,
-30 Annex-B-Startcodes, 43 angezeigte Frames. Keine echten GFN-Frames in diesem
-Test abgegriffen, noch keine native Decoderbrücke implementiert.
+The Encoded Transform smoke test now passes on Linux ARM64: 30 forwarded synthetic
+H.264 frames, 32,766 bytes, two keyframes, 30 Annex-B start codes, 43 displayed
+frames. No actual GFN frames captured in this test; no native decoder bridge yet.
 
-Der vorhandene synthetische HEVC-Clip wurde außerdem durch diese Pipeline
-geschickt, mit erfolgreichem EOS und Exit 0:
+The existing synthetic HEVC clip was also sent through this pipeline, with
+successful EOS and exit 0:
 
 ```sh
 gst-launch-1.0 -v filesrc location=hevc-720p.h265 \
   ! h265parse ! v4l2h265dec ! waylandsink sync=true
 ```
 
-Debug: `GST_DEBUG=v4l2*:4,waylandsink:6,wl*:6`. Das Log bestätigt Iris
-`/dev/video0`, `video/x-raw(memory:DMABuf)` / `DMA_DRM` / `NV12`, 1280×720@30
-und ausdrücklich `created linux_dmabuf wl_buffer`, zwei Planes, anschließend
-direktes Schreiben bestehender `wl_buffer` und `wl_buffer::release`.
-Damit ist für diesen Clip die VPU-Ausgabe bis zur Wayland-DMA-BUF-Übergabe
-belegt. Kein Softwaredecoder oder `videoconvert` in der Pipeline. Das ist
-kein vollständiger Nachweis aller Compositor-/GPU-internen Kopien, kein
-Gamescope-Test und keine visuelle Prüfung jedes Bildes.
+Debug: `GST_DEBUG=v4l2*:4,waylandsink:6,wl*:6`. The log confirms Iris
+`/dev/video0`, `video/x-raw(memory:DMABuf)` / `DMA_DRM` / `NV12`, 1280×720@30,
+explicit `created linux_dmabuf wl_buffer`, two planes, subsequent direct writes
+of existing `wl_buffer` and `wl_buffer::release`. This demonstrates VPU output
+through the Wayland DMA-BUF handoff for this clip. No software decoder or
+`videoconvert` in the pipeline. It does not fully establish all compositor/GPU
+internal copies, Gamescope operation or visual correctness of every frame.
 
-Gerätelog: `~/.local/share/gfn-armada-tests/hevc-wayland.log`, lokale Kopie
-`.artifacts/odin/hevc-wayland.log` (unversioniert). HEVC im GFN-Stream und
-DMA-BUF-Import in Electron bleiben zu diesem Zeitpunkt getrennte offene Schritte.
+Device log: `~/.local/share/gfn-armada-tests/hevc-wayland.log`; local copy:
+`.artifacts/odin/hevc-wayland.log` (unversioned). HEVC in GFN and DMA-BUF import
+into Electron remain separate open steps at this point.
 
-## HEVC → Iris → DMA-BUF → Electron bestätigt (2026-10-04, 10:50 UTC)
+## HEVC → Iris → DMA-BUF → Electron confirmed (2026-10-04, 10:50 UTC)
 
-Die isolierte Anwendung `experiments/dmabuf` wurde als Node-API-8-Modul
-im Fedora-44-ARM64-Container gebaut und in einer separaten Electron-Laufzeit
-auf dem Portal geprüft. Keine Pakete im Basissystem installiert, keine
-produktiven Clientressourcen oder NVIDIA-Sitzungen verändert.
+The isolated `experiments/dmabuf` application was built as a Node-API-8 module
+in the Fedora 44 ARM64 container and tested in a separate Electron runtime on
+the Portal. No base-system packages installed, production resources or NVIDIA
+sessions changed.
 
-Die explizite Pipeline `filesrc ! h265parse ! v4l2h265dec ! appsink` liefert
-Iris-NV12-DMA-BUFs. Der Adapter hält jeden `GstSample` bis Electron
-`allReferencesReleased` meldet; kein CPU-Mapping der Rohpixel im Addon.
-Die Allocation-Query unterstützt `GstVideoMeta`. Tatsächliche Puffergeometrie:
+Explicit pipeline `filesrc ! h265parse ! v4l2h265dec ! appsink` produces Iris
+NV12 DMA-BUFs. The adapter holds each `GstSample` until Electron reports
+`allReferencesReleased`; no CPU mapping of raw pixels in the addon. Allocation
+queries support `GstVideoMeta`. Actual buffer geometry:
 
-| Eigenschaft | Gemessen |
+| Property | Measured |
 |---|---|
-| Decoder / Gerät | `v4l2h265dec`, `/dev/video0`, `qcom-iris-decoder` |
-| Coded / sichtbar | 1280×736 / 1280×720 |
-| Y-Plane | Stride 1280, Offset 0, Größe 942.080 Bytes |
-| UV-Plane | Stride 1280, Offset 942.080, Größe 471.040 Bytes |
-| Format / Farbraum | lineares NV12-DMA-BUF, begrenztes BT.709 |
-| Anzeige | natives Wayland, sandboxed Electron 44.5.1 |
-| GPU-Renderer | `ANGLE (freedreno, FD740, OpenGL ES 3.2)` |
-| Transfers / Renderer-Draw-Aufrufe | 60 / 60 |
-| Freigaben / übrige Leases | 60 / 0 |
-| Maximal gleichzeitig geleast | 4 |
+| Decoder / device | `v4l2h265dec`, `/dev/video0`, `qcom-iris-decoder` |
+| Coded / visible | 1280×736 / 1280×720 |
+| Y plane | Stride 1280, offset 0, size 942,080 bytes |
+| UV plane | Stride 1280, offset 942,080, size 471,040 bytes |
+| Format / color space | Linear NV12 DMA-BUF, limited-range BT.709 |
+| Display | Native Wayland, sandboxed Electron 44.5.1 |
+| GPU renderer | `ANGLE (freedreno, FD740, OpenGL ES 3.2)` |
+| Transfers / renderer draw calls | 60 / 60 |
+| Releases / remaining leases | 60 / 0 |
+| Maximum concurrent leases | 4 |
 
-Electron SharedTexture → VideoFrame → 2D-Canvas funktioniert mit dieser
-Konfiguration ohne Chromium-Patch. Pixelcheck: zehn unterschiedliche
-quantisierte Farben, Canvas 1280×720. Ein Screenshot des synthetischen
-Testmusters wurde visuell geprüft. GPU-Compositing und OpenGL sind aktiviert;
-der Test schaltet die Sandbox oder die GPU-Blockliste nicht ab. Ungültige
-Aufrufe, doppelte Freigaben und `close()` bei lebenden Leases werden abgelehnt.
-Nach Beendigung bleiben keine Prozesse der isolierten Testlaufzeit übrig.
+Electron SharedTexture → VideoFrame → 2D canvas works in this configuration
+without a Chromium patch. Pixel check: ten distinct quantized colors, canvas
+1280×720. A screenshot of the synthetic test pattern was visually inspected.
+GPU compositing and OpenGL are enabled; the test disables neither the sandbox
+nor GPU blocklist. Invalid calls, duplicate releases and `close()` with live
+leases are rejected. No isolated test-runtime processes remain after completion.
 
-Grenzen: Draw-Aufrufe zählen keine tatsächlich präsentierten Compositor-
-Frames. Screenshot/Pixelcheck sind einmalige CPU-Readbacks zur Validierung.
-Interne Chromium-/Compositor-Kopien, Gamescope, 1080p/120 Hz, Audio-Sync und
-GFN-HEVC sind nicht nachgewiesen. Der originale GFN-Stream bleibt beim
-bereits gemessenen FFmpeg-H.264-Softwarepfad; die lokale Brücke ist noch
-nicht angeschlossen.
+Limits: draw calls do not count frames actually presented by the compositor.
+Screenshot/pixel checks are one-time CPU readbacks for validation. Internal
+Chromium/compositor copies, Gamescope, 1080p/120 Hz, audio sync and GFN HEVC are
+not established. The original GFN stream remains on the measured FFmpeg H.264
+software path; the local bridge is not yet connected.
 
-XWayland-Vergleiche scheiterten am NV12-SharedImage-Backing; im letzten
-Vergleich wurden außerdem Software-GPU-Features gemeldet. Genaue Ursache
-offen, kein allgemeiner Beweis gegen XWayland-DMA-BUF. Ein erster Wayland-
-Durchlauf erreichte 60 Draw-Aufrufe, wartete aber mit noch sichtbarem letzten
-Capturebuffer auf EOS bis zur Frist. Die Testfassung endet deshalb nach den
-60 bekannten Fixture-Frames und zerstört den Renderer vor Decoder-Close.
-Die finale Wayland-Fassung besteht mit vollständiger Freigabe.
+XWayland comparisons failed on NV12 SharedImage backing; the last also reported
+software GPU features. The exact cause is open, not general proof against XWayland
+DMA-BUF. An initial Wayland run reached 60 draw calls but waited for EOS until
+the deadline while its final CAPTURE buffer remained visible. The test therefore
+ends after the 60 known fixture frames and destroys the renderer before decoder
+close. The final Wayland version passes with complete release.
 
-Strukturierte Evidenz: [validation-odin.json](../experiments/dmabuf/validation-odin.json).
-Lokale Testlogs und Screenshot: `.artifacts/dmabuf/` (unversioniert).
-Nach dem gesicherten Erfolg wurde SSH beim abschließenden Abgleich wieder
-nicht erreichbar. Eine optionale zusätzliche Screenshot-Synchronisierung
-wurde deshalb verworfen; die gehaltene Fassung entspricht dem erfolgreichen
-Gerätetest.
+Structured evidence: [validation-odin.json](../experiments/dmabuf/validation-odin.json).
+Local logs/screenshot: `.artifacts/dmabuf/` (unversioned). After the successful
+test, SSH became unreachable during final reconciliation. An optional additional
+screenshot synchronization was abandoned; the retained version matches the
+successful device test.

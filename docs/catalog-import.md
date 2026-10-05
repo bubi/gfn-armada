@@ -1,109 +1,105 @@
-# GFN-Katalog und Bibliotheksimport
+# GFN catalog and library import
 
-Stand 2026-10-05. Der Client bleibt die originale NVIDIA-Webanwendung. Der neue
-Befehl `gfn-armada library` liest ihren Katalog mit der bereits angemeldeten
-Sitzung und erzeugt die geprüften lokalen Mappings für `sync`.
+Snapshot 2026-10-05. The client retains the original NVIDIA web application.
+The new `gfn-armada library` command reads its catalog using the existing
+signed-in session and creates validated local mappings for `sync`.
 
-## Ablauf auf dem Odin
+## Workflow on Odin
 
-Einen bereits laufenden GFN-Client zuerst schließen. Dann:
+Close an already running GFN client first. Then:
 
 ```sh
 ./gfn-armada-0.1.0-aarch64.AppImage --appimage-extract-and-run library
 ```
 
-GFN lädt mit dem persistenten Profil. Falls erforderlich normal anmelden.
-Sobald die Webanwendung eine authentifizierte Kataloganfrage stellt, übernimmt
-der Importer deren tatsächlichen Endpoint, VPC und Sprache. Er liest danach
-alle Katalogseiten mit einer reinen GraphQL-Leseabfrage. Erst nach vollständigem
-Erfolg schreibt er ein Backup und aktualisiert `~/.config/gfn-armada/games.json`.
-Der Dialog zeigt importierte Store-Versionen, unbekannten Besitz und manuell
-bestätigten Besitz. Bei Abbruch ohne fertigen Import endet die CLI mit Fehlerstatus.
-Währenddessen keine DevTools öffnen: deren Debugger kann die Beobachtung trennen.
+GFN loads with the persistent profile. Sign in normally if required.
+Once the web application makes an authenticated catalog request, the importer
+uses its actual endpoint, VPC, and language. It then reads every catalog page
+using a read-only GraphQL query. Only after complete success does it create a
+backup and update `~/.config/gfn-armada/games.json`. The dialog reports imported
+store editions, unknown ownership, and manually confirmed ownership. Closing
+without a completed import makes the CLI exit with an error status.
+Do not open DevTools during import: its debugger can detach observation.
 
-Steam wird dabei nicht verändert. Anschließend:
+Steam is unchanged by this step. Afterwards:
 
 ```sh
 ./gfn-armada-0.1.0-aarch64.AppImage --appimage-extract-and-run sync
-# Steam vollständig schließen, dann:
+# Quit Steam completely, then:
 ./gfn-armada-0.1.0-aarch64.AppImage --appimage-extract-and-run sync --apply
 ```
 
-Danach Steam starten. Das AppImage vorher an seinen festen Speicherort legen.
-Accountauswahl und Wiederherstellung sind in [Steam-Integration](steam-integration.md)
-beschrieben. Eine automatische Steam-Beendigung wird nicht durchgeführt.
+Then start Steam. Put the AppImage in its permanent location beforehand.
+Account selection and restore are documented in [Steam integration](steam-integration.md).
+Steam is not stopped automatically.
 
-## Was importiert wird
+## What is imported
 
-- `app.library.favorited === true`: in GFN vorgemerkt.
-- `variant.gfn.library.status === PLATFORM_SYNC`: Besitz von GFN über Store-Sync gemeldet.
-- `MANUAL`: in GFN manuell bestätigter Besitz; separat als `gfn-manual` gekennzeichnet.
-- `NOT_OWNED`: nicht importieren. Fehlende/unbekannte Werte bleiben unbekannt.
+- `app.library.favorited === true`: bookmarked in GFN.
+- `variant.gfn.library.status === PLATFORM_SYNC`: GFN reports ownership from store sync.
+- `MANUAL`: ownership manually confirmed in GFN; separately marked `gfn-manual`.
+- `NOT_OWNED`: do not import. Missing/unknown values remain unknown.
 
-Der Filter wird **pro Store-Version** angewandt. Ein besessener Steam-Titel
-macht eine nicht besessene Epic-Version nicht importfähig. Unterstützte
-Store-Bezeichnungen sind die direkt von NVIDIA gelieferten Werte `STEAM`,
-`EPIC`, `GOG` und `XBOX`. Andere Stores werden übersprungen.
+The filter applies **per store edition**. Owning a Steam title does not make
+an unowned Epic edition eligible. Supported store names are NVIDIA's actual
+values `STEAM`, `EPIC`, `GOG`, and `XBOX`. Other stores are skipped.
 
-Jede importierte Variante erhält den stabilen Schlüssel `gfn:<variantId>`.
-Diese ID stammt aus dem Katalog. Die originale Webanwendung benutzt dieselbe
-Varianten-ID als `cmsId` für ihren Streamer und Desktop-Shortcut. Das ist ein
-beobachteter Webclientpfad, keine Garantie eines langfristigen API-Vertrags.
-Store-Dialoge, Anmeldung und Verfügbarkeit können weiterhin den Start unterbrechen.
+Each imported variant receives the stable key `gfn:<variantId>`. This ID comes
+from the catalog. The original web application uses the same variant ID as
+`cmsId` for its streamer and desktop shortcut. This is an observed web-client
+path, not a guaranteed long-term API contract. Store dialogs, sign-in, and
+availability can still interrupt launch.
 
-Eine aus der NVIDIA-Store-URL eindeutig gelesene Steam-AppID wird zusätzlich
-als Alias gespeichert: `launch steam:<appid>` bleibt möglich. Epic-Slugs und
-Xbox-Produktkennungen werden nur von passenden Store-Domains gelesen. GOG-
-Seitenslugs werden nicht als numerische GOG-ID ausgegeben; `gfn:<variantId>`
-funktioniert als lokaler Schlüssel ohne erfundene Store-Zuordnung.
+A Steam AppID unambiguously parsed from NVIDIA's store URL is also saved as
+an alias: `launch steam:<appid>` remains possible. Epic slugs and Xbox product
+identifiers are read only from matching store domains. GOG page slugs are not
+presented as numeric GOG IDs; `gfn:<variantId>` works as a local key without
+inventing a store mapping.
 
-Der Import erhält manuell gepflegte Metadaten beim Zusammenführen. Nicht mehr
-ausgewählte frühere Katalogmappings werden als zurückgestellt markiert; ihr
-Besitz wird unbekannt. Bestehende Steam-Shortcuts werden beim Sync nicht entfernt.
-Beim Umstellen eines früher manuell importierten Shortcuts bleibt dessen AppID
-erhalten, damit Bilder und Steam-Input-Konfiguration nicht verloren gehen.
+Import preserves manually maintained metadata when merging. Previously
+imported catalog mappings that are no longer selected are marked deferred;
+ownership becomes unknown. Sync does not remove existing Steam shortcuts.
+When migrating an earlier manually imported shortcut, its AppID is retained
+so artwork and Steam Input configuration are not lost.
 
-## Sitzung und Fehlerverhalten
+## Session and error handling
 
-Der Importer beobachtet mit Chromiums Debugger ausschließlich Anfragen an
-`https://games.geforce.com/graphql` oder `https://apps.gxn.nvidia.com/graphql`.
-Gastanfragen werden nicht als Konto-Bibliothek importiert. Das vorhandene
-`GFNJWT` wird kurzzeitig im Speicher für die Leseanfragen verwendet, ohne
-neue Authentifizierung, Hardcoding, Protokollierung oder Speicherung in Mappings.
-Auch Cookies und unverarbeitete Antwortdaten werden nicht exportiert.
-Ein SHA256-Fingerabdruck des bereits gehashten Konto-Kontexts kennzeichnet die
-lokale Datenherkunft; er enthält keinen Anmeldeschlüssel.
+The importer uses Chromium's debugger to observe only requests to
+`https://games.geforce.com/graphql` or `https://apps.gxn.nvidia.com/graphql`.
+Guest requests are not imported as an account library. The existing `GFNJWT`
+is used briefly in memory for read requests without new authentication,
+hardcoding, logging, or storage in mappings. Cookies and raw response data
+are not exported either. A SHA256 fingerprint of the already hashed account
+context identifies local provenance; it contains no login key.
 
-Weiterleitungen der API-Anfrage werden abgelehnt. HTTP-/GraphQL-Fehler,
-veränderte Schemas, doppelte/mehrdeutige IDs und nicht fortschreitende Cursor
-brechen den Import ab. Keine halbe Bibliothek wird geschrieben. Grenzen:
-100 Seiten mit je höchstens 100 Spielen, 180 Sekunden Gesamtzeit und 8 MiB
-pro Antwort. Bei Verlust der Debugger-Beobachtung oder Schließen des Fensters
-wird der laufende Import abgebrochen. Es werden keine Besitz-/Favoriten-
-Mutationen an NVIDIA gesendet.
+API redirects are rejected. HTTP/GraphQL errors, changed schemas, duplicate
+or ambiguous IDs, and non-advancing cursors abort import. No partial library
+is written. Limits: 100 pages of at most 100 games each, 180 seconds total,
+and 8 MiB per response. Loss of debugger observation or closing the window
+aborts the active import. No ownership/favorite mutations are sent to NVIDIA.
 
-## Quellen und Validierung
+## Sources and validation
 
-Primär geprüft: [NVIDIA-Webclient](https://play.geforcenow.com/mall/main.c2e839a18214e672.js),
-geladen am 2026-10-05. Seine Query-Definitionen enthalten `apps`, `pageInfo`,
-`library.favorited`, `variants.id`, `appStore`, `storeUrl` und den Bibliotheksstatus.
-Der Code für Desktop-Shortcuts übergibt die ausgewählte Varianten-ID als `cmsId`.
-Die Implementierung übernimmt keine fremde Client- oder Streamingarchitektur.
+Primary source checked: [NVIDIA web client](https://play.geforcenow.com/mall/main.c2e839a18214e672.js),
+loaded on 2026-10-05. Query definitions include `apps`, `pageInfo`,
+`library.favorited`, `variants.id`, `appStore`, `storeUrl`, and library status.
+Desktop-shortcut code passes the selected variant ID as `cmsId`.
+This implementation does not adopt another client's streaming architecture.
 
-Die implementierte Abfrage wurde live ohne Anmeldung am offiziellen NVIDIA-
-Endpoint geprüft: Schema/Pagination erfolgreich, vier öffentliche Gastspiele,
-keine importfähigen Spiele. Die Store-Definitionen wurden ebenfalls direkt
-abgerufen. Tests prüfen Auth-Grenzen, Store-Trennung, unbekannten Besitz,
-Pagination/Fehler, geheime Daten, atomaren Import und Shortcut-Migration.
-Der AppImage-Test prüft den paketierten Parser mit synthetischen Kontodaten
-bis zum echten Steam-VDF-Writer und Restore.
+The implemented query was checked live without sign-in against the official
+NVIDIA endpoint: schema/pagination succeeded, four public guest games, no
+eligible imports. Store definitions were also fetched directly. Tests cover
+auth boundaries, store separation, unknown ownership, pagination/errors,
+secret data, atomic import, and shortcut migration. The AppImage test exercises
+the packaged parser with synthetic account data through the actual Steam VDF
+writer and restore.
 
-**Noch nicht nachgewiesen:** vollständiger Import aus dem echten angemeldeten
-Odin-Konto. Der Odin ist aktuell nicht erreichbar. Es wird kein erfolgreicher
-Kontoimport behauptet. Artwork-Downloads und ein automatischer periodischer
-Abgleich bleiben offen. NVIDIA hat diese Katalog-API nicht als öffentliche
-stabile Bibliotheks-API dokumentiert; Schemaänderungen müssen geprüft werden.
+**Not yet demonstrated:** complete import from the real signed-in Odin
+account. At this snapshot Odin was unreachable. No successful account import
+is claimed. Artwork downloads and automatic periodic reconciliation remain
+open. NVIDIA has not documented this catalog API as a stable public library
+API; schema changes must be checked.
 
-NVIDIA dokumentiert separat offizielle Spiel-Detail-Links:
+NVIDIA separately documents official game-detail links:
 [GFN SDK Deep Linking](https://github.com/NVIDIAGameWorks/GeForceNOW-SDK/blob/master/doc/GfnSdk-Deep-Linking.md).
-Diese öffnen Spiel-Details und ersetzen nicht den hier beobachteten Variantenstart.
+These open game details and do not replace the observed variant launch.

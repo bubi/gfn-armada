@@ -1,83 +1,76 @@
-# VA-API-Treiber für die Iris: Codeprüfung und Testvorbereitung
+# VA-API driver for Iris: code review and test preparation
 
-Stand: 2026-10-05. Die Abschnitte bis „Verhältnis zur bestehenden Brücke" sind
-Quellprüfung und Ablaufplan, entstanden bei ausgeschaltetem Gerät. Die
-gemessenen Ergebnisse stehen am Ende unter
-[Messergebnisse am Gerät](#messergebnisse-am-gerät-2026-10-05); erst dort
-beginnt der Nachweis.
+Status: 2026-10-05. Sections through “Relationship to the existing bridge” are
+source review and a test plan written while the device was powered off.
+Measured results begin under [Device measurements](#device-measurements-2026-10-05);
+only that section provides runtime evidence.
 
-**Fortsetzung:** [VA-API-Untersuchung vom 2026-10-05](../../docs/vaapi-investigation-2026-10-05.md).
-Der unten dokumentierte Abbruch vor der Surface-Erstellung lässt sich mit
-Wayland/ANGLE GL umgehen. Ein synthetischer Stream decodiert auf Iris; im echten
-GFN-Stream meldet Chromium anschließend VA-API, der Treiber aber OUTPUT-Fehler.
-Mit der anschließend bestätigten PPS-ID-Korrektur ist **H.264-Hardware-Decoding
-im echten GFN-Stream für knapp vier Minuten belegt** (14.484 Iris-Frames, keine
-beobachteten Treiberfehler/Fallbacks). HEVC und visuelle Bildkorrektheit bleiben
-unbestätigt; der Pfad verwendet eine GPU-Kopie. Siehe
-[`validation-pps-fix-odin.json`](validation-pps-fix-odin.json).
+**Continuation:** [VA-API investigation, 2026-10-05](../../docs/vaapi-investigation-2026-10-05.md).
+The failure before surface creation documented below can be bypassed with
+Wayland/ANGLE GL. A synthetic stream decodes on Iris; in a real GFN stream,
+Chromium then reports VA-API but the driver reports OUTPUT errors. The subsequently
+confirmed PPS-ID fix demonstrates **almost four minutes of H.264 hardware decoding
+in a real GFN stream** (14,484 Iris frames, no observed driver errors/fallbacks).
+At that stage HEVC and visual image correctness remained unconfirmed; the path
+uses a GPU copy. See [`validation-pps-fix-odin.json`](validation-pps-fix-odin.json).
+For later HEVC/AV1 results, see [the project summary](../../docs/project-summary-2026-10-05.md).
 
-## Warum dieser Weg überhaupt in Frage kommt
+## Why this path is a candidate
 
-Aus dem ausgelieferten Linux-ARM64-Electron (`dist/gfn-armada-linux-arm64/gfn-armada-electron`,
-220 MB) gelesen:
+Read from the shipped Linux ARM64 Electron binary
+(`dist/gfn-armada-linux-arm64/gfn-armada-electron`, 220 MB):
 
-| | Treffer | Inhalt |
+| | Matches | Contents |
 |---|---|---|
-| V4L2 | 19 | ausschließlich Capture-Pfade (`v4l2_capture_delegate.cc`, `video_capture_v4l2.cc`) |
+| V4L2 | 19 | Capture paths only (`v4l2_capture_delegate.cc`, `video_capture_v4l2.cc`) |
 | VA-API | 80 | `VaapiVideoDecoder`, `H264VaapiVideoDecoderDelegate::SubmitDecode`, `libva.so.` |
 
-Kein einziges V4L2-**Decode**-Symbol. Das offizielle Electron ist mit
-`use_vaapi = true` und `use_v4l2_codec = false` gebaut; `libva` ist der einzige
-einkompilierte Hardware-Decode-Einstiegspunkt. Deshalb blieb die Messung mit
-`WebRtcAllowH265Receive` wirkungslos — es ist ein Compile-Flag-Problem, kein
-Laufzeitschalter-Problem (siehe `docs/electron-v4l2-experiment.md`).
+Not a single V4L2 **decode** symbol. Official Electron is built with
+`use_vaapi = true` and `use_v4l2_codec = false`; `libva` is the only compiled
+hardware-decode entry point. This explains why `WebRtcAllowH265Receive` alone
+had no effect — a compile-flag issue, not a runtime-switch issue (see
+`docs/electron-v4l2-experiment.md`).
 
-Daraus folgen genau zwei Auswege: Chromium selbst bauen, oder einen
-**VA-API-Treiber für die Iris** bereitstellen. Letzterer braucht keinen Build
-des Browsers.
+Two ways forward follow: build Chromium, or provide a **VA-API driver for Iris**.
+The latter requires no browser build.
 
-Mesa leistet das **nicht**. Freedreno enthält kein Video-Decode; die Iris-VPU
-ist ein eigener IP-Block hinter einem V4L2-Kerneltreiber. Eine automatische
-V4L2-zu-VA-API-Übersetzung existiert nicht.
+Mesa does **not** provide this. Freedreno has no video decode; Iris is a separate
+IP block behind a V4L2 kernel driver. There is no automatic V4L2-to-VA-API translation.
 
-## Der Kandidat
+## Candidate
 
 [`phxinyang/qualcomm-iris-vaapi`](https://github.com/phxinyang/qualcomm-iris-vaapi),
-gepinnt in [`sources.json`](sources.json) auf `f587b14e`, 100 Commits,
-MIT und LGPL-2.1-or-later. Die Copyright-Header nennen Bootlin (2019) und
-Max Schettler (2023): das steht in der Linie der bestehenden
-`libva-v4l2`-Arbeit, ist also keine Neuschöpfung.
+pinned in [`sources.json`](sources.json) to `f587b14e`, 100 commits,
+MIT and LGPL-2.1-or-later. Copyright headers name Bootlin (2019) and
+Max Schettler (2023): this follows the existing `libva-v4l2` lineage, not a
+new implementation from scratch.
 
-Die Passung ist ungewöhnlich genau. Qualifiziert wurde upstream auf
-Snapdragon **SM8550**, Fedora 44 ARM64, Chrome 152, Treiberknoten `qcom-iris`.
-Unser Gerät ist SM8550 (Adreno 740, gemessen als `ANGLE (freedreno, FD740)`),
-ArmadaOS ist Fedora-basiert, Electron 44.5.1 fährt Chromium 152, und der Knoten
-meldet sich als `qcom-iris-decoder`.
+The match is unusually close. Upstream qualified Snapdragon **SM8550**, Fedora
+44 ARM64, Chrome 152 and `qcom-iris`. Our device is SM8550 (Adreno 740, measured
+as `ANGLE (freedreno, FD740)`); ArmadaOS is Fedora-based, Electron 44.5.1 uses
+Chromium 152, and the node reports `qcom-iris-decoder`.
 
-## Codeprüfung
+## Code review
 
-Gelesen: `src/codec/bitwriter.h` vollständig, `src/va/driver.h`,
-`src/iris/slots.cc`, `src/meson.build`, Fedora-Spec, README, TEST-RESULTS.
+Read: all of `src/codec/bitwriter.h`, `src/va/driver.h`, `src/iris/slots.cc`,
+`src/meson.build`, Fedora spec, README and TEST-RESULTS.
 
-**Speichersicherheit ist konstruiert, nicht zufällig.** Der Bitstream-Writer
-arbeitet auf `std::vector<uint8_t>` mit `push_back` — kein fester Puffer, also
-kein Überlauf möglich. `BitReader::bit()` prüft `p >= size_bits()` und liefert
-sonst 0; alle Lesefunktionen gehen durch `bit()`, damit bleiben auch
-`seek`/`skip` ohne eigene Prüfung gefahrlos.
+**Memory safety is designed in.** The bitstream writer uses `std::vector<uint8_t>`
+and `push_back`, rather than a fixed buffer that could overflow. `BitReader::bit()`
+checks `p >= size_bits()` and returns 0 at the boundary; all reads pass through
+`bit()`, so `seek`/`skip` without their own checks do not cause out-of-bounds reads.
 
-**Die VA-Objektverwaltung ist richtig gelöst.** `std::map` von VA-IDs auf
-`std::shared_ptr`, und die Lookups „throw iris::Error with the VA status" —
-eine ungültige `VASurfaceID` vom Client ergibt also einen VA-Fehler statt eines
-Absturzes. Genau dort stürzen schlampige Treiber ab. Ein `std::recursive_mutex`
-schützt die Tabellen, mit dokumentiertem Geltungsbereich.
+**VA object management is sound.** VA IDs map to `std::shared_ptr` through
+`std::map`; failed lookups throw `iris::Error` with the VA status. An invalid
+`VASurfaceID` from a client thus returns a VA error rather than crashing.
+A `std::recursive_mutex` protects the tables with documented scope.
 
-**Dateideskriptoren per RAII.** `Frame::~Frame()` und `SlotPool::~SlotPool()`
-schließen, und `scratch_fd_` wird nach `close` auf `-1` gesetzt, was
-Doppelschließen verhindert. Ein vom Client importierter `import_fd_` wird
-bewusst nicht geschlossen — korrekt, der Kernel hält nach
-`queue_buffer_dmabuf` seine eigene Referenz auf das dma_buf.
+**RAII file descriptors.** `Frame::~Frame()` and `SlotPool::~SlotPool()` close
+resources; `scratch_fd_` is set to `-1` after closing to avoid a double close.
+Client-imported `import_fd_` is deliberately not closed: the kernel holds its
+own dma_buf reference after `queue_buffer_dmabuf`.
 
-**Ein echter latenter Fehler.** In `BitReader::ue()`:
+**A real latent bug.** In `BitReader::ue()`:
 
 ```cpp
 unsigned zeros = 0;
@@ -85,130 +78,124 @@ while (!bit() && zeros < 32) ++zeros;
 return ((1u << zeros) - 1) + bits(zeros);
 ```
 
-Bei genau 32 führenden Nullen ist `1u << 32` undefiniertes Verhalten
-(Shift ≥ Breite des Typs). Erreichbar über manipulierte oder beschädigte
-Bitstreamdaten. Die Folge ist ein falscher Wert, keine Speicherkorruption —
-hier wird damit nicht indiziert. Trotzdem ein Befund, der upstream gehört.
-Kleinere Randfälle derselben Art: `su()` mit `count == 64` und `bits()` mit
-`count > 64` wären ebenfalls UB, werden aber von den Aufrufern nicht erreicht.
+Exactly 32 leading zeros cause undefined behavior in `1u << 32` (shift at least
+the type width), reachable through malicious or damaged bitstreams. The result
+is an incorrect value, not memory corruption: it is not used for indexing here.
+It should still be reported upstream. Related edge cases: `su()` with `count == 64`
+and `bits()` with `count > 64` would also cause UB, but callers do not reach them.
 
-**Bewertung.** Das ist Code von jemandem, der V4L2 und VA-API kennt. Das
-Projekt legt zudem denselben Beweismaßstab an, den dieses Repo führt:
-„a mapped node or a running GPU process proves nothing".
+**Assessment.** The code reflects familiarity with V4L2 and VA-API. The project
+also uses the same evidence standard as this repository: a mapped node or a
+running GPU process alone proves nothing.
 
-## Was dagegen spricht
+## Concerns
 
-Null Sterne, ein Autor, zwei Wochen alt, zuletzt am Erstellungstag angefasst.
-Alle Testergebnisse sind **Eigenangaben**; die 76-KB-`TEST-RESULTS.md` nennt
-Boot-IDs, Kernel- und Modulhashes und trennt sauber „Passed" von „Pending",
-aber niemand sonst hat das validiert.
+At review time: zero stars, one author, two weeks old, last updated on the day
+of creation. All test results were **self-reported**; the 76 KB `TEST-RESULTS.md`
+lists boot IDs, kernel/module hashes and distinguishes Passed from Pending,
+but had no independent validation.
 
-Schwerer wiegt der Einsatzort: ein Userspace-Treiber, der in **Chromiums
-GPU-Prozess** geladen wird und dort fremde Bitstreams verarbeitet, inklusive
-eigener HEVC- und AV1-Rekonstruktion. Er würde in dem Prozess laufen, der die
-authentifizierte NVIDIA-Sitzung bedient. In diesem Projekt gab es bereits einen
-ungeklärten SIGSEGV.
+The deployment context matters more: a userspace driver loaded into **Chromium's
+GPU process**, processing external bitstreams with its own HEVC/AV1 reconstruction.
+It runs in a process serving the authenticated NVIDIA session. This project
+had already experienced an unexplained SIGSEGV.
 
-Upstream meldet AV1 ausdrücklich **nicht** als angeboten; HEVC Main erreicht
-Fluster 111 von 147, was laut Autor der Fähigkeit der Firmware selbst entspricht.
+Upstream explicitly did **not** advertise AV1; HEVC Main achieved Fluster 111/147,
+which the author attributed to firmware capability.
 
-## Ablauf
+## Procedure
 
-Alles ohne Änderung am Hostimage, ohne `rpm-ostree`-Layering und ohne
-systemweite Installation. Das Modul wird in einem Wegwerfcontainer gebaut und
-ausschließlich über `LIBVA_DRIVERS_PATH` geladen; Entfernen heißt ein
-Verzeichnis löschen.
+No host-image changes, `rpm-ostree` layering or system-wide installation. Build
+the module in a disposable container and load only through `LIBVA_DRIVERS_PATH`;
+removal means deleting one directory.
 
 ```sh
-# 1. Voraussetzungen prüfen. Ändert nichts, startet keinen Client.
+# 1. Check prerequisites. Changes nothing and starts no client.
 experiments/vaapi-iris/preflight.sh
 
-# 2. Treiber im Container bauen, Modul ins Benutzerverzeichnis.
+# 2. Build the driver in a container into a user directory.
 experiments/vaapi-iris/build-driver.sh
 
-# 3. Fähigkeiten messen, mit Referenzlauf ohne Treiber zum Vergleich.
+# 3. Measure capabilities against a baseline without the driver.
 GFN_VAAPI_ROOT=~/.local/share/gfn-armada-tests/vaapi-iris-YYYYMMDD \
 GFN_ARMADA_INSTANCE=~/.local/share/gfn-armada-tests/bridge-nativequeue-20261004 \
 experiments/vaapi-iris/run-probe.sh
 ```
 
-Schritt 1 entscheidet alles Weitere: **ist `libva.so.2` auf ArmadaOS
-vorhanden?** Chromium lädt sie dynamisch. Fehlt sie, ist dieser Weg ohne
-zusätzliche Bibliothek zu, und es bleiben Sourcebuild oder WebKit.
+Step 1 determines the rest: **does ArmadaOS have `libva.so.2`?** Chromium loads
+it dynamically. Without it this route needs an additional library; alternatives
+are a source build or WebKit.
 
-## Abbruchkriterien und Bewertung
+## Stop criteria and interpretation
 
-`run-probe.sh` fährt bewusst zuerst einen Referenzlauf **ohne** Treiber, damit
-ein Unterschied dem Treiber zuzuordnen ist und nicht den Schaltern.
+`run-probe.sh` deliberately runs a baseline **without** the driver first, to
+attribute any difference to the driver rather than switches.
 
-* `video/H265` erscheint und `mediaCapabilities.hevc.supported` wird `true`
-  → die GPU-Decoderfabrik meldet HEVC, GFN kann H.265 verhandeln.
-* `mediaCapabilities.h264.powerEfficient` springt auf `true`
-  → Hardware-Decode für den heute tatsächlich verhandelten Codec.
-* Keine Änderung gegenüber der Referenz → der Treiber wurde nicht geladen.
+* `video/H265` appears and `mediaCapabilities.hevc.supported` becomes `true`
+  → the GPU decoder factory advertises HEVC, allowing GFN to negotiate H.265.
+* `mediaCapabilities.h264.powerEfficient` becomes `true`
+  → a hardware-capability indication for the currently negotiated codec.
+* No difference from the baseline → investigate whether the driver loaded.
 
-Angebotene Fähigkeit bleibt kein Nachweis. Erst ein echter Stream zählt, und
-dort ausschließlich `decoderImplementation` aus `getStats()` sowie Frames und
-Drops über ein Zeitfenster — dieselbe Messung, die den bisherigen
-FFmpeg-Softwaredecode belegt hat.
+Advertised capabilities are not proof. A real stream must show
+`decoderImplementation` from `getStats()` plus frames/drops over a time window,
+as in the earlier FFmpeg software-decode measurement. Actual VPU output needs
+correlated driver evidence, not just this capability list.
 
-## Verhältnis zur bestehenden Brücke
+## Relationship to the existing bridge
 
-Trägt dieser Weg, wird die Brücke für die Produktion überflüssig: der Frame
-verlässt den Browser nicht, damit entfallen Präsentationsersatz, A/V-Sync,
-Live-Fallback und der Helperprozess. Die Brückenarbeit bleibt der Nachweis,
-dass die Iris den echten GFN-Stream in Echtzeit decodiert, und sie bleibt das
-Messinstrument. Abgeschaltet wird sie erst, wenn dieser Weg gemessen trägt.
+If successful, this path makes the bridge unnecessary for production: frames
+stay in the browser, eliminating replacement presentation, A/V sync, live fallback
+and the helper process. Bridge work still demonstrates Iris decoding real GFN
+streams in real time and remains a measurement tool. Disable it only once this
+path has measured evidence.
 
-## Messergebnisse am Gerät (2026-10-05)
+## Device measurements (2026-10-05)
 
-Alles unten ist am Odin 2 Portal gemessen, Kernel 7.2.6, ArmadaOS
-20261002.43c0cca. Nichts systemweit installiert, Hostimage unberührt.
+Everything below was measured on the Odin 2 Portal, kernel 7.2.6, ArmadaOS
+20261002.43c0cca. Nothing installed system-wide; host image unchanged.
 
-### Voraussetzungen: erfüllt
+### Prerequisites met
 
-`libva.so.2` liegt unter `/lib64`, dazu libva-drm, libdrm, EGL, GLESv2, gbm.
-Iris-Decoder `/dev/video0` (`driver=iris_driver`, `card=Iris Decoder`), Encoder
-auf `/dev/video1`. Die vorhandenen VA-Treiber sind ausschließlich Mesa-Gallium
-(d3d12, nouveau, r600, radeonsi, virtio_gpu) — **nichts für Qualcomm**, was die
-Annahme einer Mesa-Übersetzungsschicht widerlegt. `v4l2-ctl` fehlt, wird vom
-Treiber aber nicht gebraucht: er findet den Knoten selbst per `glob` und
-`VIDIOC_QUERYCAP`.
+`libva.so.2` is under `/lib64`, alongside libva-drm, libdrm, EGL, GLESv2 and gbm.
+Iris decoder: `/dev/video0` (`driver=iris_driver`, `card=Iris Decoder`); encoder:
+`/dev/video1`. Installed VA drivers are Mesa Gallium only (d3d12, nouveau, r600,
+radeonsi, virtio_gpu) — **none for Qualcomm**, disproving the assumed Mesa
+translation layer. `v4l2-ctl` is absent but unnecessary for the driver, which
+finds the node with `glob` and `VIDIOC_QUERYCAP`.
 
-Per ioctl gelesen, `/dev/video0` OUTPUT (Eingang der Firmware):
-**`H264`, `HEVC`, `VP90`, `AV01`**, alle als komprimiert markiert; CAPTURE
-liefert `NV12`, `P010` sowie die UBWC-Varianten `Q08C`/`Q10C`. Die Firmware
-akzeptiert HEVC und AV1 und kann 10 Bit.
+Read by ioctl, `/dev/video0` OUTPUT (firmware input): **`H264`, `HEVC`, `VP90`,
+`AV01`**, all marked compressed. CAPTURE offers `NV12`, `P010` and UBWC variants
+`Q08C`/`Q10C`. Firmware accepts HEVC/AV1 and supports 10-bit formats.
 
-### Der Treiber decodiert auf dieser Hardware
+### The driver decodes on this hardware
 
-Bau im Wegwerfcontainer, Upstream-Unit-Tests auf dem Gerät 26 Fälle/0 Fehler,
-Meson-Suite 14/14. libva lädt ihn (`va_openDriver() returns 0`,
-„Qualcomm Iris V4L2 stateful").
+Built in a disposable container. Upstream unit tests on device: 26 cases,
+0 errors; Meson suite: 14/14. libva loads it (`va_openDriver() returns 0`,
+“Qualcomm Iris V4L2 stateful”).
 
-Mit einem Clip **ohne B-Frames** (`-tune zerolatency -bf 0`, 60 fps, 180 AUs)
-über ffmpeg:
+Through FFmpeg, a clip **without B-frames** (`-tune zerolatency -bf 0`, 60 fps,
+180 AUs) reports:
 
 ```text
 session finish submitted=180 completed=180 errors=0 drops=0 timeouts=0 drains=1
 ```
 
-Mit B-Frames schlägt es fehl (`syncSurface: target decode failed`, Fehler 23).
-Ursache aus dem Trace: `mode=display-order`. Ohne das decode-order-Kernelmodul
-hält die Firmware Frames zur Umsortierung zurück, der Client wartet auf Frame 1,
-der Treiber bricht per Timeout mit einem Drain auf und startet die Session neu.
-**Für GFN bedeutungslos** — Spielstreaming nutzt keine B-Frames. Die
-Upstream-Probe `iris-import-probe` verlangt dieses Modul ausdrücklich
-(`decode-order control: NO`), der Treiber selbst nicht.
+B-frames fail (`syncSurface: target decode failed`, error 23). Trace explanation:
+`mode=display-order`. Without the decode-order kernel module, firmware holds
+frames for reordering while the client waits for frame 1; the driver times out,
+drains and restarts the session. **Not relevant to the tested GFN path**, whose
+game streams use no B-frames. Upstream `iris-import-probe` explicitly requires
+this module (`decode-order control: NO`); the driver itself does not.
 
-### Chromium: Fähigkeiten ja, Decode nein
+### Chromium: capabilities present, decoding absent at this stage
 
-Erster Befund, aus `media/gpu/vaapi/vaapi_wrapper.cc`: der Render-Node-Scan
-überspringt **alle Nicht-PCI-Geräte**. Eine SoC-GPU wird daher nie gefunden,
-VA-API initialisiert nicht, und keine Feature-Flag ändert das.
-`--hardware-video-device-path` umgeht den Scan.
+First finding in `media/gpu/vaapi/vaapi_wrapper.cc`: render-node discovery skips
+**all non-PCI devices**. It therefore misses a SoC GPU, VA-API fails to initialize,
+and feature flags alone do not fix it. `--hardware-video-device-path` bypasses
+this scan.
 
-Damit meldet das unveränderte, ausgelieferte Electron:
+The unchanged shipped Electron then reports:
 
 | Codec | supported | powerEfficient |
 |---|---|---|
@@ -216,12 +203,12 @@ Damit meldet das unveränderte, ausgelieferte Electron:
 | HEVC | **true** | **true** |
 | AV1 | true | false |
 
-und `video/H265` erscheint in den Receive-Capabilities, also im SDP-Angebot an
-GFN. Ohne Sourcebuild.
+`video/H265` appears in receive capabilities and hence the SDP offer to GFN,
+without a source build.
 
-Im echten Stream bleibt es dennoch bei
-`FFmpeg (fallback from: ExternalDecoder (VaapiVideoDecoder))`. Der
-instrumentierte Treiber zeigt, warum nicht bei ihm gesucht werden muss:
+Real streaming still reports
+`FFmpeg (fallback from: ExternalDecoder (VaapiVideoDecoder))`. The instrumented
+driver localizes the failure before its surface handling:
 
 ```text
 va init ... profiles=7
@@ -229,44 +216,40 @@ va create_config id=1 profile=13 rt_format=0x1     # HEVC Main
 va create_config id=2 profile=7  rt_format=0x1     # H.264 High
 session open node=/dev/video0 mode=display-order codec=H264 1920x1088
 va create_context id=3 profile=7 1920x1088 targets=0
-va destroy_context id=3 pending=0                  # 13 ms später
+va destroy_context id=3 pending=0                  # 13 ms later
 ```
 
-Beim GPU-Init fragt Chromium alle Profile vollständig ab (6, 7, 13, 17, 18, 19)
-und erhält Antworten. In der Decodephase ruft es **weder `querySurfaceAttributes`
-noch `createSurfaces`** — es erzeugt den Kontext und verwirft ihn. Der Abbruch
-liegt damit in Chromiums eigener Frame-Pool-Einrichtung, die den VA-Treiber
-nicht berührt. Chromium meldet dazu keine Fehlerzeile;
-`videoDecodeAcceleratorSupportedProfile` ist leer.
+GPU initialization queries all profiles (6, 7, 13, 17, 18, 19) successfully.
+Decoding calls **neither `querySurfaceAttributes` nor `createSurfaces`**: it creates
+and discards the context. Failure is in Chromium's frame-pool setup before
+calling the driver's surface methods. No Chromium error line;
+`videoDecodeAcceleratorSupportedProfile` is empty.
 
-Zwei Hypothesen wurden geprüft und **widerlegt**:
+Two hypotheses were tested and **ruled out for this failure**:
 
-* *GPU-Sandbox blockiert `/dev/video0`.* Mit `--disable-gpu-sandbox` änderte sich
-  nichts, und der Trace zeigt `session open node=/dev/video0` im GPU-Prozess bei
-  aktiver Sandbox. Der Treiber öffnet den Knoten dort problemlos.
-* *Fehlender DRM_PRIME_2-Import.* Der beiliegende Patch
+* *GPU sandbox blocks `/dev/video0`.* Disabling it changed nothing; the trace
+  shows `session open node=/dev/video0` in the sandboxed GPU process.
+* *Missing DRM_PRIME_2 import.* Included patch
   [`patches/0001-va-accept-drm-prime-2-surface-import.patch`](patches/0001-va-accept-drm-prime-2-surface-import.patch)
-  bewirbt `MEM_TYPE_DRM_PRIME_2` und nimmt klientallokierte Puffer an (ein
-  Objekt, linearer Modifier, Fourcc-Prüfung, Plane-Layout- und Größenprüfung,
-  duplizierter fd, Surface als `persistent_export`, sodass der bestehende
-  Kopierpfad hineinschreibt). Er baut mit `-Wall -Wextra`, die Upstream-Suite
-  bleibt grün — und am Verhalten ändert er nichts, weil Chromium nie bis zur
-  Surface-Anforderung kommt.
+  advertises `MEM_TYPE_DRM_PRIME_2` and accepts client-allocated buffers (one
+  object, linear modifier, FourCC/layout/size validation, duplicated FD,
+  `persistent_export` surface for the existing copy path). Builds with
+  `-Wall -Wextra`, upstream suite passes, but no behavior change because
+  Chromium never reaches the surface request.
 
-### Offen
+### Open at this stage
 
-Chromiums Grund ist unbeobachtet. Seine VERBOSE-Logs sind aus dem Client nicht
-zu bekommen: Chromium initialisiert Logging vor dem JS-Einstieg, weshalb
-`app.commandLine.appendSwitch('vmodule',…)` wirkungslos bleibt (INFO erscheint,
-VERBOSE nie), und der Launcher lehnt beliebige Runtime-Flags bewusst ab — diese
-Zusicherung prüft `tests/launcher.test.cjs:82` und sie bleibt unangetastet. Der
-Diagnose-Entrypoint `tests/probe-vaapi-stream.cjs` kann die Schalter auf argv
-übergeben, in seinem Fenster startet GFN aber keine Sitzung (0 Stichproben in
-110 s), während der produktive Client zuverlässig streamt. Damit fehlt der eine
-Logeintrag, der die Frage beantworten würde.
+Chromium's reason was unobserved. VERBOSE logs were unavailable through the client:
+logging initializes before JS, making `app.commandLine.appendSwitch('vmodule',…)`
+ineffective (INFO appears, VERBOSE never). The launcher deliberately rejects
+arbitrary runtime flags; `tests/launcher.test.cjs:82` checks this guarantee and
+it remains intact. `tests/probe-vaapi-stream.cjs` can supply switches on argv,
+but GFN starts no session in that window (0 samples in 110 s) while streaming
+reliably in production. The decisive log entry was therefore missing.
 
-### Nebenbefund, endgültig
+### Additional finding at this stage
 
-GFN schaltet AV1 für Linux **serverseitig** ab. Aus der Clientkonfiguration im
-Log: `"disableConfigList":["PLT=WINDOWS;VEN=QUALCOMM;COD=AV1","PLT=STEAMOS;COD=AV1","PLT=LINUX;COD=AV1",…]`.
-Clientfähigkeit spielt dafür keine Rolle.
+GFN disables AV1 for Linux **server-side**. Logged client configuration:
+`"disableConfigList":["PLT=WINDOWS;VEN=QUALCOMM;COD=AV1","PLT=STEAMOS;COD=AV1","PLT=LINUX;COD=AV1",…]`.
+Client capability alone does not bypass that rule. Later identity/preference
+experiments are documented separately in the current project summary.

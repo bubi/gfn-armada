@@ -1,161 +1,157 @@
-# Architektur und Entscheidungen
+# Architecture and decisions
 
-> Historischer Architekturstand. Aktuelle Ergebnisse, Katalog-/Steam-Integration und nativer H.264-Nachweis: [PoC-Status vom 2026-10-05](poc-status.md).
+> Historical architecture snapshot. Current results, catalog/Steam integration,
+> and native H.264 evidence: [PoC status dated 2026-10-05](poc-status.md).
 
-Stand: 2026-10-04. Ziel: Odin 2 Portal, Linux aarch64, ArmadaOS.
-Das Repository war bei Beginn leer. Inzwischen sind GFN-Spielstart und
-Controller auf dem Portal bestätigt; HEVC-Iris-Decoding ist in einem getrennten
-GStreamer-Test bis Wayland-DMA-BUF nachgewiesen. Der aktuelle GFN-H.264-Stream
-nutzt nach nativen Statistiken FFmpeg-Softwaredecode; GFN-HEVC bleibt offen.
-Die aktuellen Decoderadapter-Optionen stehen in
-[streamer-options.md](streamer-options.md). Die originale GFN-Web-App bleibt
-die Oberfläche; kein Wechsel zum OpenNOW-Client.
+Snapshot: 2026-10-04. Target: Odin 2 Portal, Linux aarch64, ArmadaOS.
+The repository was initially empty. GFN game launch and controller operation
+have since been confirmed on Portal; HEVC Iris decoding through Wayland DMA-BUF
+was demonstrated in a separate GStreamer test. Native statistics identify the
+GFN H.264 stream at this stage as FFmpeg software decoding; GFN HEVC remains
+open. Decoder-adapter options are in [streamer-options.md](streamer-options.md).
+The original GFN web app remains the UI; no switch to OpenNOW.
 
-## Referenzen und reproduzierbarer Forschungsstand
+## References and reproducible research snapshot
 
-| Projekt | untersuchter Commit | Befund |
+| Project | Inspected commit | Finding |
 |---|---|---|
-| [aanze/geforcenow-arm64](https://github.com/aanze/geforcenow-arm64/tree/ba818e4f14f22c4d8c658661f5f79e54022156d3) | `ba818e4f14f22c4d8c658661f5f79e54022156d3` | README eines ARM64-Builds; beschreibt Software-Decoding, kein eigenständiger Decoder-Quellcode |
-| [hmlendea/gfn-electron](https://github.com/hmlendea/gfn-electron/tree/10af7432ff3097a58973496a3f266e294582b483) | `10af7432ff3097a58973496a3f266e294582b483` | tatsächlicher Electron-Upstream; GFN-Web-App, Controller über Browser, CMS-ID-Route |
-| [armada-os/armada](https://github.com/armada-os/armada/tree/43c0cca880cefbb963d5fdc1554816ffd0a5691f) | `43c0cca880cefbb963d5fdc1554816ffd0a5691f` | Fedora bootc, native ARM64-Grafik, Steam/FEX, Geräte-DTS und eigene Pakete |
+| [aanze/geforcenow-arm64](https://github.com/aanze/geforcenow-arm64/tree/ba818e4f14f22c4d8c658661f5f79e54022156d3) | `ba818e4f14f22c4d8c658661f5f79e54022156d3` | ARM64-build README; describes software decoding, no independent decoder sources |
+| [hmlendea/gfn-electron](https://github.com/hmlendea/gfn-electron/tree/10af7432ff3097a58973496a3f266e294582b483) | `10af7432ff3097a58973496a3f266e294582b483` | Actual Electron upstream; GFN web app, browser controller support, CMS-ID route |
+| [armada-os/armada](https://github.com/armada-os/armada/tree/43c0cca880cefbb963d5fdc1554816ffd0a5691f) | `43c0cca880cefbb963d5fdc1554816ffd0a5691f` | Fedora bootc, native ARM64 graphics, Steam/FEX, device DTS and custom packages |
 
-Die Referenzanwendung ist GPL-3.0. Die neue Implementierung wurde eigenständig
-angelegt; kein Quellcode oder Artwork wurde kopiert. Eine Projektlizenz muss vor
-Veröffentlichung gewählt werden. Electron und weitere gebündelte Komponenten
-behalten ihre Lizenzdateien im Paket.
+The reference application is GPL-3.0. This implementation was created
+independently; no source code or artwork was copied. A project license must be
+selected before publication. Electron and other bundled components retain
+their license files in the package.
 
-## Module
+## Modules
 
 ```mermaid
 flowchart LR
   Steam[Steam Non-Steam Shortcut] --> CLI[launcher/cli.cjs]
-  CLI --> Mapping[Steam-ID → explizit erfasste GFN-URL]
+  CLI --> Mapping[Steam ID → explicitly captured GFN URL]
   Mapping --> Electron[client/main.cjs]
-  Electron --> GFN[Offizielle GFN-Web-App]
+  Electron --> GFN[Official GFN web app]
   GFN --> RTC[Chromium WebRTC]
-  RTC --> Decoder[Chromium Decoder-Backend]
+  RTC --> Decoder[Chromium decoder backend]
   Decoder --> Output[Ozone / Wayland / Gamescope]
-  Observer[Isolierter Preload + Main-World-Beobachter] --> Snapshot[Laufzeitdiagnostik]
+  Observer[Isolated preload + main-world observer] --> Snapshot[Runtime diagnostics]
   RTC --> Observer
 ```
 
-- `launcher/`: CLI, TOML-Konfiguration, geprüfte URL-Zuordnung, Geräteprobes.
-- `client/`: Electron-Fenster, persistente Session, Wayland-Auswahl und Telemetrie.
-- `steam-integration/`: aktuell ausschließlich ein kontrollierter Manifestexport.
-- `build/` und `scripts/`: gepinnte Inputs, Linux-ARM64-Container und portables Bundle.
+- `launcher/`: CLI, TOML configuration, validated URL mappings, device probes.
+- `client/`: Electron window, persistent session, Wayland selection, telemetry.
+- `steam-integration/`: at this snapshot, a controlled manifest export only.
+- `build/` and `scripts/`: pinned inputs, Linux ARM64 container, portable bundle.
 
-Electron 44.5.1 wurde über die npm-Registry verifiziert und exakt gepinnt.
-Die [Electron-44-Veröffentlichung](https://www.electronjs.org/blog/electron-44-0)
-verwendet Chromium 152. Die konkrete Patchversion wird zur Laufzeit protokolliert;
-es werden keine Annahmen aus einer anderen Chromium-Version als Fähigkeit verkauft.
-Ein Electron-Wrapper spart zunächst einen vollständigen Chromium-Build. Der
-Hardwarepfad ist ein separater Untersuchungs- und Integrationsschritt.
+Electron 44.5.1 was verified through the npm registry and pinned exactly.
+The [Electron 44 release](https://www.electronjs.org/blog/electron-44-0)
+uses Chromium 152. Its exact patch version is logged at runtime; assumptions
+from another Chromium version are not presented as capabilities.
+An Electron wrapper initially avoids a full Chromium build. The hardware path
+is a separate research and integration step.
 
-## Start, Login und Controller
+## Launch, login, and controllers
 
-`launch` öffnet `https://play.geforcenow.com/`, `login` dieselbe Anwendung im Fenster.
-Das offizielle NVIDIA-Login läuft innerhalb des persistenten Profils. Cookies,
-IndexedDB und Storage liegen im separaten `persist:gfn`-Sessionbereich. Session-
-Persistence ersetzt keine Prüfung, ob ein bestimmter OAuth-Provider Electron
-akzeptiert. Google/Discord-Weiterleitungen sind aktuell nicht freigegeben; NVIDIA-
-Login ist der erste Testpfad. Weitere Provider brauchen eine gezielte Prüfung.
+`launch` opens `https://play.geforcenow.com/`; `login` opens the same application
+in a window. Official NVIDIA login runs in the persistent profile. Cookies,
+IndexedDB, and storage use the separate `persist:gfn` session. Persistence
+does not establish that every OAuth provider accepts Electron. Google/Discord
+redirects are not enabled at this snapshot; NVIDIA login is the initial test
+path. Other providers need targeted validation.
 
-Renderer haben kein Node, sind sandboxed und context-isolated. HTTPS-Navigation
-bleibt auf GFN und NVIDIA beschränkt. Popups erhalten dieselben sicheren
-WebPreferences und dieselbe Session. Es werden keine Token, Cookies, SDP, ICE-
-Adressen oder vollständigen Navigations-URLs geloggt. Keine Fernsteuerungsports
-werden geöffnet. [Electron-Sicherheit](https://www.electronjs.org/docs/latest/tutorial/security).
+Renderers have no Node access, use sandboxing and context isolation. HTTPS
+navigation is limited to GFN and NVIDIA. Popups receive the same secure
+WebPreferences and session. Tokens, cookies, SDP, ICE addresses, and complete
+navigation URLs are not logged. No remote-control ports are opened.
+[Electron security](https://www.electronjs.org/docs/latest/tutorial/security).
 
-Bei gesetztem `WAYLAND_DISPLAY` wird Ozone Wayland angefordert. Die tatsächlich
-verwendete Ausgabe muss mit `chrome://gpu` überprüft werden. Turnip ist der Vulkan-
-Treiber; ein Chromium-GL/EGL-Pfad kann stattdessen Freedreno verwenden. Beides ist
-von der VPU unabhängig. Keine VA-API- oder Zero-Copy-Schalter auf Verdacht.
+With `WAYLAND_DISPLAY` set, Ozone Wayland is requested. Actual output must be
+checked through `chrome://gpu`. Turnip is the Vulkan driver; a Chromium GL/EGL
+path may instead use Freedreno. Both are independent of the VPU. No speculative
+VA-API or zero-copy switches.
 
-GFN erhält die Chromium Gamepad API. Telemetrie zeigt Controller-Anzahl, Achsen,
-Buttons und `mapping`; eine Controller-ID wird nicht geloggt. Steam Input soll ein
-Standard-Gamepad ausgeben. Hotplug, Fokus, analoge Trigger, Stickbelegung, Rumble
-und die Armada-InputPlumber-Kette sind auf dem Gerät zu prüfen. Vor dem ersten
-Gamepad-Poll kann eine Benutzerinteraktion notwendig sein. Desktop-Navigation
-und Anmeldung können weiterhin Touch/Tastatur benötigen.
+GFN receives the Chromium Gamepad API. Telemetry reports controller count,
+axes, buttons, and `mapping`; controller IDs are not logged. Steam Input should
+output a standard gamepad. Hotplug, focus, analog triggers, stick mappings,
+rumble, and Armada's InputPlumber chain need device tests. User interaction may
+be required before the first gamepad poll. Desktop navigation and sign-in may
+still need touch/keyboard input.
 
-## Spielstart und Steam
+## Game launch and Steam
 
-Siehe [Direct Launch](direct-launch.md). Steam-AppIDs sind keine GFN-CMS-IDs.
-Die im Upstream gefundene Route ist kein dokumentierter offizieller API-Vertrag.
-Nur vom Benutzer erfasste Zuordnungen werden geöffnet. `map` plus Ctrl+Shift+P
-erfasst eine aktuell geöffnete Streamer-Route mit Bestätigung und Backup. Die Tabelle startet leer.
-Keine ungesicherte Katalog-API, keine automatischen Login-Klicks, keine erfundenen
-NVIDIA-Parameter. Fehlende Zuordnungen ergeben einen klaren Fehler.
+See [Direct Launch](direct-launch.md). Steam AppIDs are not GFN CMS IDs.
+The upstream route is not a documented official API contract. Only
+user-captured mappings are opened. `map` plus Ctrl+Shift+P captures the current
+streamer route with confirmation and backup; the table starts empty.
+No unverified catalog API, automated login clicks, or invented NVIDIA
+parameters. Missing mappings produce a clear error.
 
-Steam kann das portable Wrapper-Script direkt starten. Aktuell wird kein
-`shortcuts.vdf` verändert. `sync` erzeugt ein Manifest mit Name, Steam-ID,
-Launch-Argumenten und optionalem Artwork-Metadatenobjekt. Eine spätere Import-
-Implementierung muss Steam beenden lassen, Benutzerprofil eindeutig wählen,
-Binary-VDF unbekannte Felder erhalten, Duplikate erkennen und vor atomarem
-Ersetzen ein rückspielbares Backup inklusive Prüfsumme anlegen. Artwork wird
-erst nach überprüfter Quelle und Zuordnung heruntergeladen. Das ist noch offen.
+Steam can launch the portable wrapper directly. At this historical stage,
+`shortcuts.vdf` is unchanged. `sync` produces a manifest with name, Steam ID,
+launch arguments, and optional artwork metadata. A future importer must
+require Steam to be stopped, select the user profile unambiguously, preserve
+unknown binary-VDF fields, detect duplicates, and create a restorable backup
+with checksum before atomic replacement. Artwork is downloaded only after
+verifying its source and mapping. This is outstanding at this snapshot.
 
-## Konfigurationsvertrag
+## Configuration contract
 
-`codec`, `fps`, `resolution`, `bitrate` sind deklarierte Wünsche. Sie werden
-**nicht** an NVIDIA übertragen und verändern keine WebRTC-Angebote. Die CLI
-weist darauf hin. Die Streamauswahl erfolgt aktuell in der GFN-UI.
-`hardware_decode=false` deaktiviert beschleunigtes Video-Decoding;
-`true` lässt Chromium wählen und ist keine Hardwaregarantie.
-`fullscreen`, `steam_integration` und `compatibility_user_agent` haben lokale
-Wirkung. Die optionale Chrome-UA nutzt die tatsächliche Chromium-Version; sie
-kann die Browserzulassung beeinflussen, schafft aber keine Codecunterstützung.
-UA Client Hints können weiterhin Electron erkennen; kein manipulierter
-Hardwarefähigkeitsbericht. Unbekannte TOML-Schlüssel führen zu einem Fehler.
+`codec`, `fps`, `resolution`, and `bitrate` declare preferences. At this stage,
+they are **not** sent to NVIDIA and do not alter WebRTC offers; the CLI explains
+this. Stream selection is performed in GFN's UI.
+`hardware_decode=false` disables accelerated video decoding; `true` lets
+Chromium choose and is not a hardware guarantee.
+`fullscreen`, `steam_integration`, and `compatibility_user_agent` affect local
+behavior. The optional Chrome UA uses the actual Chromium version; it may
+influence browser eligibility but does not create codec support. UA Client
+Hints may still identify Electron; hardware capabilities are not fabricated.
+Unknown TOML keys are rejected.
 
-## Erreicht und offen
+## Implemented and outstanding
 
-Implementiert: minimaler Client, persistentes Profil, CLI, explizite Mapping-
-Auflösung, Diagnostik, Manifestexport, ARM64-Paketierung und Launcher-Tests.
-Login, GFN-Spiel und Xbox-Controller-Erkennung wurden inzwischen auf dem
-Portal getestet. Der ursprüngliche GFN-H.264-Stream verwendet nachweislich
-FFmpeg-Softwaredecode. Offen: automatisch gepflegter Katalog, robuste
-UI-basierte Suche als Alternative zu geänderter CMS-Route, Steam-VDF-Import,
-Hardware-Decoding des GFN-Streams und gemessene Low-Copy-Ausgabe.
-Wenn NVIDIA die CMS-Route ändert, muss der Nutzer den Titel in der GFN-Oberfläche
-suchen und die Zuordnung neu erfassen. Dieser manuelle Rückweg ist verfügbar;
-eine automatische DOM-Suche ist noch nicht implementiert.
-# Nativer Vergleichskandidat: OpenNOW (2026-10-04)
+Implemented: minimal client, persistent profile, CLI, explicit mapping
+resolution, diagnostics, manifest export, ARM64 packaging, and launcher tests.
+Login, GFN gameplay, and Xbox controller recognition have been tested on Portal.
+The original GFN H.264 stream at this stage demonstrably uses FFmpeg software
+decoding. Outstanding: automatically maintained catalog, robust UI search as an
+alternative to changed CMS routes, Steam VDF import, GFN hardware decoding,
+and measured low-copy output. If NVIDIA changes its CMS route, the user must
+find the title in GFN and capture a new mapping. This manual recovery exists;
+automatic DOM search is not implemented.
 
-Die OpenNOW-Qt/Rust-Alternative wurde untersucht. Der Nutzer hat anschließend
-festgelegt, möglichst nahe am originalen GFN-Webclient zu bleiben. Deshalb
-bleibt Electron/Chromium mit originaler GFN-Weboberfläche die gewählte
-Architektur; OpenNOW wird nicht als Client eingesetzt oder weiter getestet.
-Es wurde lediglich ein Vergleichspaket heruntergeladen und auf dem Portal
-entpackt, nicht gestartet. Die Quellanalyse bleibt als Referenz erhalten.
-Quellbewertung und Testplan: [opennow-evaluation.md](opennow-evaluation.md).
+## Native comparison candidate: OpenNOW (2026-10-04)
 
-## Lokale Decoderbrücke (2026-10-04)
+The OpenNOW Qt/Rust alternative was investigated. The user subsequently chose
+to stay close to the original GFN web client. Electron/Chromium with the
+original GFN UI therefore remains the architecture; OpenNOW is not used or
+further tested as the client. A comparison package was downloaded and extracted
+on Portal, but never started. Source analysis remains a reference.
+Source assessment and test plan: [opennow-evaluation.md](opennow-evaluation.md).
 
-Der isolierte Prototyp unter `experiments/dmabuf` decodiert einen synthetischen
-HEVC-Clip explizit mit GStreamer `v4l2h265dec` auf Iris `/dev/video0` und
-importiert die NV12-DMA-BUFs über Electron SharedTexture in einen sandboxed
-Renderer. Unter nativem Wayland wurden Bildinhalt, 60 Transfers/Draw-Aufrufe
-und vollständige Pufferfreigabe bestätigt. Die Anwendung bleibt vom GFN-Client
-getrennt und wird aus dessen Paket ausgeschlossen.
+## Local decoder bridge (2026-10-04)
 
-Nächste Grenze: komprimierte Frames aus dem originalen GFN-WebRTC-Empfänger
-an eine gebundene native `appsrc`-Queue übergeben. Zunächst den tatsächlich
-verhandelten H.264-Stream parallel beobachten/decodieren; Audio, Login,
-Controller und Originaloberfläche bleiben im Browser. Erst danach dessen
-Softwaredecode ersetzen und Audio-/Video-Synchronisation messen. HEVC-
-Aushandlung ist weiterhin separat ungelöst. Details und Einschränkungen:
-[Testanwendung](../experiments/dmabuf/README.md).
+The isolated prototype under `experiments/dmabuf` explicitly decodes a synthetic
+HEVC clip with GStreamer `v4l2h265dec` on Iris `/dev/video0` and imports NV12
+DMA-BUFs through Electron SharedTexture into a sandboxed renderer. Native
+Wayland tests confirmed visible content, 60 transfers/draw calls, and complete
+buffer release. This application is separate from GFN and excluded from its
+package.
 
-Der H264-Anschluss ist inzwischen opt-in implementiert: Encoded-Transform,
-validiertes und begrenztes IPC, appsrc/V4L2 und DMA-BUF-Diagnosefenster.
-Nach einem Live-Absturz laufen Decoderthread, natives Modul, FD-Import und
-Diagnosefenster in einem separaten Electron-Helper mit eigenem temporären
-Profil. Der GFN-Prozess erhält nur Status und sendet komprimierte Frames.
-Der originale Browserstream bleibt aktiv. Helper-SIGSEGV-Isolation am Mac
-und Portal geprüft; lokaler Hardwarepfad im neuen Prozess bei 720p über
-30 Sekunden nachgewiesen. Ein echter GFN-Stream bleibt separat zu prüfen.
-Farbraumfehler und ursprüngliche Absturzursache sind
-dadurch nicht behoben. Der Helper nutzt Wayland, das GFN-Frontend kann bei
-XWayland bleiben.
-[Brückenarchitektur und Aktivierung](native-bridge.md).
+The next boundary is to pass compressed frames from the original GFN WebRTC
+receiver into a bounded native `appsrc` queue. Initially observe/decode the
+actually negotiated H.264 stream in parallel; audio, login, controllers, and
+original UI remain in the browser. Replace software decoding only afterwards
+and measure audio/video synchronization. HEVC negotiation is a separate open
+issue. Details and limits: [test application](../experiments/dmabuf/README.md).
+
+H.264 attachment is now opt-in: encoded transform, validated/bounded IPC,
+appsrc/V4L2, and a DMA-BUF diagnostic window. Following a live crash, the decoder
+thread, native module, FD import, and diagnostic window run in a separate
+Electron helper with a temporary profile. GFN receives only status and sends
+compressed frames; the original browser stream stays active. Helper SIGSEGV
+isolation was checked on Mac and Portal; the local hardware path in the new
+process was demonstrated at 720p for over 30 seconds. An actual GFN stream
+needs separate validation. Color errors and the original crash cause are not
+fixed by isolation. The helper uses Wayland; the GFN frontend can remain on
+XWayland. [Bridge architecture and activation](native-bridge.md).

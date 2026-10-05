@@ -10,25 +10,25 @@ commit=$(python3 -c "import json;print(json.load(open('$recipe/sources.json'))['
 upstream=$(python3 -c "import json;print(json.load(open('$recipe/sources.json'))['upstream'])")
 image=fedora:44
 
-[ "$(uname -m)" = aarch64 ] || { echo 'Dieser Treiber ist nur für aarch64 sinnvoll' >&2; exit 1; }
-command -v podman >/dev/null || { echo 'podman wird benötigt' >&2; exit 1; }
+[ "$(uname -m)" = aarch64 ] || { echo 'This driver is only useful on aarch64' >&2; exit 1; }
+command -v podman >/dev/null || { echo 'podman is required' >&2; exit 1; }
 
 mkdir -p "$root"
 cd "$root"
 
 if [ ! -d src/.git ]; then
-  echo "== Quellen holen, auf $commit gepinnt =="
+  echo "== Fetch sources pinned to $commit =="
   git clone --no-checkout "$upstream" src
 fi
 git -C src fetch --all --tags --quiet
 git -C src checkout --detach --quiet "$commit"
-[ "$(git -C src rev-parse HEAD)" = "$commit" ] || { echo 'Commit stimmt nicht' >&2; exit 1; }
+[ "$(git -C src rev-parse HEAD)" = "$commit" ] || { echo 'Commit mismatch' >&2; exit 1; }
 
 # Record exactly what was built, in the project's usual style.
 tracked=$(cd src && git ls-files -z | xargs -0 sha256sum | sha256sum | awk '{print $1}')
-echo "== Quellbaum-SHA256: $tracked =="
+echo "== Source tree SHA256: $tracked =="
 
-echo "== Bauen im Container ($image), Hostimage bleibt unberührt =="
+echo "== Build in container ($image), host image remains unchanged =="
 podman run --rm \
   -v "$root/src:/src:z" -v "$root:/out:z" \
   -w /src "$image" bash -euxc '
@@ -40,7 +40,7 @@ podman run --rm \
     install -D build/src/v4l2_drv_video.so /out/dri/v4l2_drv_video.so
   '
 
-test -f "$root/dri/v4l2_drv_video.so" || { echo 'Modul wurde nicht erzeugt' >&2; exit 1; }
+test -f "$root/dri/v4l2_drv_video.so" || { echo 'Module was not produced' >&2; exit 1; }
 sha256sum "$root/dri/v4l2_drv_video.so" | tee "$root/driver.sha256"
 
 python3 - "$root" "$commit" "$tracked" <<'PY'
@@ -60,9 +60,9 @@ PY
 
 cat <<EOF
 
-Fertig. Das Modul liegt in $root/dri/v4l2_drv_video.so
-Nichts wurde systemweit installiert. Zum Entfernen: rm -rf "$root"
+Done. The module is at $root/dri/v4l2_drv_video.so
+Nothing was installed system-wide. To remove: rm -rf "$root"
 
-Nächster Schritt:
+Next step:
   GFN_VAAPI_ROOT="$root" $recipe/run-probe.sh
 EOF

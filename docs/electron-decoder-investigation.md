@@ -1,195 +1,175 @@
-# Electron → Iris: Untersuchung vom 2026-10-04
+# Electron → Iris: investigation dated 2026-10-04
 
-## Ergebnis und Aussagegrenzen
+Historical investigation; subsequent adapter/codec results are in the
+[current summary](project-summary-2026-10-05.md).
 
-Die Hauptlücke liegt sehr wahrscheinlich im ausgelieferten Chromium-Decoderbackend,
-nicht in fehlender Iris-Unterstützung des Geräts. Außerdem fehlt im betrachteten
-stateful Chromium-Backend eine konkrete HEVC-Implementierung. Die genaue
-Decoderinstanz des aktuellen GFN-H.264-Streams ist inzwischen eindeutig
-**FFmpeg**: der neue native Statistikreader wurde nach wiederhergestelltem SSH
-im originalen Client validiert. Der laufende Stream meldete 3.260 decodierte
-Frames, 0 Drops und `powerEfficientDecoder: false`. Der getrennte HEVC-Test
-belegt Iris → NV12-DMA-BUF → Wayland. Details und Zeitstempel in
+## Result and evidence limits
+
+The main gap most likely lies in the shipped Chromium decoder backend, not
+missing Iris device support. The inspected stateful Chromium backend also lacks
+a concrete HEVC implementation. The actual decoder instance of the GFN H.264
+stream at this stage is unequivocally **FFmpeg**: the new native statistics
+reader was validated in the original client after SSH was restored. The running
+stream reported 3,260 decoded frames, zero drops, and
+`powerEfficientDecoder: false`. The separate HEVC test demonstrates Iris → NV12
+DMA-BUF → Wayland. Details/timestamps and the separate GStreamer/GFN tests:
 [odin-device-validation.md](odin-device-validation.md).
 
-Die bisherigen GStreamer- und GFN-Tests sind in
-[odin-device-validation.md](odin-device-validation.md) getrennt dokumentiert.
+## Precisely matching sources
 
-## Exakt passende Quellen
+Electron `44.5.1` uses Chromium `152.0.7977.130` according to
+[DEPS](https://github.com/electron/electron/blob/v44.5.1/DEPS), matching device logs.
 
-Electron `44.5.1` verwendet laut
-[DEPS](https://github.com/electron/electron/blob/v44.5.1/DEPS)
-Chromium `152.0.7977.130`, dieselbe Version wie im Gerätelog.
+- [Electron all.gn](https://github.com/electron/electron/blob/v44.5.1/build/args/all.gn): `proprietary_codecs=true`, Chrome FFmpeg branding, no V4L2 override.
+- [Electron release.gn](https://github.com/electron/electron/blob/v44.5.1/build/args/release.gn): imports these shared settings.
+- [Linux ARM64 build workflow](https://github.com/electron/electron/blob/v44.5.1/.github/workflows/pipeline-segment-electron-build.yml): additional ARM64 GN arguments set CPU and linker/installer options, not `use_v4l2_codec=true`.
+- [Chromium args.gni](https://chromium.googlesource.com/chromium/src/+/152.0.7977.130/media/gpu/args.gni): `use_v4l2_codec=false`; VA-API defaults on for Linux ARM64 too.
+- [V4L2 BUILD.gn](https://chromium.googlesource.com/chromium/src/+/152.0.7977.130/media/gpu/v4l2/BUILD.gn): includes backend sources only with `use_v4l2_codec`.
 
-- [Electron all.gn](https://github.com/electron/electron/blob/v44.5.1/build/args/all.gn):
-  `proprietary_codecs=true`, FFmpeg-Branding Chrome; kein V4L2-Override.
-- [Electron release.gn](https://github.com/electron/electron/blob/v44.5.1/build/args/release.gn):
-  importiert diese gemeinsamen Einstellungen.
-- [Linux-ARM64-Buildworkflow](https://github.com/electron/electron/blob/v44.5.1/.github/workflows/pipeline-segment-electron-build.yml):
-  zusätzliche Linux-ARM64-GN-Argumente setzen CPU und Linker/Installer-Optionen,
-  kein `use_v4l2_codec=true`.
-- [Chromium args.gni](https://chromium.googlesource.com/chromium/src/+/152.0.7977.130/media/gpu/args.gni):
-  `use_v4l2_codec=false`; VA-API standardmäßig auch für Linux ARM64.
-- [V4L2 BUILD.gn](https://chromium.googlesource.com/chromium/src/+/152.0.7977.130/media/gpu/v4l2/BUILD.gn):
-  bindet die Backendquellen nur mit `use_v4l2_codec` ein.
+This combination is strong source evidence for standard Electron built without
+V4L2. Fully resolved `args.gn` for the released binary are unavailable; no
+Electron source build was started.
 
-Diese Kombination ist ein starker Quellbeleg für ein ohne V4L2 gebautes
-Standard-Electron. Die vollständigen aufgelösten `args.gn` des veröffentlichten
-Binaries liegen noch nicht vor. Es wurde kein eigener Electron-Sourcebuild
-gestartet.
-
-Die lokale Linux-ARM64-Runtime enthält VA-API- und FFmpeg-Diagnosestrings, aber
-bei der Stringsuche keine `media/gpu/v4l2/`-Quellpfade oder Namen des konkreten
-stateful V4L2-Decoders. Der einzelne String `V4L2VideoDecoder` ist **kein**
-Backendbeweis: er steht auch im allgemeinen Enum-zu-Name-Konverter
+The local Linux ARM64 runtime contains VA-API and FFmpeg diagnostic strings,
+but string searches found neither `media/gpu/v4l2/` source paths nor the concrete
+stateful decoder name. The single `V4L2VideoDecoder` string is **not** backend
+proof: it also appears in the general enum-to-name converter
 [media/base/decoder.cc](https://chromium.googlesource.com/chromium/src/+/152.0.7977.130/media/base/decoder.cc).
-Das Fehlen von Strings allein ist ebenfalls kein sicherer Buildflag-Nachweis.
+Missing strings alone do not conclusively prove a build flag either.
 
-## HEVC: zusätzlicher fehlender Decode-Pfad
+## HEVC: an additional missing decode path
 
-In [V4L2StatefulVideoDecoder::Decode](https://chromium.googlesource.com/chromium/src/+/152.0.7977.130/media/gpu/v4l2/v4l2_stateful_video_decoder.cc)
-werden H.264-Frames zusammengesetzt. Für HEVC folgt dagegen `NOTIMPLEMENTED()`
-und die Rückgabe `kUnsupportedCodec`. Auch der am 2026-10-04 heruntergeladene
-aktuelle `main` enthält diese Ablehnung. „HEVC-Sonderbehandlung“ in älteren
-Architekturnotizen darf deshalb nicht als erfolgreiche HEVC-Unterstützung
-verstanden werden. Ein HEVC-stateless-Delegate im selben Quellverzeichnis löst
-die stateful Iris-Anforderung nicht.
+[V4L2StatefulVideoDecoder::Decode](https://chromium.googlesource.com/chromium/src/+/152.0.7977.130/media/gpu/v4l2/v4l2_stateful_video_decoder.cc)
+assembles H.264 frames. HEVC instead reaches `NOTIMPLEMENTED()` and returns
+`kUnsupportedCodec`. The current `main` downloaded on 2026-10-04 also contains
+this rejection. “HEVC special handling” in earlier architecture notes must not
+be read as successful HEVC support. A stateless HEVC delegate in the same source
+directory does not satisfy stateful Iris requirements.
 
-Ein kleiner HEVC-Patch müsste mindestens die Bitstream-/Access-Unit-Zuführung
-im stateful Decode-Pfad implementieren und gegen Iris testen. Die Ablehnung
-einfach zu entfernen wäre kein korrekt validierter Fix. Zusätzlich müssen
-Profilermittlung, Auflösungswechsel, Flush und Fehlerbehandlung getestet werden.
-Zuerst den vorhandenen H.264-Pfad nutzbar machen, dann diese HEVC-Lücke schließen.
+A small HEVC patch must at least implement bitstream/access-unit delivery in
+the stateful decode path and test against Iris. Merely removing the rejection
+is not a validated fix. Profile discovery, resolution changes, flush, and error
+handling also need tests. First enable the existing H.264 path, then close this
+HEVC gap.
 
-## Auswahl und WebRTC-Anbindung
+## Selection and WebRTC integration
 
 [ActiveLinuxVideoDecoderType](https://chromium.googlesource.com/chromium/src/+/152.0.7977.130/media/base/decoder.cc)
-wählt bei gleichzeitig eingebautem VA-API und V4L2 standardmäßig VA-API;
-`PreferV4L2VideoAcceleration` wählt V4L2 nur, wenn beide Backends eingebaut sind.
-Ein Featureflag kompiliert keinen fehlenden Decoder nachträglich ein.
+defaults to VA-API when both VA-API and V4L2 are compiled in;
+`PreferV4L2VideoAcceleration` selects V4L2 only if both exist. A feature flag
+cannot retrospectively compile a missing decoder.
 
 [gpu_mojo_media_client_linux.cc](https://chromium.googlesource.com/chromium/src/+/152.0.7977.130/media/mojo/services/gpu_mojo_media_client_linux.cc)
-bindet den gewählten Decoder an die Linux-Pipeline an. Bei GL sind zusätzlich
-die Bedingungen von `AcceleratedVideoDecodeLinuxGL` relevant.
+connects the selected decoder to Linux's pipeline. GL also requires the
+conditions for `AcceleratedVideoDecodeLinuxGL`.
 [VideoDecoderPipeline](https://chromium.googlesource.com/chromium/src/+/152.0.7977.130/media/gpu/chromeos/video_decoder_pipeline.cc)
-wählt für stateful Geräte `V4L2StatefulVideoDecoder`.
+selects `V4L2StatefulVideoDecoder` for stateful devices.
 
 [RTCVideoDecoderFactory](https://chromium.googlesource.com/chromium/src/+/152.0.7977.130/third_party/blink/renderer/platform/peerconnection/rtc_video_decoder_factory.cc)
-benötigt für H.265 unter anderem `RTC_USE_H265`, den Empfangsfeature-Schalter
-und passende vom Plattformdecoder gemeldete Profile. HEVC-Parsing allein
-reicht nicht. Das bisherige Fehlen von H.265 in `getCapabilities()` passt dazu,
-legt aber nicht eindeutig fest, welche dieser Bedingungen zuerst scheitert.
+requires, among other things, `RTC_USE_H265`, the receive feature flag, and
+appropriate platform decoder profiles for H.265. HEVC parsing alone is not
+enough. Missing H.265 in `getCapabilities()` is consistent with this but does
+not establish which condition fails first.
 
-## Vorbereitete Diagnostik
+## Prepared diagnostics
 
-- `gfn-armada diagnostics` erhält `processVideoAccess`: identifiziert
-  Client-/Chromiumprozesse anhand von `/proc/PID/exe` und liest ausschließlich
-  FD-Links zu Video-/Media-/DRM-Geräten. Keine Kommandozeilen, Cookies oder Tokens.
-- `scripts/sample-video-access.cjs 30` wiederholt die Prüfung für 30 Sekunden
-  alle 250 ms. Ausgaben erfolgen bei Änderungen und am Ende. Auf Linux mit Node
-  oder der gepackten Runtime in `ELECTRON_RUN_AS_NODE=1` ausführbar.
-- `GFN_ARMADA_MEDIA_DIAGNOSTICS=1` aktiviert die native CDP-Media-Diagnostik.
-  Es werden nur Decodername und Plattformdecoder-Eigenschaft gespeichert,
-  keine Player-URLs oder Titel. Quelle:
-  [CDP Media](https://chromedevtools.github.io/devtools-protocol/tot/Media/).
-  WebRTC muss über diese Domain keine Player-Ereignisse liefern; fehlende
-  Ereignisse bedeuten deshalb `unknown`. Ein Report darf nicht automatisch
-  einem GFN-Peer oder der Qualcomm-VPU zugeordnet werden.
-- Debug-VModules decken zusätzlich die WebRTC-Decoderadapter ab. Manche
-  `DVLOG`-Ausgaben fehlen in Releasebuilds; ohne Meldung keine Decoderbehauptung.
-- GPU-Featureinformationen werden nach Initialisierung aktualisiert und mit
-  eigenem Zeitstempel versehen; der frühe Startup-Snapshot genügt nicht.
+- `gfn-armada diagnostics` gains `processVideoAccess`: identifies client/Chromium
+  processes by `/proc/PID/exe` and reads only FD links to video/media/DRM devices.
+  No command lines, cookies, or tokens.
+- `scripts/sample-video-access.cjs 30` repeats every 250 ms for 30 seconds;
+  output on changes and at completion. Runs on Linux with Node or packaged
+  runtime in `ELECTRON_RUN_AS_NODE=1` mode.
+- `GFN_ARMADA_MEDIA_DIAGNOSTICS=1` enables native CDP Media diagnostics. Only
+  decoder name/platform-decoder property are saved, not player URLs or titles.
+  Source: [CDP Media](https://chromedevtools.github.io/devtools-protocol/tot/Media/).
+  WebRTC need not emit player events through this domain; missing events mean
+  `unknown`. Reports cannot automatically be attributed to a GFN peer or VPU.
+- Debug VModules also cover WebRTC decoder adapters. Some `DVLOG` output is
+  absent in release builds; no message means no decoder claim.
+- GPU feature information is refreshed after initialization with its own
+  timestamp; the early startup snapshot is insufficient.
 
-20 lokale Tests bestanden. Der erste isolierte Electron-Smoke-Test auf macOS
-mit aktivierter Media-Diagnostik lud GFN, bestätigte die Renderer-Sandbox und
-empfing Preload-Telemetrie, beendete sich aber nicht sauber. Eine Rückkopplung
-zwischen vollständiger GPU-Abfrage und `gpu-info-update` wurde entfernt: der
-Eventhandler fragt nur den Featurestatus ab und startet keine neue vollständige
-GPU-Abfrage. Die eigenen festhängenden Testprozesse wurden gezielt beendet.
-Der erneute Smoke-Test überschritt anschließend sein 45-Sekunden-Startlimit;
-deshalb **kein vollständig bestandener neuer GUI-Smoke-Test**. Keine aktive
-Medienwiedergabe und kein Decodername in diesen Tests. Die CDP-Media-Diagnose
-im GFN-Stream liefert weiterhin keinen Decodernamen. Der
-neue, getrennte native WebRTC-Smoke-Test besteht dagegen auf Mac und Portal.
+20 local tests passed. The first isolated macOS Electron smoke with Media
+diagnostics loaded GFN, confirmed renderer sandboxing, and received preload
+telemetry, but did not exit cleanly. A feedback loop between full GPU queries
+and `gpu-info-update` was removed: the handler queries only feature status,
+without another full GPU query. Only the stuck test processes were terminated.
+The repeated smoke then exceeded its 45-second startup limit: **no fully
+passing new GUI smoke test**. These runs had no active playback or decoder name.
+CDP Media still provided no decoder name in GFN. The separate new native WebRTC
+smoke, however, passed on Mac and Portal.
 
-## Native Statistiken statt Mikrofonfreigabe
+## Native statistics instead of microphone permission
 
-Die genau verwendete Chromium-Version filtert `decoderImplementation` und
-`powerEfficientDecoder` aus Seiten-`getStats()`, solange der Kontext keine
-aktive Medienaufnahme hat: [rtc_stats_report.cc](https://chromium.googlesource.com/chromium/src/+/152.0.7977.130/third_party/blink/renderer/modules/peerconnection/rtc_stats_report.cc),
-`ExposeHardwareCapabilityStats` / `ToV8Stat`. Fehlende Werte sind damit nicht
-automatisch ein fehlendes Decoderinstrument im nativen Backend.
+This exact Chromium version filters `decoderImplementation` and
+`powerEfficientDecoder` from page `getStats()` unless the context has active
+media capture: [rtc_stats_report.cc](https://chromium.googlesource.com/chromium/src/+/152.0.7977.130/third_party/blink/renderer/modules/peerconnection/rtc_stats_report.cc),
+`ExposeHardwareCapabilityStats` / `ToV8Stat`. Missing fields therefore do not
+automatically mean missing native decoder instrumentation.
 
-Der native [PeerConnectionTracker](https://chromium.googlesource.com/chromium/src/+/152.0.7977.130/third_party/blink/renderer/modules/peerconnection/peer_connection_tracker.cc)
-liefert die definierten nativen Attribute an `chrome://webrtc-internals` ohne
-diesen Seitenfilter. `client/webrtc-internals.cjs` nutzt eine unsichtbare lokale
-WebUI und deren `add-standard-stats`-Ereignisse. Nur Video-Inbound-Berichte für
-die exakte GFN-Origin werden exportiert: Codec, Decodername, Effizienzflag,
-Framezähler und Zeitwerte. SDP, ICE, IPs, Track-IDs und URLs bleiben in der
-WebUI. Keine Mikrofon-/Kamerafreigabe, kein Netzwerk-Debugport. Aktivierung
-zusammen mit `GFN_ARMADA_MEDIA_DIAGNOSTICS=1`; Ergebnisse unter `nativeWebRTC`
-im Laufzeitsnapshot. Älter als 15 Sekunden wird der Export als `stale` geleert.
+The native [PeerConnectionTracker](https://chromium.googlesource.com/chromium/src/+/152.0.7977.130/third_party/blink/renderer/modules/peerconnection/peer_connection_tracker.cc)
+supplies native attributes to `chrome://webrtc-internals` without this page
+filter. `client/webrtc-internals.cjs` uses a hidden local WebUI and its
+`add-standard-stats` events. Only inbound video reports for the exact GFN origin
+are exported: codec, decoder, efficiency flag, frame counters, timings. SDP,
+ICE, IPs, track IDs, and URLs stay in the WebUI. No microphone/camera permission
+or network debugging port. At this snapshot, enable together with
+`GFN_ARMADA_MEDIA_DIAGNOSTICS=1`; results appear in `nativeWebRTC` in the runtime
+snapshot. Exports older than 15 seconds are cleared as `stale`.
 
-`tests/smoke-webrtc-internals.cjs` nutzt synthetisches Canvas-H.264 und lokale
-PeerConnections mit eigenem temporären Profil. Ergebnisse vom 2026-10-04:
+`tests/smoke-webrtc-internals.cjs` uses synthetic canvas H.264 and local peer
+connections in a temporary profile. Results dated 2026-10-04:
 
-| Runtime | native Beobachtung | Grenze |
+| Runtime | Native observation | Limit |
 |---|---|---|
-| Electron 44.5.1 / Apple Silicon | `ExternalDecoder (VideoToolboxVideoDecoder)`, Effizienzflag true; letzter Test 109 Frames | lokaler Stream, kein GFN und kein Qualcomm |
-| Electron 44.5.1 / Portal | `FFmpeg`, Effizienzflag false, 80 Frames, 0 Drops | Softwaredecoder für diesen synthetischen Test nachgewiesen; aktive GFN-Instanz noch separat prüfen |
-| Fedora Chromium 154.0.8037.57-1.fc44 / Portal | `FFmpeg`, Effizienzflag false, 31 Frames, 0 Drops | GL-Vergleich mit `AcceleratedVideoDecodeLinuxGL`; Hardwareprofile leer, Video-Feature `disabled_software` |
+| Electron 44.5.1 / Apple Silicon | `ExternalDecoder (VideoToolboxVideoDecoder)`, efficiency true; last test 109 frames | Local stream, not GFN or Qualcomm |
+| Electron 44.5.1 / Portal | `FFmpeg`, efficiency false, 80 frames, zero drops | Software decoding demonstrated for this synthetic test; active GFN instance needs separate validation |
+| Fedora Chromium 154.0.8037.57-1.fc44 / Portal | `FFmpeg`, efficiency false, 31 frames, zero drops | GL comparison with `AcceleratedVideoDecodeLinuxGL`; empty hardware profiles, video feature `disabled_software` |
 
-Nach Ergänzung der konservativen Softwareklassifikation bestehen 22/22
-Unit-Tests. Die neuen lokalen Smoke-Tests ersetzen keine vollständige
-GFN-Login-/Spiel-/Beendigungsprüfung; der Reader wurde zusätzlich im echten
-GFN-Spiel geprüft. Die laufende Instanz enthält noch die ursprüngliche
-`hardwareDecoderActive: unknown`-Zusammenfassung; ihr `nativeWebRTC` meldet
-bereits eindeutig FFmpeg. Die aktualisierte Zusammenfassung greift beim
-nächsten Start. Keine aktive Spielsitzung dafür unterbrechen.
+After conservative software classification was added, 22/22 unit tests passed.
+These local smokes do not replace a full GFN login/game/exit test; the reader
+was additionally checked in a real GFN game. The running instance still had the
+old `hardwareDecoderActive: unknown` summary while `nativeWebRTC` clearly
+reported FFmpeg. The updated summary applies on next launch; do not interrupt
+an active game solely for that.
 
-## Fertiges Fedora-Binary als Vergleich
+## Prebuilt Fedora binary for comparison
 
-Das aktuelle [Fedora-44-Rezept](https://src.fedoraproject.org/rpms/chromium/blob/f44/f/chromium.spec)
-aktiviert auf aarch64 `use_v4l2_codec` und deaktiviert VA-API. Das gelesene
-Rezept nennt inzwischen Version 154.0.8037.92; es ist kein exakt gepinnter
-Buildnachweis des getesteten älteren .57-Binaries.
+The current [Fedora 44 recipe](https://src.fedoraproject.org/rpms/chromium/blob/f44/f/chromium.spec)
+enables aarch64 `use_v4l2_codec` and disables VA-API. The inspected recipe now
+lists 154.0.8037.92; it is not an exactly pinned build record for the tested
+older .57 binary.
 
-Die .57-RPMs aus dem Geräte-Repository wurden mit `rpm -Kv` geprüft:
-Signatur und Digests OK, Fedora-Fingerprint
-`36f612dcf27f7d1a48a835e4dbfcf71c6d9f90a6`. Sie wurden mit `rpm2cpio`/`cpio`
-im Benutzerverzeichnis entpackt, keine Installation oder Paket-Hooks ausgeführt.
-Zwei fehlende Bibliotheken (`libXNVCtrl`, `google-crc32c`) wurden ebenso ergänzt.
-Der Browser startet mit diesen Bibliotheken. Testpfad:
+The device repository's .57 RPMs passed `rpm -Kv`: signatures/digests OK,
+Fedora fingerprint `36f612dcf27f7d1a48a835e4dbfcf71c6d9f90a6`. They were extracted
+with `rpm2cpio`/`cpio` under the user directory without installation/package
+hooks. Two missing libraries (`libXNVCtrl`, `google-crc32c`) were supplied the
+same way. The browser starts with them. Test path:
 `~/.local/share/gfn-armada-tests/fedora-chromium/`.
 
-`scripts/probe-chromium.cjs /absolute/path/to/chromium` steuert ausschließlich
-einen lokalen Test über CDP-Prozesspipes und ein temporäres Profil. Es meldet
-native Streamwerte und GPU-Decodeprofile; der Test beendet seinen eigenen Browser.
-`GFN_ARMADA_PROBE_LOG` speichert optional synthetische Testlogs.
-`GFN_ARMADA_PROBE_IGNORE_BLOCKLIST=1` ist nur ein experimenteller Vergleich:
-dieser Folgetest verlor SSH und hat **kein abgerufenes Ergebnis**. Keine
-Ursachenzuordnung zum Browser, zur Blockliste oder zum Netzwerk möglich.
-Keine solchen Schalter wurden in den regulären Client übernommen.
+`scripts/probe-chromium.cjs /absolute/path/to/chromium` drives only a local test
+through CDP process pipes and a temporary profile. It reports native stream
+values and GPU decode profiles and terminates its own browser.
+`GFN_ARMADA_PROBE_LOG` optionally saves synthetic logs.
+`GFN_ARMADA_PROBE_IGNORE_BLOCKLIST=1` is an experimental comparison only: that
+follow-up lost SSH and has **no retrieved result**. No attribution to browser,
+blocklist, or network is possible. No such switches entered the regular client.
+Alternative decoder/streamer paths: [streamer-options.md](streamer-options.md).
 
-Alternative Decoder-/Streamerwege: [streamer-options.md](streamer-options.md).
+## Next controlled experiment at this snapshot
 
-## Nächster kontrollierter Versuch
+1. The original GFN reader is validated: FFmpeg software decoding. Prepare
+   the native adapter using this comparison baseline.
+2. Correlate future hardware output with native decoder fields, stream
+   timestamps, and device FD samples. V4L2 queue activity is stronger than an FD.
+3. Investigate Fedora's empty decode profiles. Fedora/Flatpak/ARM64 alone does
+   not establish VPU decoding.
+4. Investigate the small adapter experiment from `streamer-options.md`. If no
+   suitable binary/adapter exists, prepare a bounded V4L2 H.264 comparison build.
+   Unvalidated `build/experimental-v4l2.gn` names relevant flags and is explicitly
+   excluded from the ordinary bundle build. No huge checkout or full fork.
+5. After H.264 Iris integration succeeds, implement stateful HEVC delivery and
+   local decode tests, then WebRTC/GFN.
 
-1. Der Reader im originalen GFN-Client ist geprüft: FFmpeg-Softwaredecode.
-   Mit diesem Vergleichsstand den nativen Decoderadapter vorbereiten.
-2. Bei zukünftiger Hardwareausgabe native Decoderangaben mit Streamzeitstempel
-   und Device-FD-Samples korrelieren. V4L2-Queueaktivität ist für einen echten
-   Hardwarebeweis stärker als ein FD.
-3. Den vorbereiteten Fedora-Vergleich eingrenzen: warum sind die gemeldeten
-   Decodeprofile leer? Fedora/Flatpak/ARM64 allein beweist kein VPU-Decoding.
-4. Parallel den kleinen Decoderadapter-Versuch aus `streamer-options.md` prüfen.
-   Falls kein passendes Binary/Adapter verfügbar ist, einen begrenzten V4L2-H.264-
-   Vergleichsbuild vorbereiten. Das nicht validierte GN-Fragment
-   `build/experimental-v4l2.gn` benennt die relevanten Buildschalter und ist
-   ausdrücklich nicht Teil des bisherigen Bundle-Builds. Keine riesige
-   Quellkopie oder Vollfork angelegt.
-5. Erst nach erfolgreicher H.264-Iris-Anbindung HEVC-stateful-Zuführung
-   implementieren und lokale Decode-Tests durchführen; dann WebRTC/GFN testen.
-
-Heruntergeladene Quellen liegen unversioniert unter
-`.artifacts/decoder-research/`; Quellprüfsummen in `source-sha256.json`.
+Downloaded sources are unversioned under `.artifacts/decoder-research/`;
+source checksums are in `source-sha256.json`.
