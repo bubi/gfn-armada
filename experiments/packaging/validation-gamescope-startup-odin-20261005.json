@@ -1,0 +1,27 @@
+{
+  "date": "2026-10-05",
+  "artifact": "gfn-armada-0.1.0-aarch64-hevc-experiment.AppImage",
+  "appimageSha256": "63f08923c13fdf3199c0e89f8d61972ff7be3322ffde5fa0b9ed491520444093",
+  "gamescope": {
+    "version": "3.16.31-ogc1+",
+    "compositorPid": 94688,
+    "processName": "gamescope-wl",
+    "session": "gamescope-session-plus steam",
+    "socket": "gamescope-0",
+    "nested": false
+  },
+  "launch": {
+    "runtimePid": 96097,
+    "requestedOzone": "wayland",
+    "waylandDisplayExplicit": "gamescope-0",
+    "gpuSandboxDisabled": false,
+    "bundledIrisSelected": true,
+    "hevcExperimentInstalled": true,
+    "nativeStats": "waiting"
+  },
+  "steamLibraryLaunch": false,
+  "visibleImageConfirmed": false,
+  "controllerConfirmed": false,
+  "hardwareStream": "awaiting user game launch",
+  "scope": "Existing Steam Gaming Mode compositor; direct SSH process launch into native Wayland socket, not a Steam shortcut or validated stream."
+}
