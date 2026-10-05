@@ -1,5 +1,11 @@
 # Hardware-Decoding: Evidenz, Lücken und Prüfplan
 
+**Subsequent AV1 update 2026-10-05:** original GFN AV1 now has a first live
+VPU-path validation with the adapter's explicit experimental-profile option:
+[measurement](../experiments/packaging/validation-av1-live-odin-20261005.json).
+~278 seconds, GPU-copy output, no actual sync timeouts observed. Upstream's
+hidden-frame limitation still applies; this does not qualify all AV1 streams.
+
 **Update 2026-10-05:** the original GFN WebRTC stream now has a first HEVC
 hardware-path validation through Chromium VA-API and the patched Iris adapter:
 [measurement](../experiments/packaging/validation-hevc-live-odin-20261005.json),

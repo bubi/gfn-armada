@@ -1,0 +1,155 @@
+{
+  "observedAt": "2026-10-05T17:39:23.654059+00:00",
+  "sourceCommit": "ed7e427",
+  "appimageSha256": "286755bb519f9d7b4e01760b844e24ed9df6b03c02537b0c6f88ab1f2b130f73",
+  "driverSha256": "d4708081ceacaafabd78194d3a27c48b86a097ac990140c411802d6b25484251",
+  "nativeWebRTC": {
+    "status": "sampled",
+    "timestamp": 1791221960532,
+    "streams": [
+      {
+        "codec": "video/AV1",
+        "decoder": "ExternalDecoder (VaapiVideoDecoder)",
+        "powerEfficientDecoder": true,
+        "framesDecoded": 16452,
+        "framesDropped": 50,
+        "totalDecodeTime": 45.457915,
+        "statsTimestamp": 1791221959852.365,
+        "frameWidth": 1920,
+        "frameHeight": 1080,
+        "framesPerSecond": 60,
+        "meanDecodeMs": 2.763063153415998,
+        "intervalMeanDecodeMs": 2.10089473684212,
+        "intervalFramesDecoded": 57,
+        "intervalMs": 960.139892578125,
+        "meanJitterBufferMs": 4.245668423922924
+      }
+    ]
+  },
+  "experiment": {
+    "enabled": true,
+    "preferred": "AV1",
+    "events": [
+      {
+        "event": "installed",
+        "receiveHevc": true,
+        "preferred": "AV1",
+        "receivePreferred": true
+      },
+      {
+        "event": "server-offer",
+        "codecs": [
+          "H264"
+        ]
+      },
+      {
+        "event": "answer-created",
+        "codecs": [
+          "H264"
+        ]
+      },
+      {
+        "event": "server-offer",
+        "codecs": []
+      },
+      {
+        "event": "server-offer",
+        "codecs": []
+      },
+      {
+        "event": "answer-created",
+        "codecs": []
+      },
+      {
+        "event": "answer-created",
+        "codecs": []
+      },
+      {
+        "event": "server-offer",
+        "codecs": [
+          "H264",
+          "AV1",
+          "H265"
+        ]
+      },
+      {
+        "event": "answer-preferred",
+        "preferred": "AV1"
+      },
+      {
+        "event": "answer-created",
+        "codecs": [
+          "AV1",
+          "H265",
+          "H264"
+        ]
+      }
+    ]
+  },
+  "gpuSandboxDisabled": false,
+  "requestedOzone": "wayland",
+  "decoderSessionOpens": [
+    {
+      "codec": "AV01",
+      "width": 1920,
+      "height": 1080,
+      "irisNode": true
+    },
+    {
+      "codec": "AV01",
+      "width": 1680,
+      "height": 1050,
+      "irisNode": true
+    },
+    {
+      "codec": "AV01",
+      "width": 1920,
+      "height": 1080,
+      "irisNode": true
+    }
+  ],
+  "irisCopyGpuReturns": 16639,
+  "irisDropReturns": 45,
+  "traceSpanMs": 278163,
+  "syncTimeoutEvents": [],
+  "errorIndicators": {
+    "output dequeue error": 0,
+    "capture dequeue error": 0,
+    "vidioc_qbuf failed": 0,
+    "vidioc_dqbuf failed": 0,
+    "decode failed": 0,
+    "decode error": 0,
+    "surface sync timeout": 0
+  },
+  "userOverlayObservation": "User confirms GFN overlay displays AV1",
+  "initialNativeSnapshot": {
+    "codec": "video/AV1",
+    "decoder": "ExternalDecoder (VaapiVideoDecoder)",
+    "framesDecoded": 11350,
+    "framesDropped": 50,
+    "meanDecodeMs": 2.848234625550661,
+    "width": 1680,
+    "height": 1050,
+    "fps": 60
+  },
+  "deviceEvidence": {
+    "gpuProcessPid": 90369,
+    "devices": [
+      "/dev/video0",
+      "/dev/dri/renderD128"
+    ],
+    "video0Name": "qcom-iris-decoder",
+    "observedEarlierInSameRun": true
+  },
+  "gamescope": false,
+  "scope": "Actual AV1 hardware-path activity confirmed in a ~278-second trace. Resolution changed, counters differ in scope; not a fair codec latency benchmark, prolonged stability or zero-copy proof.",
+  "timeoutClarification": {
+    "actualSyncTimeoutEvents": 0,
+    "reportedDriverTimeoutCounters": [
+      0,
+      0,
+      0
+    ],
+    "note": "Broad substring matches included configuration and timeouts=0 diagnostic fields; no sync timeout or surface sync timeout marker."
+  }
+}

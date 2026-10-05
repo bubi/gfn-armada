@@ -39,7 +39,7 @@ Snapshot **2026-10-05**. [Evidence and remaining work](docs/poc-status.md).
 | Original GFN client | Earlier Odin sessions streamed games; Xbox controller recognition observed. Persistent Chromium profile implemented. |
 | H.264 hardware decode | Original GFN stream: Chromium `VaapiVideoDecoder` and **14,484 Iris CAPTURE frames** over about 234 seconds; no observed driver errors/browser drops. **GPU copy**, not validated zero-copy. Visual correctness and long-term reliability remain unverified. |
 | HEVC | **First original GFN hardware stream verified with opt-in experiment:** native H.265/VA-API plus 7,850 Iris GPU-copy returns over ~131 seconds. Short test; no zero-copy or Gamescope claim. [Evidence](experiments/packaging/validation-hevc-live-odin-20261005.json). |
-| AV1 | No validated GFN hardware stream. |
+| AV1 | **First original GFN hardware stream verified with experimental profiles:** native AV1/VA-API and 16,639 Iris GPU-copy returns over ~278 seconds. No observed Iris sync timeouts in this run; upstream hidden-frame limitation remains. [Evidence](experiments/packaging/validation-av1-live-odin-20261005.json). |
 | ARM64 AppImage | Built with pinned Electron and patched Iris driver, notices and modified driver source. Container smoke tests passed. **Now tested on Odin KDE/Wayland:** user reports game and gamepad working; successful Iris hardware-path returns recorded. Gamescope remains untested. |
 | Catalog → Steam | Steam/Epic/GOG/Xbox import and guarded shortcut sync implemented. Public schema checked; account import and Steam writes tested with fixtures. **Real authenticated import and Gaming Mode flow remain untested.** |
 
@@ -103,6 +103,12 @@ identity, Wayland and the bundled Iris adapter. Native Chromium H.265 statistics
 HEVC Iris session opens and successful VPU frame returns agree. No CloudMatch
 request rewrite was observed, so only the WebRTC preference step is evidenced.
 The UI may still report Unsupported. See [scope and measurements](docs/hevc-follow-up-2026-10-05.md).
+
+**Separate AV1 qualification:** `GFN_ARMADA_AV1_EXPERIMENT=1` with
+`V4L2_VA_EXPERIMENTAL_PROFILES=1` was tested on Odin with the same Windows
+identity and Wayland path. AV1 hardware frames are verified for that short run.
+The driver does not normally advertise AV1 because upstream documents hidden-
+frame VA timeouts; this opt-in does not establish support for all AV1 streams.
 
 ## Build and try
 

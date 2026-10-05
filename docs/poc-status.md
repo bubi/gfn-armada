@@ -1,5 +1,17 @@
 # PoC results and open work — 2026-10-05
 
+## Latest: original GFN AV1 hardware path verified (2026-10-05)
+
+The subsequent AV1 opt-in test records native `video/AV1` / VA-API and 16,639
+Iris GPU-copy returns over ~278 seconds. Overlay agrees, GPU process holds
+`qcom-iris-decoder`, AV01 session opens observed. No actual sync timeout events,
+reported driver timeout counters zero. [Evidence](../experiments/packaging/validation-av1-live-odin-20261005.json).
+The upstream experimental-profile flag was explicitly enabled; normal AV1
+advertisement remains disabled due to the upstream hidden-frame limitation.
+Keep AV1 experimental. Resolution changed; ~2.76 ms mean decode is not a fair
+codec comparison. Prolonged stability, pixel accuracy, Gamescope and zero-copy
+remain unverified. Earlier statements below reflect earlier measurements.
+
 ## Latest: original GFN HEVC hardware path verified (2026-10-05)
 
 The opt-in HEVC experiment yielded native `video/H265` / `ExternalDecoder
@@ -47,7 +59,7 @@ Catalog import retains original GFN login, reads all pages before updating mappi
 2. Real account catalog import/direct launch for Steam/Epic/GOG/Xbox. Routes/schema may change; store/login dialogs may require input.
 3. Repeat native H.264 evidence with bundled driver; measure longer stability, CPU load and latency. Flags alone do not prove hardware use.
 4. **HEVC:** first original GFN VPU stream now validated; test visual correctness, longer stability, fixed resolution and whether Windows identity is necessary. Keep preference opt-in until those checks.
-5. **AV1:** Linux/SteamOS GFN configuration disabled it in the inspected snapshot; actual stream/decoder path unproven. Investigate after HEVC.
+5. **AV1:** first actual VPU stream validated with experimental profiles and preference hook. Test hidden-frame coverage and prolonged stability; earlier Linux/SteamOS restrictions were snapshot-specific.
 6. Zero-copy, artwork downloads, automatic Steam Input/overlay bindings and stale shortcut removal.
 7. Original-code license/publication hygiene; review pending native bridge changes before declaring a reproducible source/release snapshot.
 

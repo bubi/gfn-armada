@@ -117,3 +117,31 @@ implemented but unqualified profile, not a validated capability. The old probe
 reported AV1 decodable but not power-efficient. Success, software fallback and
 VA/V4L2 failure must therefore be distinguished in live statistics/traces.
 Retain the verified HEVC AppImage for recovery; AV1 has no success claim yet.
+
+
+## First original GFN AV1 hardware stream verified
+
+The subsequent [AV1 live test](../experiments/packaging/validation-av1-live-odin-20261005.json)
+records `video/AV1`, `ExternalDecoder (VaapiVideoDecoder)`, 16,452 browser-decoded
+frames and 16,639 Iris `publish=copy-gpu` returns over a 278.163-second trace.
+The GFN overlay also says AV1. Iris session opens identify FourCC `AV01` at
+1920×1080 and 1680×1050; the client GPU process holds `qcom-iris-decoder`.
+The sandbox remains enabled. No inspected decoder/ioctl error markers or
+actual sync timeout events; the reported Iris timeout counters are zero.
+An initial broad timeout-word search matched configuration/counter fields,
+not an actual timeout, and was corrected before recording the final result.
+
+The offer includes H.264/AV1/H.265, and the AV1 WebRTC preference hook runs;
+again no CloudMatch request rewrite was observed. The isolated earlier AV1
+`powerEfficient=false` probe used the default, non-advertised AV1 driver profile.
+This live run explicitly enables upstream experimental profiles and reports
+`powerEfficientDecoder=true` alongside actual VPU frame returns. Do not treat
+that change as proof that the default client supports hardware AV1.
+
+Native decode mean is 2.76 ms at the last snapshot (1080p/60), with 50 browser
+drops and 45 driver-drop returns across differing counter scopes. Resolution
+changed during the run. These figures cannot establish AV1 superiority over
+HEVC/H.264 or end-to-end latency. Long-term stability, hidden-frame coverage,
+pixel accuracy, zero-copy and Gamescope remain open. No decoder/source patch
+was needed for this AV1 trial; existing adapter opt-in and codec preference
+were sufficient for the observed stream. Keep AV1 experimental.
