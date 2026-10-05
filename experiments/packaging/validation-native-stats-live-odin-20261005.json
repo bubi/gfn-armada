@@ -1,0 +1,38 @@
+{
+  "observedAt": "2026-10-05T16:45:00.853912+00:00",
+  "sourceCommit": "7e9ead6b91a7570556b5b334a7d9d29b71143769",
+  "appimageSha256": "205b31f87bdbe7206dd02f76a7d7a1e9e3f9b40c3a2e049e85ab5ef4d443e14e",
+  "driverSha256": "d4708081ceacaafabd78194d3a27c48b86a097ac990140c411802d6b25484251",
+  "requestedOzone": "wayland",
+  "gpuSandboxDisabled": false,
+  "nativeWebRTC": {
+    "status": "sampled",
+    "timestamp": 1791218695872,
+    "streams": [
+      {
+        "codec": "video/H264",
+        "decoder": "ExternalDecoder (VaapiVideoDecoder)",
+        "powerEfficientDecoder": true,
+        "framesDecoded": 12145,
+        "framesDropped": 49,
+        "totalDecodeTime": 38.809278,
+        "statsTimestamp": 1791218695243.195,
+        "frameWidth": 1680,
+        "frameHeight": 1050,
+        "framesPerSecond": 60,
+        "meanDecodeMs": 3.1954942774804445,
+        "intervalMeanDecodeMs": 2.7782539682539613,
+        "intervalFramesDecoded": 63,
+        "intervalMs": 1036.544189453125,
+        "meanJitterBufferMs": 1.7388030178776444
+      }
+    ]
+  },
+  "irisCopyGpuReturns": 12485,
+  "irisDropReturns": 4,
+  "irisErrorMarkers": 0,
+  "gpuDecodeProfiles": null,
+  "scope": "Live native Chromium stats plus Iris trace; counter scopes differ; not final session accounting",
+  "hevcNegotiated": false,
+  "gamescope": false
+}

@@ -31,8 +31,18 @@
   },
   "odinUpload": {
     "checksumMatches": true,
-    "runningNewBuild": false,
-    "reason": "Awaiting approval to disconnect active game and restart"
+    "runningNewBuild": true,
+    "reason": "User authorized restart; native observer sampled live GFN H264 with VaapiVideoDecoder"
   },
-  "gfnHEVCValidated": false
+  "gfnHEVCValidated": false,
+  "odinStartup": {
+    "runtimePid": 74721,
+    "nativeWebRTCStatus": "waiting",
+    "bundledIrisSelected": true,
+    "gpuSandboxDisabled": false,
+    "nativeShadow": false,
+    "timestamp": "2026-10-05T16:39:36.141Z",
+    "activeStreamValidated": true
+  },
+  "odinLiveEvidence": "validation-native-stats-live-odin-20261005.json"
 }

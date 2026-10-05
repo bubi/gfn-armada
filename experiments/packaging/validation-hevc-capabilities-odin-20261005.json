@@ -1,0 +1,71 @@
+{
+  "probe": "webrtc-video-codecs",
+  "chrome": "152.0.7977.130",
+  "electron": "44.5.1",
+  "receiveCodecs": [
+    "video/AV1",
+    "video/H264",
+    "video/H265",
+    "video/VP8",
+    "video/VP9",
+    "video/flexfec-03",
+    "video/red",
+    "video/rtx",
+    "video/ulpfec"
+  ],
+  "h265Receive": true,
+  "mediaCapabilities": {
+    "h264": {
+      "supported": true,
+      "powerEfficient": true,
+      "smooth": true
+    },
+    "hevc": {
+      "supported": true,
+      "powerEfficient": true,
+      "smooth": true
+    },
+    "av1": {
+      "supported": true,
+      "powerEfficient": false,
+      "smooth": true
+    }
+  },
+  "webrtcMediaCapabilities": {
+    "h264": {
+      "supported": true,
+      "powerEfficient": true,
+      "smooth": true
+    },
+    "h265": {
+      "supported": true,
+      "powerEfficient": true,
+      "smooth": true
+    },
+    "av1": {
+      "supported": true,
+      "powerEfficient": false,
+      "smooth": true
+    }
+  },
+  "videoDecodeProfiles": [],
+  "note": "Advertised capability is not proof that NVIDIA negotiates or that the VPU decodes it.",
+  "error": null,
+  "date": "2026-10-05",
+  "scope": "Isolated same Electron/Iris runtime, temporary profile, synthetic origin; no NVIDIA session or decoded HEVC payload",
+  "target": {
+    "width": 1920,
+    "height": 1080,
+    "fps": 60,
+    "webrtcBitrate": 31104000
+  },
+  "userSettingsObservation": {
+    "source": "Three user photographs, not redistributed because account identity is visible",
+    "resolution": "1920x1080",
+    "fps": 60,
+    "colorQuality": "8-bit YUV 4:2:0",
+    "codecSelection": "Auto (H.264) / H.264 available; AV1 and H.265 under Unsupported"
+  },
+  "gfnHEVCNegotiated": false,
+  "eligibilityCause": "Platform/remote configuration is a source-based candidate; active GFN runtime values and cached capability results not observed"
+}

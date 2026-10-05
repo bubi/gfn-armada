@@ -23,6 +23,11 @@ if(withVaapi){
   features.push('VaapiVideoDecoder','VaapiVideoDecodeLinuxGL');
   app.commandLine.appendSwitch('ignore-gpu-blocklist');
   switches.push('--ignore-gpu-blocklist');
+  const node=process.env.GFN_ARMADA_VAAPI;
+  if(node&&path.isAbsolute(node)&&fs.existsSync(node)){
+    app.commandLine.appendSwitch('hardware-video-device-path',node);
+    switches.push(`--hardware-video-device-path=${node}`);
+  }
 }
 if(features.length){
   app.commandLine.appendSwitch('enable-features',features.join(','));
@@ -36,7 +41,7 @@ app.whenReady().then(async()=>{
   window=new BrowserWindow({show:false,webPreferences:{sandbox:true,contextIsolation:true,nodeIntegration:false}});
   await window.loadURL('https://play.geforcenow.com/codec-probe');
   const result=await window.webContents.executeJavaScript(`(async()=>{
-    const out={receive:[],send:[],mediaCapabilities:{}};
+    const out={receive:[],send:[],mediaCapabilities:{},webrtcMediaCapabilities:{}};
     try{out.receive=(RTCRtpReceiver.getCapabilities('video')?.codecs||[]).map(c=>c.mimeType);}catch(e){out.receiveError=String(e)}
     try{out.send=(RTCRtpSender.getCapabilities('video')?.codecs||[]).map(c=>c.mimeType);}catch(e){out.sendError=String(e)}
     // MediaCapabilities is the other surface the HEVC rollout exposes.
@@ -45,6 +50,15 @@ app.whenReady().then(async()=>{
         const r=await navigator.mediaCapabilities.decodingInfo({type:'file',video:{contentType:type,width:1280,height:720,bitrate:5000000,framerate:60}});
         out.mediaCapabilities[name]={supported:r.supported,powerEfficient:r.powerEfficient,smooth:r.smooth};
       }catch(e){out.mediaCapabilities[name]={error:String(e)}}
+    }
+    // Match the public GFN SDK's default WebRTC query, not its file-codec probe.
+    // Capability hints still do not prove a negotiated or decoded HEVC stream.
+    for(const codec of ['h264','h265','av1']){
+      try{
+        const r=await navigator.mediaCapabilities.decodingInfo({type:'webrtc',video:{
+          contentType:'video/'+codec,width:1920,height:1080,bitrate:31104000,framerate:60}});
+        out.webrtcMediaCapabilities[codec]={supported:r.supported,powerEfficient:r.powerEfficient,smooth:r.smooth};
+      }catch(e){out.webrtcMediaCapabilities[codec]={error:String(e)}}
     }
     return out;
   })()`);
@@ -58,6 +72,7 @@ app.whenReady().then(async()=>{
     h265Receive:result.receive.some(m=>/265|hevc/i.test(m)),
     av1Receive:result.receive.some(m=>/av1/i.test(m)),
     mediaCapabilities:result.mediaCapabilities,
+    webrtcMediaCapabilities:result.webrtcMediaCapabilities,
     gpuFeatures:app.getGPUFeatureStatus(),
     // Which decode profiles Chromium actually accepted from the VA driver.
     // Empty here while advertised codecs look fine means Chromium rejected
