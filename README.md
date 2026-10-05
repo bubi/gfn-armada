@@ -143,6 +143,10 @@ Ordinary launch inherits the display/input environment. The tested Odin Steam sh
 
 ## Launch from Steam with H.265
 
+Download the tested Linux ARM64 AppImage from the
+[experimental v0.1.0 PoC release](https://github.com/bubi/gfn-armada/releases/tag/v0.1.0-poc).
+[Release notes, checksums and exact binary provenance](docs/releases/v0.1.0-poc.md).
+
 Add the executable ARM64 AppImage as a **Non-Steam game**. Set **Target** to its
 absolute path and **Start In** to its containing directory. Disable Proton and
 enter these **Launch Options** for the tested Odin/ArmadaOS setup:
