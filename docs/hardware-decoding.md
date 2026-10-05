@@ -1,5 +1,11 @@
 # Hardware-Decoding: Evidenz, Lücken und Prüfplan
 
+**Concluded research snapshot:** [codec handover](codec-findings-2026-10-05.md)
+consolidates source ownership, four patches, tests and remaining limitations.
+HEVC now also has [Gamescope live output evidence](../experiments/packaging/validation-gamescope-hevc-live-odin-20261005.json),
+with temporary focus routing and pre-stream focus problems. No further codec
+experiments planned in this snapshot; regular Steam integration remains work.
+
 **Subsequent AV1 update 2026-10-05:** original GFN AV1 now has a first live
 VPU-path validation with the adapter's explicit experimental-profile option:
 [measurement](../experiments/packaging/validation-av1-live-odin-20261005.json).

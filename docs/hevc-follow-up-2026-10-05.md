@@ -163,3 +163,21 @@ Incorrect reference/surface association or presentation is another candidate,
 requiring a fixed-resolution reproducer and comparison of VPU output before
 presentation. No speculative decoder patch or automatic restart applied.
 Retain HEVC as the better-supported fallback; AV1 remains a diagnostic option.
+
+
+## Gamescope HEVC output and research conclusion
+
+The [Gamescope live run](../experiments/packaging/validation-gamescope-hevc-live-odin-20261005.json)
+records native H.265 / VA-API at 1920×1080/60, 8,540 browser-decoded frames,
+6 browser drops, mean decode 2.93 ms, 8,631 Iris GPU-copy publications and one
+driver drop over ~144 seconds. Inspected decoder/ioctl/sync-timeout markers
+are zero. User confirms GFN and MangoHud visible and working game after startup;
+focus oscillated and picture froze before game launch. This used a temporary
+scope/root-focus diagnostic, not a Steam library launch. Do not ship that
+workaround as normal integration. Original focus is backed up and restoration
+on client exit configured.
+
+At the user's request, codec experimentation is concluded here. The
+[consolidated handover](codec-findings-2026-10-05.md) is intended for others to
+implement a correct, qualified codec path. Next project work concerns the client
+and reliable Steam/Gamescope launch association.

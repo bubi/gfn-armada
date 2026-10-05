@@ -1,0 +1,140 @@
+{
+  "observedAt": "2026-10-05T17:59:06.111904+00:00",
+  "sourceCommit": "2d9ec5c",
+  "appimageSha256": "63f08923c13fdf3199c0e89f8d61972ff7be3322ffde5fa0b9ed491520444093",
+  "nativeWebRTC": {
+    "status": "sampled",
+    "timestamp": 1791223145222,
+    "streams": [
+      {
+        "codec": "video/H265",
+        "decoder": "ExternalDecoder (VaapiVideoDecoder)",
+        "powerEfficientDecoder": true,
+        "framesDecoded": 8540,
+        "framesDropped": 6,
+        "totalDecodeTime": 25.017135,
+        "statsTimestamp": 1791223144611.533,
+        "frameWidth": 1920,
+        "frameHeight": 1080,
+        "framesPerSecond": 60,
+        "meanDecodeMs": 2.929406908665105,
+        "intervalMeanDecodeMs": 2.8592903225806308,
+        "intervalFramesDecoded": 62,
+        "intervalMs": 1028.863037109375,
+        "meanJitterBufferMs": 1.7484811607769717
+      }
+    ]
+  },
+  "experiment": {
+    "enabled": true,
+    "events": [
+      {
+        "event": "installed",
+        "receiveHevc": true
+      },
+      {
+        "event": "server-offer",
+        "codecs": [
+          "H264"
+        ]
+      },
+      {
+        "event": "answer-created",
+        "codecs": [
+          "H264"
+        ]
+      },
+      {
+        "event": "server-offer",
+        "codecs": [
+          "H264"
+        ]
+      },
+      {
+        "event": "answer-created",
+        "codecs": [
+          "H264"
+        ]
+      },
+      {
+        "event": "server-offer",
+        "codecs": []
+      },
+      {
+        "event": "server-offer",
+        "codecs": []
+      },
+      {
+        "event": "answer-created",
+        "codecs": []
+      },
+      {
+        "event": "answer-created",
+        "codecs": []
+      },
+      {
+        "event": "server-offer",
+        "codecs": [
+          "H264",
+          "AV1",
+          "H265"
+        ]
+      },
+      {
+        "event": "answer-preferred"
+      },
+      {
+        "event": "answer-created",
+        "codecs": [
+          "H265",
+          "H264",
+          "AV1"
+        ]
+      }
+    ]
+  },
+  "requestedOzone": "wayland",
+  "gpuSandboxDisabled": false,
+  "decoderSessionOpens": [
+    {
+      "codec": "HEVC",
+      "codedWidth": 1920,
+      "codedHeight": 1088,
+      "irisNode": true
+    }
+  ],
+  "irisCopyGpuReturns": 8631,
+  "irisDropReturns": 1,
+  "traceSpanMs": 143734,
+  "errorIndicators": {
+    "sync timeout": 0,
+    "surface sync timeout": 0,
+    "output dequeue error": 0,
+    "capture dequeue error": 0,
+    "vidioc_qbuf failed": 0,
+    "vidioc_dqbuf failed": 0,
+    "decode failed": 0,
+    "decode error": 0
+  },
+  "gamescopeFocus": {
+    "GAMESCOPE_FOCUSED_APP": [
+      2848364646
+    ],
+    "GAMESCOPE_FOCUSED_WINDOW": [
+      2
+    ]
+  },
+  "gamescopeTestKind": "Existing Steam Gaming Mode, native Wayland, temporary scope/focus override, not a Steam shortcut launch",
+  "userObservation": {
+    "gfnVisible": true,
+    "mangoHudVisible": true,
+    "preStream": "Focus lost every few seconds, picture froze",
+    "afterGameStart": "User reports everything worked"
+  },
+  "limitations": [
+    "Temporary focus workaround; regular Steam process/focus integration not validated",
+    "No separate controller confirmation for this Gamescope run",
+    "No zero-copy or end-to-end latency proof",
+    "Resolution changes invalidate fixed-resolution comparisons"
+  ]
+}

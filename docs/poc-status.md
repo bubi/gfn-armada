@@ -1,5 +1,18 @@
 # PoC results and open work — 2026-10-05
 
+## Research conclusion and Gamescope output test
+
+[Consolidated codec handover](codec-findings-2026-10-05.md): codec experimentation
+concluded at the user's request. Keep opt-in flags and known limitations;
+next work concerns client/Steam launch integration.
+
+Gamescope HEVC output is now measured in the existing Steam Gaming Mode:
+1920×1080/60, native VA-API, 8,631 Iris GPU-copy returns / ~144 seconds, inspected
+decoder/timeout indicators zero. User confirms visible GFN/MangoHud and working
+game after stream start, but focus loss/freezing before it. Temporary scope/
+root-focus override only; not a normal Steam library launch. [Evidence](../experiments/packaging/validation-gamescope-hevc-live-odin-20261005.json).
+Earlier statements below that Gamescope was untested describe older runs.
+
 ## Latest: original GFN AV1 hardware path verified (2026-10-05)
 
 The subsequent AV1 opt-in test records native `video/AV1` / VA-API and 16,639
