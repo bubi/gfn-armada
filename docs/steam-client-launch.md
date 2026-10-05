@@ -40,3 +40,41 @@ uses a pre-existing localhost-only Steam debugging interface over SSH; the
 client does not enable or ship that interface. The ordinary VDF sync implementation
 still requires Steam to be closed and makes checksummed backups. Never modify
 live shortcuts.vdf behind Steam's back.
+
+## Odin Gaming Mode focus workaround
+
+On the 2026-10-05 Odin test, direct native Wayland launch from the real Steam
+shortcut left Steam's loading interface in front. The client was alive and
+loaded GFN, but Gamescope remained focused on Steam (AppID 769). That is a
+failed visible launch, not evidence of a working Steam integration.
+
+The tested alternative runs a nested Gamescope **inside** Steam's tracked
+launch process. Its SDL/X11 output gives Steam a tracked game window, while
+Chromium continues to use native Wayland inside the nested compositor.
+The user confirmed the GFN UI was visible and controller navigation worked.
+The first test still showed window decorations and a scaled smaller client
+area; the subsequent client change starts fullscreen launches borderless at
+the primary display size. That correction needs its own device validation.
+
+For the AppImage itself as the Steam target, use:
+
+```text
+GFN_ARMADA_GAMESCOPE=nested GFN_ARMADA_BROWSER_IDENTITY=windows %command% --appimage-extract-and-run launch
+```
+
+The launcher calls `/usr/bin/gamescope` with a 1920×1080 game/output area,
+`--expose-wayland`, and fullscreen. It remains under Steam's reaper, disables
+the inherited Gamescope Vulkan WSI layer for the nested process and removes
+only `gameoverlayrenderer.so` preload entries. Other preload hooks are kept.
+The WSI layer caused a confirmed swapchain error dialog in the earlier test.
+A Chromium zygote crash and stranded launcher were also observed; the role
+of Steam's injected overlay has not been isolated. The launcher now exits
+when its child closes, with a regression test for retained Node handles.
+
+This mode is explicit and requires an existing Linux Steam launch. It adds
+a compositor stage; no zero-copy or latency improvement is claimed.
+Direct native Wayland remains the ordinary desktop default. The temporary
+device shell wrapper used to validate the approach is replaced by the
+AppImage launcher implementation. No forced root focus properties are used.
+Steam overlay, focus stability during gameplay, actual HEVC selection and
+1080p stream dimensions still require validation in this final launch mode.

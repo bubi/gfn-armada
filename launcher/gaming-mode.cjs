@@ -14,4 +14,19 @@ function preferences(env,cfg) {
  if(cfg.codec==='hevc'&&next.GFN_ARMADA_HEVC_EXPERIMENT===undefined&&next.GFN_ARMADA_AV1_EXPERIMENT!=='1')next.GFN_ARMADA_HEVC_EXPERIMENT='1';
  return next;
 }
-module.exports={environment,preferences};
+function command({executable,args,env,platform=process.platform,io=fs}) {
+ if(env.GFN_ARMADA_GAMESCOPE!=='nested')return {executable,args,env};
+ if(platform!=='linux'||!env.DISPLAY||!env.SteamAppId)throw new Error('Nested Gamescope requires a Linux Steam launch with DISPLAY and SteamAppId');
+ if(env.GFN_ARMADA_OZONE==='x11')throw new Error('Nested Gamescope client requires Wayland; remove GFN_ARMADA_OZONE=x11');
+ const compositor='/usr/bin/gamescope';
+ io.accessSync(compositor,fs.constants.X_OK);
+ const next={...env,ENABLE_GAMESCOPE_WSI:'0',SDL_VIDEODRIVER:'x11'};
+ // The outer SDL window must be visible to Steam's Xwayland window tracking.
+ // Gamescope supplies its own Wayland socket to the child Chromium process.
+ delete next.WAYLAND_DISPLAY;
+ // Keep unrelated preload hooks. Exclude Steam's renderer injection for
+ // this experimental native-Wayland path; its effect is not fully isolated.
+ if(next.LD_PRELOAD)next.LD_PRELOAD=next.LD_PRELOAD.split(/[ :]+/).filter(p=>p&&!/(^|\/)gameoverlayrenderer\.so$/.test(p)).join(':');
+ return {executable:compositor,args:['--expose-wayland','-f','-w','1920','-h','1080','-W','1920','-H','1080','--',executable,...args],env:next};
+}
+module.exports={environment,preferences,command};

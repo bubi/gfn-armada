@@ -76,7 +76,8 @@ function run(args=process.argv.slice(2)) {
   const launchArgs=[req.command,...(req.target?[req.target]:[]),...(req.name?['--name',req.name]:[])];
   const backend=ozonePlatform(env);
   const platformArgs=backend?[`--ozone-platform=${backend}`]:[];
-  const child=spawn(executable,[...platformArgs,...(process.env.GFN_ARMADA_ELECTRON?launchArgs:[appRoot,...launchArgs])],{stdio:'inherit',env});
+  const invocation=gaming.command({executable,args:[...platformArgs,...(process.env.GFN_ARMADA_ELECTRON?launchArgs:[appRoot,...launchArgs])],env});
+  const child=spawn(invocation.executable,invocation.args,{stdio:'inherit',env:invocation.env});
   child.on('error',e=>{console.error(e.message);process.exitCode=1});
   child.on('close',(code,signal)=>{
     if(signal||code) console.error(JSON.stringify({timestamp:new Date().toISOString(),event:'client-exit',code,signal}));

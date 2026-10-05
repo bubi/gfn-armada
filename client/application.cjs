@@ -114,7 +114,8 @@ if(cfg&&request?.resolved) {
       app.on('browser-window-created',(_e,w)=>secure(w));
       const display=screen.getPrimaryDisplay();
       runtime.display={bounds:display.bounds,size:display.size,scaleFactor:display.scaleFactor};
-      win=new BrowserWindow({width:1280,height:720,title:'gfn-armada',backgroundColor:'#111111',fullscreen:cfg.fullscreen&&request.command==='launch',webPreferences:prefs});
+      const fullscreen=cfg.fullscreen&&request.command==='launch';
+      win=new BrowserWindow({width:fullscreen?display.size.width:1280,height:fullscreen?display.size.height:720,frame:!fullscreen,title:'gfn-armada',backgroundColor:'#111111',fullscreen,webPreferences:prefs});
       win.setMenu(null);
       ipcMain.on('browser-identity-status',(event,data)=>{
         if(!browserIdentity||event.sender!==win.webContents||!event.senderFrame?.url.startsWith(HOME))return;
