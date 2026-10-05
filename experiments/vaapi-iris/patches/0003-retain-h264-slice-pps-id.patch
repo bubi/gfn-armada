@@ -1,0 +1,136 @@
+--- a/src/codec/h264.cc
++++ b/src/codec/h264.cc
+@@ -68,6 +68,33 @@
+ bool has_start_code(const uint8_t* data, size_t size)
+ {
+     return size >= 3 && data[0] == 0 && data[1] == 0 && (data[2] == 1 || (size >= 4 && data[2] == 0 && data[3] == 1));
++}
++
++// The original slice header names its PPS; VA picture parameters omit that
++// identifier. Retain it in our generated PPS instead of rewriting slice bits.
++unsigned slice_pps_id(const uint8_t* data, size_t size)
++{
++    size_t offset = has_start_code(data, size) ? (data[2] == 1 ? 3 : 4) : 0;
++    require(offset < size && size - offset >= 2, "H.264 truncated slice header", VA_STATUS_ERROR_INVALID_PARAMETER);
++    const unsigned nal_type = data[offset] & 31u;
++    require(nal_type == 1 || nal_type == 5, "H.264 unsupported slice NAL", VA_STATUS_ERROR_INVALID_PARAMETER);
++    BitReader reader(data + offset, size - offset, 1);
++    reader.skip(8);
++    const auto read_ue = [&reader]() -> unsigned {
++        unsigned zeros = 0;
++        for (;;) {
++            require(!reader.exhausted(), "H.264 truncated Exp-Golomb", VA_STATUS_ERROR_INVALID_PARAMETER);
++            if (reader.bit()) break;
++            require(++zeros < 32, "H.264 oversized Exp-Golomb", VA_STATUS_ERROR_INVALID_PARAMETER);
++        }
++        require(reader.size_bits() - reader.position() >= zeros, "H.264 truncated Exp-Golomb suffix", VA_STATUS_ERROR_INVALID_PARAMETER);
++        return ((1u << zeros) - 1) + reader.bits(zeros);
++    };
++    read_ue(); // first_mb_in_slice
++    require(read_ue() <= 9, "H.264 invalid slice type", VA_STATUS_ERROR_INVALID_PARAMETER);
++    const unsigned id = read_ue();
++    require(id <= 255, "H.264 PPS identifier out of range", VA_STATUS_ERROR_INVALID_PARAMETER);
++    return id;
+ }
+ 
+ // Whether the AU contains an IDR NAL (type 5).
+@@ -134,12 +161,15 @@
+         out.bytes.clear();
+         out.deferred = false;
+         const auto sps = h264_sps(profile_idc_, picture.surface_width, picture.surface_height, parameters);
+-        const auto pps = h264_pps(profile_idc_, parameters, first_slice);
++        const auto [first_data, first_size] = picture.slice_data.front();
++        const unsigned pps_id = slice_pps_id(first_data, first_size);
++        const auto pps = h264_pps(profile_idc_, parameters, first_slice, pps_id);
+         out.bytes.insert(out.bytes.end(), sps.begin(), sps.end());
+         out.bytes.insert(out.bytes.end(), pps.begin(), pps.end());
+         for (const auto& [data, size] : picture.slice_data) {
+             if (size == 0)
+                 continue;
++            require(slice_pps_id(data, size) == pps_id, "H.264 mixed PPS identifiers in picture", VA_STATUS_ERROR_INVALID_PARAMETER);
+             if (!has_start_code(data, size))
+                 out.bytes.insert(out.bytes.end(), { 0, 0, 1 });
+             out.bytes.insert(out.bytes.end(), data, data + size);
+@@ -229,10 +259,11 @@
+ }
+ 
+ std::vector<uint8_t> h264_pps(uint8_t profile, const VAPictureParameterBufferH264& picture,
+-    const VASliceParameterBufferH264& slice)
+-{
++    const VASliceParameterBufferH264& slice, unsigned pps_id)
++{
++    require(pps_id <= 255, "H.264 PPS identifier out of range", VA_STATUS_ERROR_INVALID_PARAMETER);
+     BitWriter writer;
+-    writer.ue(0); // pic_parameter_set_id
++    writer.ue(pps_id); // matches the unmodified slice header
+     writer.ue(0); // seq_parameter_set_id
+     writer.bit(picture.pic_fields.bits.entropy_coding_mode_flag);
+     writer.bit(picture.pic_fields.bits.pic_order_present_flag);
+--- a/src/codec/translator.h
++++ b/src/codec/translator.h
+@@ -76,7 +76,7 @@
+ std::vector<uint8_t> h264_sps(uint8_t profile_idc, unsigned visible_width, unsigned visible_height,
+     const VAPictureParameterBufferH264& picture);
+ std::vector<uint8_t> h264_pps(uint8_t profile_idc, const VAPictureParameterBufferH264& picture,
+-    const VASliceParameterBufferH264& slice);
++    const VASliceParameterBufferH264& slice, unsigned pps_id = 0);
+ std::vector<uint8_t> hevc_vps(VAProfile profile, const VAPictureParameterBufferHEVC& picture);
+ std::vector<uint8_t> hevc_sps(VAProfile profile, const VAPictureParameterBufferHEVC& picture,
+     const VAIQMatrixBufferHEVC* scaling);
+--- a/test/meson.build
++++ b/test/meson.build
+@@ -55,3 +55,9 @@
+      args: [meson.project_source_root()])
+ test('iris-browser-launcher-check', find_program('iris-browser-launcher-check.sh'),
+      args: [meson.project_source_root()])
++
++# Generated PPS must retain identifiers from the original slice headers.
++h264_parameter_sets_test = executable(
++  'h264-parameter-sets-test', 'h264-parameter-sets-test.cc',
++  dependencies: [iris_core_dep], cpp_args: ['-Wall', '-Wextra', '-std=c++20'])
++test('h264-parameter-sets', h264_parameter_sets_test)
+--- /dev/null
++++ b/test/h264-parameter-sets-test.cc
+@@ -0,0 +1,42 @@
++// SPDX-License-Identifier: MIT
++#include "../src/codec/translator.h"
++#include "../src/codec/bitwriter.h"
++#include <stdexcept>
++#include <algorithm>
++#include <iostream>
++using namespace iris::codec;
++static void check(bool condition) { if (!condition) throw std::runtime_error("H264 PPS regression"); }
++static std::vector<uint8_t> slice(unsigned id) {
++    BitWriter w; w.ue(0); w.ue(2); w.ue(id); w.trailing_bits();
++    std::vector<uint8_t> bytes; append_escaped_nal(bytes, {0x65}, w); return bytes;
++}
++int main() {
++    VAPictureParameterBufferH264 params{};
++    params.picture_width_in_mbs_minus1=79; params.picture_height_in_mbs_minus1=44;
++    params.seq_fields.bits.frame_mbs_only_flag=1; params.seq_fields.bits.chroma_format_idc=1;
++    VASliceParameterBufferH264 sp{}; sp.slice_type=2;
++    Picture picture; picture.parameters=&params; picture.slice_parameters={&sp};
++    auto translator=make_h264(VAProfileH264High);
++    for (unsigned id : {0u,15u,255u}) {
++        auto original=slice(id); picture.slice_data={{original.data(),original.size()}};
++        AccessUnit au; translator->translate(picture,au);
++        check(au.sequence_start);
++        check(au.bytes.size()>=original.size());
++        check(std::equal(original.begin(),original.end(),au.bytes.end()-original.size()));
++        size_t at=0; bool found=false;
++        for (;at+5<au.bytes.size();++at) {
++            if (au.bytes[at]==0 && au.bytes[at+1]==0 && au.bytes[at+2]==0 && au.bytes[at+3]==1 && au.bytes[at+4]==0x68) {found=true;break;}
++        }
++        check(found); BitReader reader(au.bytes.data()+at+4,au.bytes.size()-at-4,1); reader.skip(8);
++        check(reader.ue()==id); check(reader.ue()==0);
++    }
++    for (auto malformed : {std::vector<uint8_t>{0x65},std::vector<uint8_t>{0x65,0},slice(256)}) {
++        picture.slice_data={{malformed.data(),malformed.size()}};
++        bool rejected=false; try { AccessUnit au; translator->translate(picture,au); } catch (const std::exception&) {rejected=true;}
++        check(rejected);
++    }
++    auto a=slice(0),b=slice(15); picture.slice_data={{a.data(),a.size()},{b.data(),b.size()}};
++    bool rejected=false;try {AccessUnit au;translator->translate(picture,au);}catch(const std::exception&){rejected=true;}
++    check(rejected);
++    std::cout<<"H264 PPS identifiers 0/15/255 retained; original slices unchanged; malformed/mixed IDs rejected\n";
++}

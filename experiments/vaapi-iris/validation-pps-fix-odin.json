@@ -1,0 +1,66 @@
+{
+  "probe": "gfn-vaapi-pps-fix",
+  "moduleSha256": "4f14eb72b8fdada6b3a879377b29da186618acbc841a8f3bd50c5ce916275ed0",
+  "captureFrames": 14484,
+  "captureFirst": "capture token=1 index=0 flags=0x4009 publish=copy-gpu t=5139",
+  "captureLast": "capture token=14484 index=0 flags=0x4011 publish=copy-gpu t=246411",
+  "publishModes": [
+    "copy-gpu"
+  ],
+  "driverErrorCount": 0,
+  "driverErrors": [],
+  "syntax": [
+    "h264 syntax nal=5 first_mb=0 slice_type=2 pps_id=16 va_type=2 va_l0=0 va_l1=0 refs=4 frame_num=0 poc_type=2 offset_bits=44 entropy=1 transform8=1",
+    "h264 syntax nal=1 first_mb=0 slice_type=0 pps_id=16 va_type=0 va_l0=0 va_l1=0 refs=4 frame_num=1 poc_type=2 offset_bits=44 entropy=1 transform8=1",
+    "h264 syntax nal=1 first_mb=0 slice_type=0 pps_id=16 va_type=0 va_l0=1 va_l1=0 refs=4 frame_num=2 poc_type=2 offset_bits=44 entropy=1 transform8=1",
+    "h264 syntax nal=1 first_mb=0 slice_type=0 pps_id=16 va_type=0 va_l0=2 va_l1=0 refs=4 frame_num=3 poc_type=2 offset_bits=41 entropy=1 transform8=1"
+  ],
+  "sessionFinish": [],
+  "nativeSampleCount": 48,
+  "sampleSpanSeconds": 234.23191918945312,
+  "firstSample": {
+    "timestamp": 1791179731722,
+    "event": "native-webrtc-decoder",
+    "status": "sampled",
+    "streams": [
+      {
+        "codec": "video/H264",
+        "decoder": "ExternalDecoder (VaapiVideoDecoder)",
+        "powerEfficientDecoder": true,
+        "framesDecoded": 225,
+        "framesDropped": 0,
+        "totalDecodeTime": 1.321431,
+        "statsTimestamp": 1791179731082.734
+      }
+    ]
+  },
+  "lastSample": {
+    "timestamp": 1791179965947,
+    "event": "native-webrtc-decoder",
+    "status": "sampled",
+    "streams": [
+      {
+        "codec": "video/H264",
+        "decoder": "ExternalDecoder (VaapiVideoDecoder)",
+        "powerEfficientDecoder": true,
+        "framesDecoded": 14279,
+        "framesDropped": 0,
+        "totalDecodeTime": 63.994462999999996,
+        "statsTimestamp": 1791179965314.653
+      }
+    ]
+  },
+  "decodersSeen": [
+    "ExternalDecoder (VaapiVideoDecoder)"
+  ],
+  "fallbackSeen": false,
+  "clientPid": 51018,
+  "gpuSandboxDisabled": false,
+  "requestedOzone": "wayland",
+  "gfnHardwareDecodeValidated": true,
+  "humanVisualValidation": false,
+  "zeroCopyValidated": false,
+  "gfnHEVCValidated": false,
+  "note": "Live observation, not final session accounting. Browser and Iris evidence must agree. No video payload exported.",
+  "validationScope": "Bounded live H264 GFN stream; successful Iris CAPTURE and native Chromium decoder samples agree. Pixel correctness and long-term reliability not established."
+}

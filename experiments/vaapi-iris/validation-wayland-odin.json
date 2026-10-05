@@ -1,0 +1,245 @@
+{
+  "date": "2026-10-05",
+  "device": "AYN Odin 2 Portal",
+  "kernel": "7.2.6",
+  "electron": "44.5.1",
+  "chromium": "152.0.7977.130",
+  "gpuSandboxDisabled": false,
+  "hostImageModified": false,
+  "shadowBridgeEnabledInGFN": false,
+  "gfnHardwareDecodeValidated": false,
+  "gfnHEVCValidated": false,
+  "zeroCopyValidated": false,
+  "comparisons": [
+    {
+      "file": "local.log",
+      "decoderLines": [
+        "[40635:1005/073616.944189:INFO:third_party/webrtc/modules/video_coding/generic_decoder.cc:307] Decoder implementation: DecoderInfo { prefers_late_decoding = implementation_name = 'ExternalDecoder (VaapiVideoDecoder)', is_hardware_accelerated = true }",
+        "session open node=/dev/video0 mode=display-order codec=H264 1280x720 au=7077888 output=4 t=725",
+        "va create_context id=2 profile=13 1280x720 targets=0 mode=display-order t=725",
+        "[40613:1005/073616.982800:VERBOSE2:media/gpu/chromeos/video_decoder_pipeline.cc:1305] PickDecoderOutputFormat(): Initializing ImageProcessor; max buffers: 5",
+        "va destroy_context id=2 pending=0 t=729",
+        "[40635:1005/073616.986630:INFO:third_party/webrtc/modules/video_coding/generic_decoder.cc:362] Changed decoder implementation to: DecoderInfo { prefers_late_decoding = implementation_name = 'FFmpeg (fallback from: ExternalDecoder (VaapiVideoDecoder))', is_hardware_accelerated = false }"
+      ],
+      "samples": [
+        {
+          "probe": "vaapi-local",
+          "streams": [
+            {
+              "decoder": "unknown",
+              "powerEfficient": null,
+              "framesDecoded": 435,
+              "framesDropped": 5,
+              "codec": "video/H264"
+            }
+          ],
+          "gpuFeatures": {
+            "2d_canvas": "enabled",
+            "direct_rendering_display_compositor": "disabled_off_ok",
+            "gpu_compositing": "enabled",
+            "multiple_raster_threads": "enabled_on",
+            "opengl": "enabled_on",
+            "rasterization": "enabled",
+            "raw_draw": "disabled_off_ok",
+            "skia_graphite": "disabled_off",
+            "trees_in_viz": "disabled_off",
+            "video_decode": "enabled",
+            "video_encode": "disabled_software",
+            "vulkan": "disabled_off",
+            "webgl": "enabled",
+            "webgpu": "enabled",
+            "webgpu_on_vk_via_gl_interop": "enabled",
+            "webnn": "disabled_off"
+          },
+          "hardwareValidated": false,
+          "note": "Synthetic stream only; inspect decoder report and driver submissions, not advertised capabilities."
+        }
+      ]
+    },
+    {
+      "file": "wayland.log",
+      "decoderLines": [
+        "[41427:1005/073827.963919:INFO:third_party/webrtc/modules/video_coding/generic_decoder.cc:307] Decoder implementation: DecoderInfo { prefers_late_decoding = implementation_name = 'ExternalDecoder (VaapiVideoDecoder)', is_hardware_accelerated = true }",
+        "session open node=/dev/video0 mode=display-order codec=H264 1280x720 au=7077888 output=4 t=393",
+        "va create_context id=2 profile=13 1280x720 targets=0 mode=display-order t=393",
+        "[41420:1005/073828.009493:VERBOSE1:media/gpu/chromeos/video_decoder_pipeline.cc:1225] PickDecoderOutputFormat(): Initializing frame pool with up to 11 VideoFrames. No ImageProcessor needed.",
+        "va create_surfaces count=1 1280x720 fourcc=NV12 imported=0 t=393",
+        "va create_surfaces count=1 1280x720 fourcc=NV12 imported=0 t=394",
+        "va create_surfaces count=1 1280x720 fourcc=NV12 imported=0 t=404",
+        "va create_surfaces count=1 1280x720 fourcc=NV12 imported=0 t=495",
+        "va create_surfaces count=1 1280x720 fourcc=NV12 imported=0 t=542",
+        "va create_surfaces count=1 1280x720 fourcc=NV12 imported=0 t=589",
+        "va destroy_context id=2 pending=1 t=15335",
+        "session finish submitted=445 completed=444 errors=0 drops=1 timeouts=0 drains=1 misplaced=0 t=15337"
+      ],
+      "samples": [
+        {
+          "probe": "vaapi-local",
+          "streams": [
+            {
+              "decoder": "unknown",
+              "powerEfficient": null,
+              "framesDecoded": 443,
+              "framesDropped": 1,
+              "codec": "video/H264"
+            }
+          ],
+          "gpuFeatures": {
+            "2d_canvas": "enabled",
+            "direct_rendering_display_compositor": "disabled_off_ok",
+            "gpu_compositing": "enabled",
+            "multiple_raster_threads": "enabled_on",
+            "opengl": "enabled_on",
+            "rasterization": "enabled",
+            "raw_draw": "disabled_off_ok",
+            "skia_graphite": "disabled_off",
+            "trees_in_viz": "disabled_off",
+            "video_decode": "enabled",
+            "video_encode": "disabled_software",
+            "vulkan": "disabled_off",
+            "webgl": "enabled",
+            "webgpu": "enabled",
+            "webgpu_on_vk_via_gl_interop": "enabled",
+            "webnn": "disabled_off"
+          },
+          "hardwareValidated": false,
+          "note": "Synthetic stream only; inspect decoder report and driver submissions, not advertised capabilities."
+        }
+      ]
+    },
+    {
+      "file": "gfn-wayland.log",
+      "decoderLines": [
+        "session open node=/dev/video0 mode=display-order codec=H264 1920x1088 au=7077888 output=4 t=12742",
+        "va create_context id=3 profile=7 1920x1088 targets=0 mode=display-order t=12742",
+        "[41902:1005/073946.887260:VERBOSE1:media/gpu/chromeos/video_decoder_pipeline.cc:1225] PickDecoderOutputFormat(): Initializing frame pool with up to 10 VideoFrames. No ImageProcessor needed.",
+        "va create_surfaces count=1 1920x1088 fourcc=NV12 imported=0 t=12743",
+        "va create_surfaces count=1 1920x1088 fourcc=NV12 imported=0 t=12746",
+        "va create_surfaces count=1 1920x1088 fourcc=NV12 imported=0 t=12764",
+        "va create_surfaces count=1 1920x1088 fourcc=NV12 imported=0 t=12767",
+        "va create_surfaces count=1 1920x1088 fourcc=NV12 imported=0 t=12770",
+        "va create_surfaces count=1 1920x1088 fourcc=NV12 imported=0 t=12773",
+        "va create_surfaces count=1 1920x1088 fourcc=NV12 imported=0 t=12775",
+        "va destroy_context id=3 pending=1 t=37501",
+        "session finish submitted=1475 completed=0 errors=1475 drops=0 timeouts=0 drains=1 misplaced=0 t=37502",
+        "session open node=/dev/video0 mode=display-order codec=H264 1680x1056 au=7077888 output=4 t=37590",
+        "va create_context id=5911 profile=7 1680x1056 targets=0 mode=display-order t=37590",
+        "[41902:1005/074011.734668:VERBOSE1:media/gpu/chromeos/video_decoder_pipeline.cc:1225] PickDecoderOutputFormat(): Initializing frame pool with up to 11 VideoFrames. No ImageProcessor needed.",
+        "va create_surfaces count=1 1680x1056 fourcc=NV12 imported=0 t=37590",
+        "va create_surfaces count=1 1680x1056 fourcc=NV12 imported=0 t=37594",
+        "va create_surfaces count=1 1680x1056 fourcc=NV12 imported=0 t=37614",
+        "va create_surfaces count=1 1680x1056 fourcc=NV12 imported=0 t=37617",
+        "va create_surfaces count=1 1680x1056 fourcc=NV12 imported=0 t=37621",
+        "va create_surfaces count=1 1680x1056 fourcc=NV12 imported=0 t=37624",
+        "va create_surfaces count=1 1680x1056 fourcc=NV12 imported=0 t=37627"
+      ],
+      "samples": [
+        {
+          "timestamp": "2026-10-05T05:39:47.525Z",
+          "event": "native-webrtc-decoder",
+          "status": "waiting",
+          "streams": []
+        },
+        {
+          "timestamp": 1791178791855,
+          "event": "native-webrtc-decoder",
+          "status": "sampled",
+          "streams": [
+            {
+              "codec": "video/H264",
+              "decoder": "ExternalDecoder (VaapiVideoDecoder)",
+              "powerEfficientDecoder": true,
+              "framesDecoded": 268,
+              "framesDropped": 0,
+              "totalDecodeTime": 0.829735,
+              "statsTimestamp": 1791178791236.859
+            }
+          ]
+        },
+        {
+          "timestamp": 1791178796868,
+          "event": "native-webrtc-decoder",
+          "status": "sampled",
+          "streams": [
+            {
+              "codec": "video/H264",
+              "decoder": "ExternalDecoder (VaapiVideoDecoder)",
+              "powerEfficientDecoder": true,
+              "framesDecoded": 569,
+              "framesDropped": 0,
+              "totalDecodeTime": 1.545458,
+              "statsTimestamp": 1791178796242.777
+            }
+          ]
+        },
+        {
+          "timestamp": 1791178801866,
+          "event": "native-webrtc-decoder",
+          "status": "sampled",
+          "streams": [
+            {
+              "codec": "video/H264",
+              "decoder": "ExternalDecoder (VaapiVideoDecoder)",
+              "powerEfficientDecoder": true,
+              "framesDecoded": 870,
+              "framesDropped": 0,
+              "totalDecodeTime": 2.35932,
+              "statsTimestamp": 1791178801247.566
+            }
+          ]
+        },
+        {
+          "timestamp": 1791178806863,
+          "event": "native-webrtc-decoder",
+          "status": "sampled",
+          "streams": [
+            {
+              "codec": "video/H264",
+              "decoder": "ExternalDecoder (VaapiVideoDecoder)",
+              "powerEfficientDecoder": true,
+              "framesDecoded": 1170,
+              "framesDropped": 0,
+              "totalDecodeTime": 3.102157,
+              "statsTimestamp": 1791178806248.196
+            }
+          ]
+        },
+        {
+          "timestamp": 1791178811845,
+          "event": "native-webrtc-decoder",
+          "status": "sampled",
+          "streams": [
+            {
+              "codec": "video/H264",
+              "decoder": "ExternalDecoder (VaapiVideoDecoder)",
+              "powerEfficientDecoder": true,
+              "framesDecoded": 1453,
+              "framesDropped": 0,
+              "totalDecodeTime": 3.8735969999999997,
+              "statsTimestamp": 1791178811240.535
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "interpretation": "Wayland/ANGLE GL bypasses the pre-surface failure. Synthetic H264 completes on Iris. Real GFN hardware implementation reports conflict with firmware OUTPUT errors; do not report success.",
+  "sourceHashes": {
+    "gpu_mojo_media_client_linux.cc": "07e437d15f88c925df17024e2650e823f73824ae5dab23ab8816c566b6ffec52",
+    "vaapi_image_processor_backend.cc": "4882044786c11e14641a7be36abefa854146a14564d77b55424809321e888821",
+    "vaapi_video_decoder.cc": "dc086fa0014f9b7bbdf1cd2b6371998e04b3c333b5df55dc7264a48596aff591",
+    "dmabuf_video_frame_pool.cc": "050953edbc006702301d9c05112fa5f368ec2966f3598b5380057638f1319766",
+    "image_processor_factory.cc": "e967c4a2aecb516f4b1fad561be787f9f9b71afc248bbcce566c536a2e59d13c",
+    "ozone_platform_x11.cc": "9fd667496147b2ea949d0de4785175ee34802fa952695f7edd5c5e6960e9ed7c",
+    "vaapi_wrapper.cc": "fdd85b224e507faf9a564fd4ed4a20a3d776e8d8286bb090140f3e64ca42f81b",
+    "media_switches.cc": "4e1fe970d335e214965d6c569ca86717fbb351d35630a60315055efc82cc9854",
+    "platform_video_frame_utils.cc": "12096ccfd8d5e7753a8c67c5347239b0185b3ee06a31ed67e26f12055eecd022",
+    "h264.cc": "7eede5469e51055ec71ce082423da82bcd1b028d6e1a7a1b5c4eff1c956d1368",
+    "ozone_platform_wayland.cc": "7069aed4c4e4df90e0394677625a6ba98fbbe021d1a6923887eede87622b4808",
+    "platform_video_frame_pool.cc": "9e378ab64ff01f5f1db8dcbc1c6b3ac0338ca0f7801f5c892b9d83fbb5a9626e",
+    "gpu_video_decode_accelerator_factory.cc": "a3487445016152a8a52784fc89c4dd7e625ea40bed71fb1a0edd9ddeb1c5216e",
+    "gpu_video_accelerator_util.cc": "0bc83366bdfa3da7593adbed029233ccb58a3f9f273942cbe50e3f11dd05bfc4",
+    "video_decoder_pipeline.cc": "0e43d78b9491354857f4beccddbbc30cfcd43544158d19ec62d3c3bc9914eae5",
+    "vd_video_decode_accelerator.cc": "f9b54dd3e6bd8607ac600330d13f48f4252b1276c14982b4616486e964dd39fe"
+  }
+}

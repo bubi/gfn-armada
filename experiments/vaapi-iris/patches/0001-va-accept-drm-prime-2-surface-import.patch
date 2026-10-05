@@ -1,0 +1,132 @@
+diff --git a/src/iris/alloc.h b/src/iris/alloc.h
+index ec90c74..3c0024d 100644
+--- a/src/iris/alloc.h
++++ b/src/iris/alloc.h
+@@ -14,7 +14,7 @@
+ 
+ namespace iris {
+ 
+-enum class MemoryOrigin { MsmCoherent, MsmWriteCombined, DmaHeap };
++enum class MemoryOrigin { MsmCoherent, MsmWriteCombined, DmaHeap, Imported };
+ 
+ class StableBuffer {
+ public:
+diff --git a/src/va/surface.cc b/src/va/surface.cc
+index 14e45df..f03907a 100644
+--- a/src/va/surface.cc
++++ b/src/va/surface.cc
+@@ -103,11 +103,74 @@ VAStatus createSurfaces2(VADriverContextP ctx, unsigned format, unsigned width,
+                 throw iris::Error(VA_STATUS_ERROR_ATTR_NOT_SUPPORTED, "unsupported surface attribute");
+             }
+         }
+-        // Client-provided memory (DRM_PRIME_2 import) is the research track
+-        // of architecture §3.5; refuse it explicitly so the client falls back
+-        // to driver-allocated surfaces instead of decoding into nothing.
+-        iris::require(memory_type == VA_SURFACE_ATTRIB_MEM_TYPE_VA && external == nullptr,
+-            "external surface memory is not supported", VA_STATUS_ERROR_UNSUPPORTED_MEMORY_TYPE);
++        // The older MEM_TYPE_DRM_PRIME / KERNEL_DRM descriptor shape is not
++        // accepted; only VA-allocated surfaces and DRM_PRIME_2 import are.
++        iris::require(memory_type == VA_SURFACE_ATTRIB_MEM_TYPE_VA
++                || memory_type == VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2,
++            "unsupported surface memory type", VA_STATUS_ERROR_UNSUPPORTED_MEMORY_TYPE);
++        const bool importing = memory_type == VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2;
++        iris::require(importing || external == nullptr, "external descriptor without DRM_PRIME_2",
++            VA_STATUS_ERROR_UNSUPPORTED_MEMORY_TYPE);
++
++        std::unique_ptr<iris::StableBuffer> imported;
++        if (importing) {
++            // For DRM_PRIME_2 the descriptor is a VADRMPRIMESurfaceDescriptor,
++            // not the VASurfaceAttribExternalBuffers of the older memory types.
++            iris::require(external != nullptr, "DRM_PRIME_2 needs an external buffer descriptor",
++                VA_STATUS_ERROR_INVALID_PARAMETER);
++            iris::require(count == 1, "import creates one surface at a time", VA_STATUS_ERROR_INVALID_PARAMETER);
++            const auto& desc = *reinterpret_cast<const VADRMPRIMESurfaceDescriptor*>(external);
++            iris::require(desc.fourcc == fourcc, "imported fourcc does not match the RT format",
++                VA_STATUS_ERROR_UNSUPPORTED_RT_FORMAT);
++            iris::require(desc.num_objects == 1, "only single-object imports are supported",
++                VA_STATUS_ERROR_UNSUPPORTED_MEMORY_TYPE);
++            const uint64_t modifier = desc.objects[0].drm_format_modifier;
++            // The copy engine writes linear NV12/P010. A tiled or compressed
++            // import would need a detiling blit, so refuse it rather than
++            // produce a corrupt frame.
++            iris::require(modifier == DRM_FORMAT_MOD_LINEAR || modifier == DRM_FORMAT_MOD_INVALID,
++                "imported buffer is not linear", VA_STATUS_ERROR_UNSUPPORTED_MEMORY_TYPE);
++            // Accept both descriptor shapes the exporter produces: one layer
++            // with two planes, or two single-plane layers.
++            unsigned luma_pitch = 0, luma_offset = 0, chroma_offset = 0;
++            if (desc.num_layers == 1) {
++                iris::require(desc.layers[0].num_planes == 2, "composed import needs two planes",
++                    VA_STATUS_ERROR_UNSUPPORTED_MEMORY_TYPE);
++                luma_pitch = desc.layers[0].pitch[0];
++                luma_offset = desc.layers[0].offset[0];
++                chroma_offset = desc.layers[0].offset[1];
++            } else if (desc.num_layers == 2) {
++                iris::require(desc.layers[0].num_planes == 1 && desc.layers[1].num_planes == 1,
++                    "split import needs one plane per layer", VA_STATUS_ERROR_UNSUPPORTED_MEMORY_TYPE);
++                luma_pitch = desc.layers[0].pitch[0];
++                luma_offset = desc.layers[0].offset[0];
++                chroma_offset = desc.layers[1].offset[0];
++            } else {
++                throw iris::Error(VA_STATUS_ERROR_UNSUPPORTED_MEMORY_TYPE, "unsupported import layer count");
++            }
++            iris::require(luma_pitch > 0 && chroma_offset > luma_offset,
++                "imported plane layout is not usable", VA_STATUS_ERROR_UNSUPPORTED_MEMORY_TYPE);
++            const unsigned rows = (chroma_offset - luma_offset) / luma_pitch;
++            iris::require(luma_offset + luma_pitch * rows == chroma_offset && rows >= height,
++                "imported chroma offset is not a whole number of luma rows",
++                VA_STATUS_ERROR_UNSUPPORTED_MEMORY_TYPE);
++            iris::Layout layout;
++            layout.fourcc = fourcc;
++            layout.width = width;
++            layout.height = height;
++            layout.stride = luma_pitch;
++            layout.storage_height = rows;
++            layout.data_offset = luma_offset;
++            layout.size = desc.objects[0].size;
++            iris::require(layout.size >= chroma_offset + luma_pitch * (height / 2),
++                "imported buffer is too small for the geometry", VA_STATUS_ERROR_INVALID_PARAMETER);
++            // Own a duplicate so the buffer survives the client closing its fd.
++            const int fd = fcntl(desc.objects[0].fd, F_DUPFD_CLOEXEC, 0);
++            iris::require(fd >= 0, "duplicate imported DMA-BUF fd");
++            imported = std::make_unique<iris::StableBuffer>(fd, layout.size, iris::MemoryOrigin::Imported, layout);
++            d.trace("va import_surface %ux%u fourcc=%.4s pitch=%u rows=%u offsets=%u/%u size=%u", width, height,
++                reinterpret_cast<const char*>(&fourcc), luma_pitch, rows, luma_offset, chroma_offset, layout.size);
++        }
+ 
+         std::lock_guard<std::recursive_mutex> lock(d.mutex);
+         for (unsigned i = 0; i < count; ++i) {
+@@ -115,11 +178,17 @@ VAStatus createSurfaces2(VADriverContextP ctx, unsigned format, unsigned width,
+             s->width = width;
+             s->height = height;
+             s->fourcc = fourcc;
++            if (importing) {
++                s->stable = std::move(imported);
++                // The client already holds this memory, so every completion
++                // must land in it: that is exactly the persistent-export rule.
++                s->persistent_export = true;
++            }
+             ids[i] = d.next_id++;
+             d.surfaces[ids[i]] = s;
+         }
+-        d.trace("va create_surfaces count=%u %ux%u fourcc=%.4s", count, width, height,
+-            reinterpret_cast<const char*>(&fourcc));
++        d.trace("va create_surfaces count=%u %ux%u fourcc=%.4s imported=%d", count, width, height,
++            reinterpret_cast<const char*>(&fourcc), importing ? 1 : 0);
+         return VA_STATUS_SUCCESS;
+     });
+ }
+@@ -226,7 +295,13 @@ VAStatus querySurfaceAttributes(VADriverContextP ctx, VAConfigID config, VASurfa
+     add(VASurfaceAttribMaxWidth, static_cast<int>(d.capabilities.max_width), VA_SURFACE_ATTRIB_GETTABLE);
+     add(VASurfaceAttribMinHeight, static_cast<int>(d.capabilities.min_height), VA_SURFACE_ATTRIB_GETTABLE);
+     add(VASurfaceAttribMaxHeight, static_cast<int>(d.capabilities.max_height), VA_SURFACE_ATTRIB_GETTABLE);
+-    add(VASurfaceAttribMemoryType, VA_SURFACE_ATTRIB_MEM_TYPE_VA, VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE);
++    // One entry carrying the OR of the supported types, as libva expects.
++    // DRM_PRIME_2 import lets a client that allocates its own frames (Chrome's
++    // frame pool) hand them in; without the decode-order kernel module the
++    // session publishes by copy into the imported buffer rather than decoding
++    // straight into it.
++    add(VASurfaceAttribMemoryType, VA_SURFACE_ATTRIB_MEM_TYPE_VA | VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2,
++        VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE);
+     if (attributes)
+         std::copy_n(list, std::min(n, *count), attributes);
+     *count = n;

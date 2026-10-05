@@ -1,0 +1,53 @@
+--- a/src/codec/h264.cc
++++ b/src/codec/h264.cc
+@@ -12,6 +12,8 @@
+ 
+ #include <algorithm>
+ #include <cstring>
++#include <cstdio>
++#include "../util/options.h"
+ 
+ namespace iris::codec {
+ 
+@@ -102,6 +104,32 @@
+             "H.264 picture without parameters or slices", VA_STATUS_ERROR_INVALID_PARAMETER);
+         const auto& parameters = *static_cast<const VAPictureParameterBufferH264*>(picture.parameters);
+         const auto& first_slice = *static_cast<const VASliceParameterBufferH264*>(picture.slice_parameters.front());
++
++        if (trace_count_ < 4 && trace_enabled_) {
++            ++trace_count_;
++            const auto [data, size] = picture.slice_data.front();
++            size_t offset = 0;
++            if (has_start_code(data, size)) offset = data[2] == 1 ? 3 : 4;
++            if (offset < size) {
++                BitReader reader(data + offset, size - offset, 1);
++                reader.skip(8);
++                const auto read_ue = [&reader]() -> unsigned {
++                    unsigned zeros = 0;
++                    while (!reader.exhausted() && !reader.bit()) {
++                        if (++zeros >= 32) return UINT32_MAX;
++                    }
++                    if (reader.exhausted() || reader.size_bits() - reader.position() < zeros) return UINT32_MAX;
++                    return ((1u << zeros) - 1) + reader.bits(zeros);
++                };
++                const unsigned first_mb = read_ue(), type = read_ue(), pps_id = read_ue();
++                std::fprintf(stderr, "h264 syntax nal=%u first_mb=%u slice_type=%u pps_id=%u va_type=%u va_l0=%u va_l1=%u refs=%u frame_num=%u poc_type=%u offset_bits=%u entropy=%u transform8=%u\n",
++                    data[offset] & 31u, first_mb, type, pps_id, first_slice.slice_type,
++                    first_slice.num_ref_idx_l0_active_minus1, first_slice.num_ref_idx_l1_active_minus1,
++                    parameters.num_ref_frames, parameters.frame_num, parameters.seq_fields.bits.pic_order_cnt_type,
++                    first_slice.slice_data_bit_offset, parameters.pic_fields.bits.entropy_coding_mode_flag,
++                    parameters.pic_fields.bits.transform_8x8_mode_flag);
++            }
++        }
+ 
+         out.bytes.clear();
+         out.deferred = false;
+@@ -127,6 +155,8 @@
+ 
+ private:
+     uint8_t profile_idc_;
++    unsigned trace_count_ = 0;
++    const bool trace_enabled_ = Options::from_environment().trace;
+ };
+ 
+ } // namespace

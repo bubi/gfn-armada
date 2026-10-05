@@ -1,0 +1,39 @@
+{
+  "driver": "qualcomm-iris-vaapi",
+  "upstream": "https://github.com/phxinyang/qualcomm-iris-vaapi",
+  "commit": "f587b14e6b22955c7250a45ff5f43588bbce2114",
+  "commitDate": "2026-09-22T10:24:50Z",
+  "commitCount": 100,
+  "license": "MIT AND LGPL-2.1-or-later",
+  "lineage": "Copyright headers name Bootlin (2019) and Max Schettler (2023); descended from the libva-v4l2 work, not written from nothing.",
+  "driverModule": "v4l2_drv_video.so",
+  "libvaDriverName": "v4l2",
+  "upstreamQualifiedTarget": {
+    "soc": "Snapdragon SM8550",
+    "distribution": "Fedora 44 ARM64",
+    "kernel": "7.2.0-sm8550",
+    "client": "Google Chrome 152"
+  },
+  "ourTarget": {
+    "device": "Odin 2 Portal",
+    "soc": "Snapdragon 8 Gen 2 (SM8550)",
+    "gpu": "Adreno 740, measured as ANGLE (freedreno, FD740, OpenGL 4.6)",
+    "decoderNode": "qcom-iris-decoder, /sys/bus/platform/drivers/qcom-iris",
+    "client": "Electron 44.5.1 / Chromium 152.0.7977.130"
+  },
+  "upstreamClaims": {
+    "h264": "hardware decode, zero-copy import, frame MD5 equal to the native V4L2 decoder",
+    "hevcMain": "hardware decode, zero-copy import, Fluster JCT-VC-HEVC_V1 111/147 (firmware 112)",
+    "hevcMain10": "hardware decode, zero-copy import, MD5 equal at 10-bit",
+    "vp9": "hardware decode via GPU blit",
+    "av1": "not advertised, opt-in only; VA clients time out on hidden frames",
+    "verificationStatus": "self-reported by the upstream author; no independent validation, 0 stars, single author, created 2026-09-22"
+  },
+  "buildRequires": [
+    "meson >= 0.56.0", "ninja-build", "gcc-c++", "pkgconfig", "python3",
+    "pkgconfig(libva) >= 1.1.0", "pkgconfig(libdrm) >= 2.4.52",
+    "pkgconfig(egl)", "pkgconfig(glesv2)", "pkgconfig(gbm)"
+  ],
+  "runtimeRequires": ["libva", "v4l-utils"],
+  "installStrategy": "No host image modification and no rpm-ostree layering. The module is built in a throwaway Fedora container and loaded through LIBVA_DRIVERS_PATH, so the experiment is removed by deleting one directory."
+}
