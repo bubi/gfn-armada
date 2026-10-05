@@ -20,6 +20,79 @@ if(location.origin==='https://play.geforcenow.com') {
     ipcRenderer.send('browser-identity-status',applied);
   }catch{ipcRenderer.send('browser-identity-status',{failed:true});}
 }
+// Experimental HEVC negotiation; original login/UI remain in place.
+// Self-contained for synchronous execution in the page's main world.
+function installHevcExperiment() {
+  const emit=data=>window.postMessage({type:'gfn-armada-hevc-experiment',data},location.origin);
+  const caps=()=>RTCRtpReceiver.getCapabilities('video')?.codecs||[];
+  const hasHevc=()=>caps().some(c=>c.mimeType.toLowerCase()==='video/h265');
+  function rewrite(url,method,body) {
+    try {
+      const u=new URL(url,location.href);
+      if(u.protocol!=='https:'||!['nvidiagrid.net','geforcenow.com'].some(h=>u.hostname===h||u.hostname.endsWith('.'+h))||
+        u.pathname!=='/v2/session'||String(method).toUpperCase()!=='POST'||typeof body!=='string'||body.length>262144)return body;
+      const value=JSON.parse(body),r=value.sessionRequestData,f=r?.requestedStreamingFeatures;
+      if(!f||typeof f!=='object'||Array.isArray(f)||![0,1,2,3].includes(f.codec))return body;
+      // Restrict to the observed browser WebRTC request; never alter native/resume requests.
+      if(!Array.isArray(r.metaData)||!r.metaData.some(m=>m.key==='GSStreamerType'&&m.value==='WebRTC'))return body;
+      const monitors=r.clientRequestMonitorSettings;
+      if(r.sdrHdrMode!==0||f.bitDepth!==0||f.chromaFormat!==0||!Array.isArray(monitors)||
+        !monitors.length||!monitors.every(m=>m.widthInPixels===1920&&m.heightInPixels===1080&&m.framesPerSecond===60)) {
+        emit({event:'request-skipped-profile'});return body;
+      }
+      if(!hasHevc()){emit({event:'request-skipped-capability'});return body;}
+      const previousCodec=f.codec;f.codec=2;
+      emit({event:'request-preferred',previousCodec,requestedCodec:2});
+      return JSON.stringify(value);
+    }catch{return body;}
+  }
+  const fetch=window.fetch;
+  window.fetch=function(input,init) {
+    const url=typeof input==='string'||input instanceof URL?String(input):input?.url;
+    if(init&&typeof init.body==='string')init={...init,body:rewrite(url,init.method||input?.method||'GET',init.body)};
+    return fetch.call(this,input,init);
+  };
+  const open=XMLHttpRequest.prototype.open,send=XMLHttpRequest.prototype.send,requests=new WeakMap();
+  XMLHttpRequest.prototype.open=function(method,url,...rest){requests.set(this,{method,url});return open.call(this,method,url,...rest);};
+  XMLHttpRequest.prototype.send=function(body){const r=requests.get(this);return send.call(this,r?rewrite(r.url,r.method,body):body);};
+  // Read only video sections; export codec names, never raw SDP/ICE/identifiers.
+  function offered(sdp) {
+    const names=new Set();let video=false;
+    for(const line of String(sdp||'').split(/\r?\n/)) {
+      if(line.startsWith('m='))video=line.startsWith('m=video ');
+      if(video){const m=line.match(/^a=rtpmap:\d+ (H264|H265|AV1)\/90000/i);if(m)names.add(m[1].toUpperCase());}
+    }
+    return [...names];
+  }
+  const remote=RTCPeerConnection.prototype.setRemoteDescription,answer=RTCPeerConnection.prototype.createAnswer;
+  RTCPeerConnection.prototype.setRemoteDescription=function(description) {
+    if(description?.type==='offer')emit({event:'server-offer',codecs:offered(description.sdp)});
+    return remote.call(this,description);
+  };
+  RTCPeerConnection.prototype.createAnswer=async function(...args) {
+    if(this.remoteDescription?.type==='offer'&&offered(this.remoteDescription.sdp).includes('H265')) {
+      try {
+        const codecs=caps();
+        const rank=c=>c.mimeType.toLowerCase()==='video/h265'?0:c.mimeType.toLowerCase()==='video/h264'?1:2;
+        if(hasHevc())for(const t of this.getTransceivers())if(t.receiver.track.kind==='video')
+          t.setCodecPreferences([...codecs].sort((a,b)=>rank(a)-rank(b)));
+        emit({event:'answer-preferred',fallback:'H264'});
+      }catch{emit({event:'answer-preference-failed'});}
+    }
+    const result=await answer.apply(this,args);
+    emit({event:'answer-created',codecs:offered(result.sdp)});return result;
+  };
+  emit({event:'installed',receiveHevc:hasHevc()});
+}
+if(location.origin==='https://play.geforcenow.com'&&process.argv.includes('--gfn-armada-hevc-experiment')) {
+  let count=0;
+  window.addEventListener('message',e=>{
+    if(e.source===window&&e.origin===location.origin&&e.data?.type==='gfn-armada-hevc-experiment'&&count++<100)
+      ipcRenderer.send('hevc-experiment-status',e.data.data);
+  });
+  try{contextBridge.executeInMainWorld({func:installHevcExperiment});}
+  catch{ipcRenderer.send('hevc-experiment-status',{event:'install-failed'});}
+}
 // No Node API exposed to the remote page. Main-world observations are untrusted.
 function observe() {
   const peers=new Set();

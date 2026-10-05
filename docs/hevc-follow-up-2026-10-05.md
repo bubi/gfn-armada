@@ -44,3 +44,30 @@ The [Windows identity AppImage](../experiments/packaging/validation-browser-iden
 ## OpenNOW comparison
 
 The [pinned native and legacy Electron source comparison](opennow-evaluation.md#hevc-verhandlung-vergleich-vom-2026-10-05) finds an important distinction: legacy Electron OpenNOW owns CloudMatch codec selection and WebRTC signaling; current Qt OpenNOW selects the codec via native NVST/RTSP. Neither is merely the original website with another User-Agent. No codec forcing or OpenNOW runtime was introduced by this research.
+
+## Narrow negotiation experiment
+
+`GFN_ARMADA_HEVC_EXPERIMENT=1` enables a synchronous main-world preload hook.
+It changes only string-body POST `/v2/session` on HTTPS NVIDIA grid/GFN domains,
+with the observed `sessionRequestData`, `GSStreamerType=WebRTC`, existing numeric
+codec field, 1920×1080/60 monitor settings and 8-bit 4:2:0 SDR. It sets the existing
+CloudMatch codec field to 2. Fetch Request-only bodies and other request shapes
+are left untouched; skipped/missing coverage must not be reported as success.
+Resume and login requests are not modified. It does not change service headers,
+platform metadata, NVIDIA eligibility flags or decoder capabilities.
+
+For a real remote offer containing H.265, it orders real receiver capabilities
+H.265 first and H.264 second before createAnswer, retaining other codecs and
+auxiliary entries. It never adds payloads to SDP or changes HEVC level/tier.
+The original web UI may continue to say Unsupported. Server request rejection
+is possible; omit the environment variable to return to the validated H.264 path.
+No automatic session retry is implemented. A codec request or an answer containing
+H.265 is not proof of an active HEVC stream; require native stats and Iris evidence.
+
+Runtime `hevcExperiment.events` records a bounded allowlist of event names,
+codec names and numeric preferences, without request bodies, URLs or raw SDP.
+Main treats page observations as untrusted. Existing Chromium stats remain the
+independent active-codec observation. Worker-originated requests are not hooked.
+Three unit tests cover request scope/preservation, capability/profile exclusions,
+XHR and offer-dependent preferences. A real sandboxed Electron synthetic-origin
+smoke confirms installation, existing identity and absence of page Node access.
