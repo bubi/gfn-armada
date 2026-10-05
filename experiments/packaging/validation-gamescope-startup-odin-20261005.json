@@ -23,5 +23,18 @@
   "visibleImageConfirmed": false,
   "controllerConfirmed": false,
   "hardwareStream": "awaiting user game launch",
-  "scope": "Existing Steam Gaming Mode compositor; direct SSH process launch into native Wayland socket, not a Steam shortcut or validated stream."
+  "scope": "Existing Steam Gaming Mode compositor; direct SSH process launch into native Wayland socket, not a Steam shortcut or validated stream.",
+  "initialUserObservation": "Only Steam UI visible; direct process launch did not demonstrate visible output",
+  "focusDiagnostic": {
+    "testAppId": 2848364646,
+    "runtimePid": 99080,
+    "temporarySystemdScope": "app-steam-app2848364646-99014.scope",
+    "rootFocusOverride": "GAMESCOPECTRL_BASELAYER_APPID",
+    "focusedAppObserved": 2848364646,
+    "focusedWindowObserved": 2,
+    "visibleImageConfirmed": false,
+    "steamLibraryLaunch": false,
+    "originalFocusBackedUp": true,
+    "restoreOnClientExitConfigured": true
+  }
 }
