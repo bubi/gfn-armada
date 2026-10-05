@@ -12,6 +12,8 @@ Snapshot: 2026-10-05. Attribution index, not a replacement for upstream license 
 | `@iarna/toml` `2.2.5`, `@electron/packager` `20.3.0` | Runtime parser and build tooling; exact resolution in `package-lock.json`. Their licenses remain applicable. |
 | System libva, libdrm, EGL/GLES, GBM; GStreamer in native experiments | External runtime/build dependencies. System Mesa is not replaced. |
 
+The Iris upstream identifies [mxsrc/libva-v4l2](https://github.com/mxsrc/libva-v4l2) as its parent and Bootlin’s libva-v4l2-request as earlier lineage. It also credits [strongtz/libva-v4l2](https://github.com/strongtz/libva-v4l2) for included kernel patch files and the HEVC explicit-RPS rewrite approach. These are inherited upstream contributions, not our AI-generated patches; the included kernel patches were not applied for our measured H.264 session.
+
 NVIDIA’s proprietary GFN web application loads from the official service at runtime. Its full application is not redistributed as project source. A downloaded web script was used for research; observed schema/routes are not a guaranteed public integration contract.
 
 ## Local Iris patches
