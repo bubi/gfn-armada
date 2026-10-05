@@ -1,4 +1,25 @@
-const {ipcRenderer,webFrame}=require('electron');
+const {ipcRenderer,webFrame,contextBridge}=require('electron');
+// An explicit compatibility experiment, confined to the official GFN origin.
+// Synchronous main-world setup precedes page scripts. No IPC/Node API is exposed.
+if(location.origin==='https://play.geforcenow.com') {
+  const arg=process.argv.find(v=>v.startsWith('--gfn-armada-identity='));
+  if(arg)try {
+    const id=JSON.parse(arg.slice('--gfn-armada-identity='.length));
+    const applied=contextBridge.executeInMainWorld({func:id=>{
+      for(const [key,value] of [['userAgent',id.userAgent],['appVersion',id.userAgent.replace(/^Mozilla\//,'')],['platform',id.platform]])
+        Object.defineProperty(navigator,key,{configurable:true,get:()=>value});
+      const hints=id.hints;
+      const low=()=>({brands:hints.brands,mobile:hints.mobile,platform:hints.platform});
+      const data=Object.freeze({...low(),getHighEntropyValues:async keys=>{
+        const out=low();for(const key of keys)if(Object.hasOwn(hints,key))out[key]=hints[key];return out;
+      },toJSON:low});
+      Object.defineProperty(navigator,'userAgentData',{configurable:true,get:()=>data});
+      return {userAgentMatches:navigator.userAgent===id.userAgent,platformMatches:navigator.platform===id.platform,
+        hintPlatformMatches:navigator.userAgentData.platform===hints.platform};
+    },args:[id]});
+    ipcRenderer.send('browser-identity-status',applied);
+  }catch{ipcRenderer.send('browser-identity-status',{failed:true});}
+}
 // No Node API exposed to the remote page. Main-world observations are untrusted.
 function observe() {
   const peers=new Set();

@@ -86,6 +86,16 @@ This establishes **H.264 VPU decoding for that observed device session**. It doe
 
 Full failure analysis and source-level explanation: [VA-API investigation](docs/vaapi-investigation-2026-10-05.md).
 
+## Experimental browser identity
+
+For a controlled compatibility test, `GFN_ARMADA_BROWSER_IDENTITY=windows` selects a Windows Chrome identity; `macos`, `chromeos` and `linux` are also available. Omit the variable to retain the previous default. Example:
+
+```sh
+GFN_ARMADA_BROWSER_IDENTITY=windows ./gfn-armada-0.1.0-aarch64.AppImage --appimage-extract-and-run launch
+```
+
+This changes the session User-Agent, GFN-page `navigator.platform`/User-Agent Client Hints and matching request hints on `play.geforcenow.com`. It retains the actual Chromium version and CPU architecture in high-entropy hints. Workers are not overridden; this is not complete OS emulation. GPU identity, receive codecs and MediaCapabilities results remain untouched. Diagnostics record requested mode and observed page identity matches. No claim that this enables H.265; the original NVIDIA eligibility rules still apply. See [HEVC follow-up](docs/hevc-follow-up-2026-10-05.md).
+
 ## Build and try
 
 Node 22+ for development. Apple Silicon builds use a running Docker/Podman Linux ARM64 environment; byte-identical reproducibility is unproven.

@@ -19,6 +19,7 @@ if(cfg&&request?.resolved) {
   fs.mkdirSync(profile,{recursive:true,mode:0o700});
   app.setName('gfn-armada');app.setPath('userData',profile);app.setPath('sessionData',profile);
   const backend=ozonePlatform();
+  const browserIdentity=require('./browser-identity.cjs').identity({chrome:process.versions.chrome});
   if(backend) app.commandLine.appendSwitch('ozone-platform',backend);
   if(!cfg.hardware_decode) app.commandLine.appendSwitch('disable-accelerated-video-decode');
   // Opt-in VA-API decode. Chromium's render-node scan only considers PCI DRM
@@ -67,9 +68,11 @@ if(cfg&&request?.resolved) {
     hardwareDecoderActive:'unknown',dmabuf:'unknown',requestedOzone:backend||'default',
     vaapiDevicePath:vaapiNode??null,gpuSandboxDisabled,
     bundledDecoder:process.env.GFN_ARMADA_BUNDLED_DECODER_REPORT?JSON.parse(process.env.GFN_ARMADA_BUNDLED_DECODER_REPORT):null,
+    browserIdentity:browserIdentity?{mode:browserIdentity.mode,experimental:true,workerIdentity:'not-overridden'}:null,
     source:'page-reported; diagnostic evidence only',active:false};
   function save() {runtime.timestamp=new Date().toISOString();const f=path.join(root.state,'runtime.json');fs.writeFileSync(f+'.tmp',JSON.stringify(runtime,null,2),{mode:0o600});fs.renameSync(f+'.tmp',f)}
-  const prefs={nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true,preload:path.join(__dirname,'preload.cjs'),partition:'persist:gfn'};
+  const prefs={nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true,preload:path.join(__dirname,'preload.cjs'),partition:'persist:gfn',
+    additionalArguments:browserIdentity?[`--gfn-armada-identity=${JSON.stringify(browserIdentity)}`]:[]};
   function secure(window) {
     window.webContents.on('will-navigate',(event,url)=>{if(!allowed(url)){event.preventDefault();log('navigation-blocked',{origin:origin(url)})}});
     window.webContents.on('will-redirect',(event,url)=>{if(!allowed(url)){event.preventDefault();log('redirect-blocked',{origin:origin(url)})}});
@@ -95,13 +98,26 @@ if(cfg&&request?.resolved) {
       const ses=session.fromPartition('persist:gfn');
       ses.setPermissionRequestHandler((_wc,permission,callback)=>callback(['fullscreen','pointerLock'].includes(permission)));
       ses.setPermissionCheckHandler((_wc,permission)=>['fullscreen','pointerLock'].includes(permission));
-      if(cfg.compatibility_user_agent) {
+      if(browserIdentity) {
+        ses.setUserAgent(browserIdentity.userAgent);
+        ses.webRequest.onBeforeSendHeaders({urls:['https://play.geforcenow.com/*']},(details,callback)=>{
+          callback({requestHeaders:require('./browser-identity.cjs').requestHeaders(details.requestHeaders,browserIdentity)});
+        });
+        log('browser-identity',{mode:browserIdentity.mode,experimental:true,workerIdentity:'not-overridden'});
+      } else if(cfg.compatibility_user_agent) {
         const ua=`Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${process.versions.chrome} Safari/537.36`;
         ses.setUserAgent(ua);
       }
       app.on('browser-window-created',(_e,w)=>secure(w));
       win=new BrowserWindow({width:1280,height:720,title:'gfn-armada',backgroundColor:'#111111',fullscreen:cfg.fullscreen&&request.command==='launch',webPreferences:prefs});
       win.setMenu(null);
+      ipcMain.on('browser-identity-status',(event,data)=>{
+        if(!browserIdentity||event.sender!==win.webContents||!event.senderFrame?.url.startsWith(HOME))return;
+        runtime.browserIdentity.observation={userAgentMatches:data?.userAgentMatches===true,
+          platformMatches:data?.platformMatches===true,hintPlatformMatches:data?.hintPlatformMatches===true,
+          failed:data?.failed===true};
+        save();log('browser-identity-status',runtime.browserIdentity.observation);
+      });
       if(request.command==='library'){
         const dispose=require('./catalog-import.cjs').attachCatalogImport(win.webContents,{fetch:(...args)=>ses.fetch(...args),
           onProgress:data=>{win.setTitle(data.status==='waiting-for-gfn-login'?'GFN Armada — Sign in to import your library':`GFN Armada — Reading library${data.apps!==undefined?' ('+data.apps+' games)':''}`);log('catalog-progress',data)},
