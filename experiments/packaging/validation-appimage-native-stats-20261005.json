@@ -1,0 +1,38 @@
+{
+  "date": "2026-10-05",
+  "sourceCommit": "7e9ead6b91a7570556b5b334a7d9d29b71143769",
+  "artifact": "gfn-armada-0.1.0-aarch64-native-stats.AppImage",
+  "sha256": "205b31f87bdbe7206dd02f76a7d7a1e9e3f9b40c3a2e049e85ab5ef4d443e14e",
+  "driverSha256": "d4708081ceacaafabd78194d3a27c48b86a097ac990140c411802d6b25484251",
+  "cleanCommitUnitTests": {
+    "darwin-arm64": {
+      "passed": 60,
+      "failed": 0
+    },
+    "linux-arm64": {
+      "passed": 60,
+      "failed": 0
+    }
+  },
+  "realElectronSmoke": {
+    "platform": "darwin-arm64",
+    "syntheticH264": true,
+    "nativeDecoder": "ExternalDecoder (VideoToolboxVideoDecoder)",
+    "intervalDecodeMetrics": true,
+    "scope": "observer only, not Qualcomm hardware validation"
+  },
+  "arm64AppImageSmoke": {
+    "uid": 1000,
+    "driverDlopen": true,
+    "driverPatches": 4,
+    "cli": true,
+    "syntheticCatalog": true,
+    "temporarySteamReviewApplyRestore": true
+  },
+  "odinUpload": {
+    "checksumMatches": true,
+    "runningNewBuild": false,
+    "reason": "Awaiting approval to disconnect active game and restart"
+  },
+  "gfnHEVCValidated": false
+}
