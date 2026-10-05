@@ -21,6 +21,14 @@ hängenden SHASUMS-Netzwerkabruf geprüft. Netzwerk wird beim ersten
 Build benötigt. Input-Reproduzierbarkeit ist vorbereitet; Byte-identische
 Output-Reproduzierbarkeit über zwei kalte Builds ist noch nicht geprüft.
 
+Die Build-Scripts legen bei Bedarf zusätzlich einen Linux-ARM64-Electron-Cache
+`gfn-armada-electron-cache:44.5.1` an. `Containerfile.electron-cache` verwendet
+denselben Lockfile-Stand und die Prüfsummen des gepinnten Electron-Pakets.
+Der Bundle-Build übernimmt ausschließlich dessen Downloadcache; kein Benutzer-
+oder Chromium-Profil. So müssen Änderungen am Launcher den großen Runtime-
+Download nicht wiederholen. Direktes `docker build -f build/Containerfile` setzt
+diesen Cache voraus; auf einer neuen Maschine die Build-Scripts verwenden.
+
 ## Apple Silicon
 
 ```sh

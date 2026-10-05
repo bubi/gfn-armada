@@ -3,6 +3,9 @@ set -eu
 cd "$(dirname "$0")/.."
 engine="${CONTAINER_ENGINE:-docker}"
 "$engine" info >/dev/null
+if ! "$engine" image inspect gfn-armada-electron-cache:44.5.1 >/dev/null 2>&1; then
+  "$engine" build --platform linux/arm64 -f build/Containerfile.electron-cache -t gfn-armada-electron-cache:44.5.1 .
+fi
 "$engine" build --platform linux/arm64 -f build/Containerfile.iris -t gfn-armada-iris-builder .
 # Build the ordinary bundle image first; it also caches verified Electron files.
 "$engine" build --platform linux/arm64 -f build/Containerfile -t gfn-armada-builder .

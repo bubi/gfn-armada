@@ -4,6 +4,9 @@ cd "$(dirname "$0")/.."
 engine="${CONTAINER_ENGINE:-docker}"
 command -v "$engine" >/dev/null || { echo 'Install Docker or Podman with Linux ARM64 support' >&2; exit 1; }
 "$engine" info >/dev/null || { echo "Container engine $engine is not running or not accessible; start its Linux ARM64 VM and retry." >&2; exit 1; }
+if ! "$engine" image inspect gfn-armada-electron-cache:44.5.1 >/dev/null 2>&1; then
+  "$engine" build --platform linux/arm64 -f build/Containerfile.electron-cache -t gfn-armada-electron-cache:44.5.1 .
+fi
 "$engine" build --platform linux/arm64 -f build/Containerfile -t gfn-armada-builder .
 mkdir -p dist
 # Export over the engine stream instead of copying hundreds of files through
