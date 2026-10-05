@@ -122,3 +122,97 @@ Upstream-/Serveränderungen können Sitzungsaufbau und Codecverhandlung beeinflu
 
 Das Projekt ist MIT-lizenziert; bei Codeübernahme Copyright/Lizenz erhalten.
 Abhängigkeiten haben separate Lizenzhinweise. Bisher kein Upstream-Code kopiert.
+
+## HEVC-Verhandlung: Vergleich vom 2026-10-05
+
+Anlass: Der Windows-Identitätstest von gfn-armada meldet passende UA-/Plattform-
+Werte, aber der Nutzer berichtet weiterhin keine auswählbare H.265-Option.
+Nur Quellcode gelesen; OpenNOW weder gestartet noch angemeldet. Aktuelles `main`
+bleibt `bee18c118dbc89f42319436dcdb172d5b9e15e0c`. Zusätzlich untersucht:
+frühere Electron-Version `v0.5.5`, Commit
+`44b80f207e84a2e4a6cda58205aa54e67aacb56f`.
+Danke an OpenCloudGaming und die OpenNOW-Mitwirkenden für den offen zugänglichen
+Code. In dieser Untersuchung kein Code übernommen, keine laufende Sitzung geändert.
+
+### Frühere Electron-Version: eigene WebRTC-Sitzung statt originaler Web-App
+
+Diese Version ist für die Frage nach Chromium besonders relevant. Sie verwendet
+Chromium/WebRTC, implementiert aber eigene GFN-Oberfläche, Sitzungsanforderungen
+und Signalisierung. Sie lädt nicht einfach die originale Web-App mit anderer UA.
+
+- [clientHeaders.ts](https://github.com/OpenCloudGaming/OpenNOW/blob/44b80f207e84a2e4a6cda58205aa54e67aacb56f/opennow-stable/src/main/platforms/gfn/clientHeaders.ts):
+  auf Linux ebenfalls Windows-Chrome-UA mit `NVIDIACEFClient`/`GFN-PC`-Zusatz;
+  CloudMatch-Header `nv-client-type=NATIVE`, `nv-client-streamer=NVIDIA-CLASSIC`,
+  `nv-browser-type=CHROME`. Trotz dieser Header setzt der Sitzungsbody ausdrücklich
+  `GSStreamerType=WebRTC`. Header allein identifizieren also nicht den Videotransport.
+- [deviceIdentity.ts](https://github.com/OpenCloudGaming/OpenNOW/blob/44b80f207e84a2e4a6cda58205aa54e67aacb56f/opennow-stable/src/main/platforms/gfn/deviceIdentity.ts):
+  normaler Linux-Desktop sendet `nv-device-os=LINUX`, aber
+  `clientPlatformName=windows`. Optionales Steam-Deck-Profil meldet SteamOS,
+  CONSOLE, VALVE und STEAMDECK. Das ist mehr als `navigator.platform`.
+- [cloudmatchFeatures.ts](https://github.com/OpenCloudGaming/OpenNOW/blob/44b80f207e84a2e4a6cda58205aa54e67aacb56f/opennow-stable/src/main/platforms/gfn/cloudmatchFeatures.ts):
+  eigener Sitzungsbody enthält `requestedStreamingFeatures.codec`: H.264=1,
+  H.265=2, AV1=3. Die HEVC-Fallbackleiter ist `[2,1]`, gefiltert anhand gemeldeter
+  Decoderfähigkeiten. Das ist ein im Referenzcode vorhandenes Protokollfeld,
+  keine dokumentierte öffentliche NVIDIA-CLI-Option.
+- [codecDiagnostics.ts](https://github.com/OpenCloudGaming/OpenNOW/blob/44b80f207e84a2e4a6cda58205aa54e67aacb56f/opennow-stable/src/renderer/src/lib/codecDiagnostics.ts):
+  eigene Codec-Verfügbarkeit aus Decoderprobe und WebRTC-Receive-Capabilities;
+  AV1 zusätzlich hardwaregeprüft, HEVC in `resolveSupportedStreamCodecs` ohne
+  zusätzliche Hardwarepflicht. Diese eigene Auswahl ruft den originalen
+  Web-App-Predicate mit `enableH265Support`/GPU-Allowlist nicht auf. Upstream-
+  Kommentare zu damaligen offiziellen Regeln sind keine Prüfung heutiger Regeln.
+- [webrtcClient.ts](https://github.com/OpenCloudGaming/OpenNOW/blob/44b80f207e84a2e4a6cda58205aa54e67aacb56f/opennow-stable/src/renderer/src/platforms/gfn/webrtcClient.ts):
+  liest tatsächlich angebotene Codecs, bevorzugt HEVC im vorhandenen SDP und
+  per `RTCRtpTransceiver.setCodecPreferences`; behält Fallbacks, behandelt
+  HEVC-Profil/Level/Tier und prüft die resultierende Answer. Ein H.264-only-
+  Serverangebot erhält dadurch keinen erfundenen HEVC-Payload. Level-/Tier-
+  Umschreiben ist keine Garantie für passende tatsächliche Bitstreamparameter.
+
+Der Ansatz umgeht lokale Auswahlregeln der originalen Web-App, nicht die
+Entscheidung des GFN-Servers. Quellcode, Verfügbarkeitsprobe und erfolgreich
+verhandelter Hardwarestream sind drei getrennte Belege. Keine eigene OpenNOW-
+Laufzeitmessung und kein HEVC-Nachweis auf Odin in dieser Untersuchung.
+
+### Aktuelles Qt/Rust: anderer Transport und andere Zahlen
+
+[streamer.rs](https://github.com/OpenCloudGaming/OpenNOW/blob/bee18c118dbc89f42319436dcdb172d5b9e15e0c/native/opennow-core/src/streamer.rs)
+wählt anhand des Decoderbackends und Farbprofils einen verfügbaren Codec.
+Für normales SDR-Auto ist die Kandidatenreihenfolge AV1, HEVC, H.264;
+explizite Auswahl wird gegen Backendfähigkeiten geprüft.
+
+[cloudmatch.rs](https://github.com/OpenCloudGaming/OpenNOW/blob/bee18c118dbc89f42319436dcdb172d5b9e15e0c/native/opennow-core/src/cloudmatch.rs)
+sendet `clientIdentification=GFN-PC`, einen Bifrost-UA und auf Linux
+`clientPlatformName=Linux` beziehungsweise optional SteamOS. Anders als die
+Electron-Version enthält `build_create_body` ausdrücklich **kein Codec-Feld**
+in `requestedStreamingFeatures`; Auswahl wird für Farb-/HDR-Grenzen verwendet.
+Ein älterer Kommentar in `codec_wire` zur Auto-Auswahl widerspricht dieser
+konkreten Body-Konstruktion; hier wurde die Konstruktion selbst geprüft.
+
+[nvst_rtsp.rs](https://github.com/OpenCloudGaming/OpenNOW/blob/bee18c118dbc89f42319436dcdb172d5b9e15e0c/native/opennow-streamer/crates/opennow-streamer-core/src/nvst_rtsp.rs)
+sendet die Wahl im RTSP ANNOUNCE über
+`a=x-nv-vqos[0].bitStreamFormat`: **H.264=0, HEVC=1, AV1=2**.
+Diese Zahlen nicht mit CloudMatch der Electron-Version verwechseln.
+Der native NVST-Pfad bietet keinen kleinen Chromium-Schalter und ersetzt
+wesentliche Streamer-/Signalisierungsteile. Die oben dokumentierten fehlenden
+stateful-Iris-HEVC-Komponenten bleiben relevant.
+
+### Konsequenz für gfn-armada
+
+Beim originalen GFN-Client bleiben. Der aktuelle UA-/Plattformtest ändert weder
+CloudMatch-Codecpräferenz noch WebRTC-Präferenz noch originale SDK-Eligibility.
+OpenNOW zeigt daher einen begründeten nächsten Versuch, aber keinen bewiesenen
+Einzeiler zur Freischaltung:
+
+1. Bei einem frischen originalen Sitzungsaufbau nur erlaubte Diagnosefelder
+   erfassen: tatsächliche Plattform-/Codecpräferenz und angebotene H.265-
+   Profile. Keine vollständigen Bodies, Tokens, URLs, SDP oder ICE-Daten exportieren.
+2. Den vorhandenen originalen SDK-Override-Pfad für `enableH265Support` bis
+   zum Aufrufer verfolgen; erst dann eine abschaltbare experimentelle Anpassung
+   wählen. Nicht wahllos alle Requests als NATIVE oder Steam Deck markieren.
+3. Falls nötig eine eng auf den nachgewiesenen WebRTC-Sitzungsrequest begrenzte
+   HEVC-Präferenz plus vorhandene Codec-Präferenzen testen, H.264-Fallback behalten.
+   Keine HEVC-Payloads hinzufügen, die der Server nicht angeboten hat.
+4. Erfolg erst mit aktivem `video/H265`, Chromium-Plattformdecoder und
+   erfolgreichen Iris-CAPTURE-Frames für diese HEVC-Sitzung melden.
+
+Diese Schritte sind ein Experimentplan; in dieser Recherche kein solcher Hook
+implementiert. H.264 bleibt der validierte GFN-Hardwarepfad, HEVC unbestätigt.

@@ -25,6 +25,6 @@
   },
   "scope": "Requested page/browser identity emulation, not complete OS emulation; worker identity untouched, actual CPU hint retained",
   "gfnRecognizedPlatform": "unknown; requested navigator matches alone do not reveal GFN internal classification",
-  "h265UiAvailable": "not-yet-observed",
+  "h265UiAvailable": "no; user reports still unavailable after Windows identity test",
   "gfnHEVCNegotiated": false
 }
