@@ -74,11 +74,31 @@
   "bundledDriverSelected": true,
   "linuxArm64UnitTests": 72,
   "appImageSmoke": "passed as uid 1000, including driver checksum/dlopen, synthetic catalogue and Steam backup/restore",
-  "visualAcceptance": "pending user confirmation",
-  "activeStream": "not yet validated in this final startup snapshot",
+  "visualAcceptance": "passed: user confirmed no disturbing frame or distortion after final restart",
+  "activeStream": "verified native stats: H.265 / VaapiVideoDecoder / 1920x1080 at 60 FPS, VPU device open; no driver completion trace captured",
   "limitations": [
     "Nested compositor adds an unmeasured presentation stage",
     "No zero-copy claim",
     "Steam overlay remains unvalidated"
+  ],
+  "nativeStreams": [
+    {
+      "codec": "video/H265",
+      "decoder": "ExternalDecoder (VaapiVideoDecoder)",
+      "powerEfficientDecoder": true,
+      "framesDecoded": 9979,
+      "framesDropped": 6,
+      "totalDecodeTime": 35.197071,
+      "frameWidth": 1920,
+      "frameHeight": 1080,
+      "framesPerSecond": 60,
+      "meanDecodeMs": 3.5271140394829144
+    }
+  ],
+  "videoDeviceOpen": [
+    {
+      "pid": 124228,
+      "device": "/dev/video0"
+    }
   ]
 }

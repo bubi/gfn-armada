@@ -54,7 +54,7 @@ Chromium continues to use native Wayland inside the nested compositor.
 The user confirmed the GFN UI was visible and controller navigation worked.
 The first test still showed window decorations and a scaled smaller client
 area; the subsequent client change starts fullscreen launches borderless at
-the primary display size. That correction needs its own device validation.
+the primary display size. The user subsequently confirmed correct display without the disturbing frame or distortion in the final AppImage.
 
 For the AppImage itself as the Steam target, use:
 
@@ -77,14 +77,16 @@ Direct native Wayland remains the ordinary desktop default. The temporary
 device shell wrapper used to validate the approach is replaced by the
 AppImage launcher implementation. No forced root focus properties are used.
 Steam overlay, focus stability during gameplay, actual HEVC selection and
-1080p stream dimensions still require validation in this final launch mode.
+1080p stream dimensions require direct measurement, not inference from display size.
 
 The final AppImage startup from commit `8fb071d` is now measured: Steam reaper
 → AppImage/launcher → nested Gamescope → Chromium; Gamescope focused AppID
 4274819213 and Chromium reported a 1920×1080 content area. Window outer bounds
 include compositor extents, so content bounds are the relevant geometry.
-HEVC preference and the bundled Iris adapter were selected; visual acceptance
-and the next actual stream remain separate checks. [Startup evidence](../experiments/packaging/validation-steam-client-borderless-odin-20261005.json).
+HEVC preference and the bundled Iris adapter were selected. The user confirmed
+correct display without disturbing frame/distortion. The final running stream
+also reports H.265 / VaapiVideoDecoder / 1920×1080 at 60 FPS, with the GPU
+process holding `/dev/video0`; no driver completion trace was captured. [Startup evidence](../experiments/packaging/validation-steam-client-borderless-odin-20261005.json).
 The preceding tracked-wrapper stream is [recorded separately](../experiments/vaapi-iris/validation-steam-shortcut-hevc-odin-20261005.json):
 H.265, 1920×1080/60, 10,299 native decoded frames, 7 drops, VaapiVideoDecoder,
 with `/dev/video0` open in the GPU process. It contains no driver completion
