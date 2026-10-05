@@ -27,6 +27,7 @@ Output-Reproduzierbarkeit über zwei kalte Builds ist noch nicht geprüft.
 ./scripts/bootstrap
 npm test
 ./scripts/build
+./scripts/build-appimage
 # Podman, bei laufender Linux ARM64 machine:
 CONTAINER_ENGINE=podman ./scripts/build
 ```
@@ -66,8 +67,20 @@ separat installiert werden. GUI startet mit entfernter `ELECTRON_RUN_AS_NODE`-
 Variable. Das Bundle nicht als root starten. Chromium-Sandbox bleibt eingeschaltet.
 Armada muss die Sandbox unterstützen; Probleme prüfen, nicht einfach abschalten.
 
-AppImage wäre zusätzlich bequem, benötigt aber FUSE oder Extract-and-Run und
-löst den V4L2-Pfad nicht. Flatpak bietet Runtimeverteilung, braucht aber sorgfältige
+`./scripts/build-appimage` baut zusätzlich `dist/gfn-armada-0.1.0-aarch64.AppImage`
+und dessen SHA256-Datei. Tool und Type-2-Runtime sind in
+`build/appimage-sources.json` anhand der SHA256-Werte gepinnt; ein abweichender
+Download bricht den Build ab. Die Continuous-URLs können sich ändern; ein
+Update erfordert eine ausdrücklich geprüfte neue Prüfsumme. Der Build-Container
+installiert `file=1:5.44-3`; Debian-Abhängigkeiten stammen aus dem Paketarchiv,
+das derzeit noch nicht auf einen historischen Snapshot gepinnt ist.
+Byte-identische AppImage-Ausgaben sind nicht nachgewiesen.
+
+Start ohne FUSE: `./gfn-armada-0.1.0-aarch64.AppImage --appimage-extract-and-run help`.
+Steam-Sync setzt diesen Runtimeparameter selbst. Profil und Cookies bleiben
+außerhalb des Pakets, das Basissystem wird nicht verändert. Der Iris-VA-API-Treiber
+ist nicht enthalten; das AppImage löst keinen Hardwaredecode-Pfad von selbst.
+Flatpak bietet Runtimeverteilung, braucht aber sorgfältige
 Video-/DRM-/Controller- und Wayland-Berechtigungen und ein passendes ARM64-SDK.
 Ein Armada-RPM verändert das bootc-System und ist für das erste Experiment
 unnötig. Keine dieser Varianten garantiert Hardware-Decoding.
@@ -75,6 +88,23 @@ unnötig. Keine dieser Varianten garantiert Hardware-Decoding.
 Zielbibliotheken: glibc, GTK, NSS, ATK, GBM/EGL, Wayland/X11 und ALSA bzw.
 Audiointegration. ABI-/Sandbox-/Treiberprüfung auf Armada steht aus.
 Das Paketieren auf Debian beweist keine Armada-Laufzeitkompatibilität.
+
+Runtime-Smokecheck des tatsächlich gebauten AppImage ohne reale Steam-Dateien:
+
+```sh
+docker build --platform linux/arm64 -f build/Containerfile.appimage-test -t gfn-armada-appimage-test .
+docker run --rm --platform linux/arm64 gfn-armada-appimage-test
+```
+
+Dieser Test läuft als unprivilegierter Benutzer und prüft CLI, Diagnose,
+unbekannte Mappings und Review/Apply/Idempotenz/Restore in einer temporären
+Steam-Bibliothek. GUI, Controller, NVIDIA-Anmeldung und Gamescope benötigen den Odin.
+
+Am 2026-10-05 erfolgreich ausgeführt: 48 Unit-Tests auf macOS und Linux ARM64,
+anschließend der tatsächliche AppImage-Runtimecheck als UID 1000. Artefakt-
+Prüfsumme und genaue Testgrenzen stehen in
+[`validation-appimage-20261005.json`](../experiments/packaging/validation-appimage-20261005.json).
+Dieses Paket wurde noch nicht auf dem Odin installiert.
 
 ## Zieltest
 

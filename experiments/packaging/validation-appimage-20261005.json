@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-05",
+  "artifact": "dist/gfn-armada-0.1.0-aarch64.AppImage",
+  "sha256": "e910797e725afda6b3a0a353e05126f9ed8b3ec54852312253a072997deea844",
+  "target": "linux-arm64",
+  "builder": "Docker / OrbStack on Apple Silicon",
+  "unitTests": {"passed": 48, "failed": 0, "platforms": ["darwin-arm64", "linux-arm64"]},
+  "runtimeSmoke": {
+    "command": "docker run --rm --platform linux/arm64 gfn-armada-appimage-test",
+    "uid": 1000,
+    "runtimeMode": "--appimage-extract-and-run",
+    "help": "passed",
+    "diagnostics": "passed",
+    "config": "passed",
+    "unknownMappingRejected": "passed",
+    "steamReviewApplyIdempotenceRestore": "passed",
+    "steamData": "synthetic temporary userdata only"
+  },
+  "gui": "not-tested-with-this-artifact",
+  "gamescope": "not-tested-with-this-artifact",
+  "controller": "not-tested-with-this-artifact",
+  "hardwareDriverBundled": false,
+  "hevcHardwareDecode": "unknown",
+  "automaticAccountLibraryImport": "not-implemented",
+  "artworkImport": "not-implemented",
+  "byteReproducibility": "not-verified",
+  "deviceAccess": "Odin unavailable; no deployment performed"
+}

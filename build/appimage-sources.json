@@ -1,0 +1,12 @@
+{
+  "architecture": "aarch64",
+  "resolved": "2026-10-05",
+  "tool": {
+    "url": "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-aarch64.AppImage",
+    "sha256": "a595ea34cd6136c7f595e9dcbb16f3e9725d7610efb9e43b38c3c6e86cafc270"
+  },
+  "runtime": {
+    "url": "https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-aarch64",
+    "sha256": "b4ff0030242d0c3bb12ce40541828303cf167493f4793456f0436edd6255c39d"
+  }
+}

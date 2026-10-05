@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+cd "$(dirname "$0")/.."
+engine="${CONTAINER_ENGINE:-docker}"
+"$engine" info >/dev/null
+# Build the ordinary bundle image first; it also caches verified Electron files.
+"$engine" build --platform linux/arm64 -f build/Containerfile -t gfn-armada-builder .
+"$engine" build --platform linux/arm64 -f build/Containerfile.appimage -t gfn-armada-appimage-builder .
+mkdir -p dist
+archive=$(mktemp "${TMPDIR:-/tmp}/gfn-armada-appimage.XXXXXX")
+trap 'rm -f "$archive"' EXIT HUP INT TERM
+"$engine" run --rm --platform linux/arm64 --user "$(id -u):$(id -g)" -e HOME=/tmp \
+  gfn-armada-appimage-builder sh -c 'cd /work/dist; tar -cf - ./*.AppImage ./*.AppImage.sha256' > "$archive"
+tar -xf "$archive" -C dist

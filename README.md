@@ -1,7 +1,9 @@
 # gfn-armada
 
 Experimental GeForce NOW Electron launcher for Linux ARM64 / ArmadaOS.
-This initial implementation is not a verified Qualcomm hardware-decoding client.
+Experimental native Chromium H.264 decoding on Qualcomm Iris has been measured
+with a separately installed patched VA-API driver. The AppImage does not include
+that driver; HEVC, visual verification and zero-copy remain open.
 
 ```sh
 ./scripts/bootstrap
@@ -21,6 +23,7 @@ Build on Apple Silicon with a running Docker/Podman Linux VM:
 
 ```sh
 ./scripts/build
+./scripts/build-appimage
 # Alternative: package the Linux ARM64 binaries on macOS, without executing them
 ./scripts/package
 ./dist/gfn-armada-linux-arm64/gfn-armada diagnostics
@@ -37,9 +40,12 @@ Steam-store stream and press Ctrl+Shift+P to save its actual route. First supply
 file is intentionally empty. See [direct launch](docs/direct-launch.md).
 An unmapped ID fails explicitly, rather than starting another game.
 
-`gfn-armada sync` exports shortcut metadata to stdout; `--output FILE` creates a
-new manifest without overwriting. It does not yet import Steam binary VDF files
-or download artwork. Manual Steam registration is currently required.
+The ARM64 AppImage supports Steam, Epic, GOG and Xbox mapping keys. Packaged
+`gfn-armada sync` reviews real Steam shortcut changes; `--apply` writes them only
+with Steam stopped, preserving unrelated shortcuts and creating a restorable
+backup. Only mappings with `bookmarked=true` **and** `owned=true` are eligible.
+Automatic GFN account-library discovery and artwork import remain open.
+See [Steam integration](docs/steam-integration.md) for AppImage commands and restore.
 
 `GFN_ARMADA_LOG=debug gfn-armada launch` records codec/decoder observations,
 controller mapping/counts, frame drops and mean decode time where available.
@@ -49,6 +55,7 @@ Logs can contain Chromium diagnostics; keep them private and inspect before shar
 
 [Architecture](docs/architecture.md) · [Hardware decoding](docs/hardware-decoding.md) · [Validation](docs/validation.md)
 
-Target-device tests, authentication, controller input, direct launch, HEVC and
-DMABUF remain unverified until tested on an Odin 2 Portal. Browser capability
-advertisement is not proof that NVIDIA negotiates that codec or the VPU decodes it.
+Earlier device tests confirmed streaming and Xbox controller recognition; the
+new AppImage/Steam sync still needs a Gamescope device test. Hardware evidence
+and remaining limits are recorded in [VA-API investigation](docs/vaapi-investigation-2026-10-05.md).
+Browser capability advertisement does not prove codec negotiation or VPU use.
