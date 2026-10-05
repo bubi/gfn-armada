@@ -15,7 +15,7 @@ gfn-armada map steam:1091500 --name "Cyberpunk 2077"
 
 In GFN den gewünschten Titel mit dem
 korrekten Store starten. Ctrl+Shift+P erfasst die aktuell geöffnete Streamer-URL, fragt mit dem expliziten
-Steam-AppID-/Titelpaar nach und speichert nur nach Bestätigung. Ein vorhandenes
+Store-Identifier-/Titelpaar nach und speichert nur nach Bestätigung. Ein vorhandenes
 Mapping erhält vor dem atomaren Ersetzen ein Backup. Für die erste Anmeldung
 kann `gfn-armada login` verwendet werden. Ctrl+Shift+I öffnet bei Bedarf die
 Entwicklertools. Keine Tokens/Sessionparameter speichern. Ein passender Datensatz ist:
@@ -51,8 +51,8 @@ Unbekannte ID: klarer Fehler. Geänderte GFN-Route: Hauptclient mit
 Ein unbeaufsichtigter Login oder garantierter Ein-Klick-Start ist nicht vorhanden.
 Die Suche über wechselnde DOM-Strukturen wurde bewusst noch nicht automatisiert.
 
-`sync` importiert derzeit keine Steam-Dateien, liest keinen privaten NVIDIA-
-Katalog und lädt kein Artwork. Es exportiert nur vorhandene Zuordnungen zur
-Prüfung. Name und Launch-Argumente sind umgesetzt; Cover/Grid/Hero/Logo bleiben
-optionale Metadaten ohne automatischen Abruf. Für einen zukünftigen VDF-Writer
-sind Backups, Steam-Offlinestatus, atomare Updates und eine Restorefunktion Pflicht.
+Mappings unterstützen außerdem `epic:<id>`, `gog:<id>` und `xbox:<id>`.
+Der paketierte Client kann mit `sync --apply` echte Steam-Shortcuts kontrolliert
+importieren; Backups und Restore sind umgesetzt. Voraussetzung sind bestätigte
+Lesezeichen-/Besitzwerte und eine erfasste Start-Route. Automatischer NVIDIA-
+Bibliotheksimport und Artwork bleiben offen. Ablauf: [Steam-Integration](steam-integration.md).

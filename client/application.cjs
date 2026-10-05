@@ -131,8 +131,12 @@ if(cfg&&request?.resolved) {
         try {
           const mappingRequest={...request};
           const url=validatedURL(win.webContents.getURL());
-          const answer=await dialog.showMessageBox(win,{type:'question',buttons:['Save mapping','Cancel'],defaultId:1,cancelId:1,title:'GFN game mapping',message:`Save the currently opened GFN stream as ${mappingRequest.name} (${mappingRequest.target})?`,detail:'Check that this is the correct game and Steam store in GFN. Existing mappings are backed up.'});
-          if(answer.response===0) {saveMapping({steamAppId:mappingRequest.target.slice(6),name:mappingRequest.name,launchURL:url});log('mapping-saved',{steamAppId:mappingRequest.target.slice(6)})}
+          const answer=await dialog.showMessageBox(win,{type:'question',buttons:['Save mapping','Cancel'],defaultId:1,cancelId:1,title:'GFN game mapping',message:`Save the currently opened GFN stream as ${mappingRequest.name} (${mappingRequest.target})?`,detail:'Check that this is the correct game and matching store in GFN. Existing mappings are backed up.'});
+          if(answer.response===0) {
+            const [store,storeGameId]=mappingRequest.target.split(':');
+            saveMapping({store,storeGameId,...(store==='steam'?{steamAppId:storeGameId}:{}),name:mappingRequest.name,launchURL:url});
+            log('mapping-saved',{gameKey:mappingRequest.target});
+          }
         }catch(e){dialog.showErrorBox('Mapping not saved',e.message)}finally{capturing=false}
       }
       win.webContents.on('before-input-event',(event,input)=>{
@@ -163,7 +167,7 @@ if(cfg&&request?.resolved) {
       log('start',{architecture:process.arch,versions:process.versions,game:request.resolved.game,streamPreferencesApplied:false});
       runtime.gpuFeatures=app.getGPUFeatureStatus();save();
       await win.loadURL(initialURL);
-      if(request.command==='map') await dialog.showMessageBox(win,{type:'info',message:`Open ${request.name} with the Steam store in GFN, then press Ctrl+Shift+P to capture its current launch URL.`,detail:'No ID is guessed. The URL must match the upstream-observed streamer route.'});
+      if(request.command==='map') await dialog.showMessageBox(win,{type:'info',message:`Open ${request.name} with the ${request.target.split(':')[0]} store in GFN, then press Ctrl+Shift+P to capture its current launch URL.`,detail:'No ID is guessed. The URL must match the upstream-observed streamer route.'});
       const refreshGPU=()=>app.getGPUInfo('complete').then(gpu=>{
         runtime.gpu=gpu;runtime.gpuFeatures=app.getGPUFeatureStatus();runtime.gpuSnapshotTimestamp=new Date().toISOString();save();
       }).catch(()=>{});

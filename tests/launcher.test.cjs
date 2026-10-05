@@ -17,7 +17,7 @@ test('launcher parses supported commands',()=>{
  assert.equal(parse(['sync','--output','file.json']).output,'file.json');
 });
 test('launcher rejects unsupported parameters',()=>{
- for(const args of [['bad'],['login','x'],['launch','a','b'],['sync','--apply'],['diagnostics','--yes']]) assert.throws(()=>parse(args));
+ for(const args of [['bad'],['login','x'],['launch','a','b'],['sync','--bad'],['diagnostics','--yes']]) assert.throws(()=>parse(args));
 });
 test('missing game never resolves to an invented link',()=>assert.throws(()=>resolveGame('steam:1091500',[]),/No unique verified mapping/));
 test('mapped Steam ID and case-insensitive name resolve exactly',()=>{
