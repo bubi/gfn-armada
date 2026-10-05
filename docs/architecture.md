@@ -1,5 +1,7 @@
 # Architektur und Entscheidungen
 
+> Historischer Architekturstand. Aktuelle Ergebnisse, Katalog-/Steam-Integration und nativer H.264-Nachweis: [PoC-Status vom 2026-10-05](poc-status.md).
+
 Stand: 2026-10-04. Ziel: Odin 2 Portal, Linux aarch64, ArmadaOS.
 Das Repository war bei Beginn leer. Inzwischen sind GFN-Spielstart und
 Controller auf dem Portal bestätigt; HEVC-Iris-Decoding ist in einem getrennten
