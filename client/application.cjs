@@ -21,14 +21,51 @@ if(cfg&&request?.resolved) {
   const backend=ozonePlatform();
   if(backend) app.commandLine.appendSwitch('ozone-platform',backend);
   if(!cfg.hardware_decode) app.commandLine.appendSwitch('disable-accelerated-video-decode');
+  // Opt-in VA-API decode. Chromium's render-node scan only considers PCI DRM
+  // devices (media/gpu/vaapi/vaapi_wrapper.cc), so an SoC GPU is skipped and
+  // VA-API never initialises; --hardware-video-device-path bypasses that scan.
+  // Requires an external libva driver for the Iris VPU, selected through
+  // LIBVA_DRIVER_NAME. Advertised capability is not proof of hardware decode.
+  let gpuSandboxDisabled=false;
+  const vaapiNode=process.env.GFN_ARMADA_VAAPI;
+  if(cfg.hardware_decode && vaapiNode && path.isAbsolute(vaapiNode) && fs.existsSync(vaapiNode)) {
+    app.commandLine.appendSwitch('hardware-video-device-path',vaapiNode);
+    // The Iris path needs renderable NV12 pixmaps. Wayland + ANGLE GL was
+    // measured on Odin; X11 selected an unavailable VA image processor.
+    // Keep an explicit ozone preference intact; select Wayland when launching
+    // this experiment (GFN_ARMADA_OZONE=wayland).
+    if(backend==='wayland') {
+      app.commandLine.appendSwitch('use-gl','angle');
+      app.commandLine.appendSwitch('use-angle','gl');
+    }
+    app.commandLine.appendSwitch('enable-features','VaapiVideoDecoder,VaapiVideoDecodeLinuxGL,WebRtcAllowH265Receive');
+    app.commandLine.appendSwitch('force-fieldtrials','WebRTC-Video-H26xPacketBuffer/Enabled');
+    app.commandLine.appendSwitch('ignore-gpu-blocklist');
+    // Retained solely for explicit diagnostic comparisons. The Iris trace on
+    // Odin proves /dev/video0 can be opened with the GPU sandbox enabled;
+    // disabling it did not fix the observed X11 format-selection failure.
+    // This switch is a deliberate, separately named diagnostic that removes the
+    // GPU sandbox: it is NOT implied by enabling VA-API and must not become the
+    // default. The GPU process handles untrusted content from the remote page.
+    if(process.env.GFN_ARMADA_VAAPI_NO_SANDBOX==='1') {
+      app.commandLine.appendSwitch('disable-gpu-sandbox');
+      gpuSandboxDisabled=true;
+    }
+  }
   if(process.env.GFN_ARMADA_LOG==='debug') {
-    app.commandLine.appendSwitch('enable-logging','file');
-    app.commandLine.appendSwitch('log-file',path.join(root.state,'chromium.log'));
-    app.commandLine.appendSwitch('vmodule','*video_decoder*=3,*v4l2*=3,*rtc_video_decoder*=3,*webrtc_video_decoder*=3');
+    // Child processes log to their inherited stderr, so the file sink misses
+    // the GPU process. Allow stderr for remote diagnosis of that process.
+    if(process.env.GFN_ARMADA_LOG_SINK==='stderr') app.commandLine.appendSwitch('enable-logging','stderr');
+    else {
+      app.commandLine.appendSwitch('enable-logging','file');
+      app.commandLine.appendSwitch('log-file',path.join(root.state,'chromium.log'));
+    }
+    app.commandLine.appendSwitch('vmodule','*video_decoder*=3,*v4l2*=3,*rtc_video_decoder*=3,*webrtc_video_decoder*=3,*vaapi*=3');
   }
   const log=(event,data={})=>console.log(JSON.stringify({timestamp:new Date().toISOString(),event,...data}));
   let win;let runtime={timestamp:new Date().toISOString(),pid:process.pid,versions:process.versions,
     hardwareDecoderActive:'unknown',dmabuf:'unknown',requestedOzone:backend||'default',
+    vaapiDevicePath:vaapiNode??null,gpuSandboxDisabled,
     source:'page-reported; diagnostic evidence only',active:false};
   function save() {runtime.timestamp=new Date().toISOString();const f=path.join(root.state,'runtime.json');fs.writeFileSync(f+'.tmp',JSON.stringify(runtime,null,2),{mode:0o600});fs.renameSync(f+'.tmp',f)}
   const prefs={nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true,preload:path.join(__dirname,'preload.cjs'),partition:'persist:gfn'};
@@ -116,9 +153,16 @@ if(cfg&&request?.resolved) {
       });
       win.webContents.on('did-fail-load',(_e,code,_description,_url,isMain)=>{if(isMain)log('load-failed',{code})});
       win.webContents.on('did-start-navigation',(_e,_url,_inPlace,isMain)=>{if(isMain){runtime.observation=null;runtime.active=false;save()}});
+      // Experiment affordance for unattended remote test runs: a catalogue page the
+      // user supplied explicitly, constrained to the same navigation allowlist. It
+      // does not relax the captured-streamer-route contract in games.json and only
+      // replaces the initial load, so the bridge still stops on later navigation.
+      const startOverride=process.env.GFN_ARMADA_START_URL;
+      const initialURL=startOverride&&allowed(startOverride)?startOverride:request.resolved.url;
+      if(startOverride) log('start-url-override',{accepted:initialURL===startOverride,origin:origin(startOverride)});
       log('start',{architecture:process.arch,versions:process.versions,game:request.resolved.game,streamPreferencesApplied:false});
       runtime.gpuFeatures=app.getGPUFeatureStatus();save();
-      await win.loadURL(request.resolved.url);
+      await win.loadURL(initialURL);
       if(request.command==='map') await dialog.showMessageBox(win,{type:'info',message:`Open ${request.name} with the Steam store in GFN, then press Ctrl+Shift+P to capture its current launch URL.`,detail:'No ID is guessed. The URL must match the upstream-observed streamer route.'});
       const refreshGPU=()=>app.getGPUInfo('complete').then(gpu=>{
         runtime.gpu=gpu;runtime.gpuFeatures=app.getGPUFeatureStatus();runtime.gpuSnapshotTimestamp=new Date().toISOString();save();
