@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-05",
+  "sourceCommit": "f165c20ed217993d1f01fe4088113b55ddd192b5",
+  "artifact": "gfn-armada-0.1.0-aarch64-identity.AppImage",
+  "sha256": "2580c270bdf0023f212e42d714fbd8f1d196069efceb43352b01954dcbd6f635",
+  "mode": "windows",
+  "cleanCommitTests": {
+    "darwin-arm64": 62,
+    "linux-arm64": 62,
+    "failed": 0
+  },
+  "macRealRuntimeIdentitySmoke": "passed; first page script identity and high-entropy hints matched; no Node exposed",
+  "arm64ContainerSmoke": "passed as UID 1000, CLI/driver loading/synthetic catalog/temporary Steam backup-restore",
+  "odinStartup": {
+    "runtimePid": 80592,
+    "browserIdentityObservation": {
+      "userAgentMatches": true,
+      "platformMatches": true,
+      "hintPlatformMatches": true,
+      "failed": false
+    },
+    "nativeStatsStatus": "waiting",
+    "irisSelected": true,
+    "gpuSandboxDisabled": false
+  },
+  "scope": "Requested page/browser identity emulation, not complete OS emulation; worker identity untouched, actual CPU hint retained",
+  "gfnRecognizedPlatform": "unknown; requested navigator matches alone do not reveal GFN internal classification",
+  "h265UiAvailable": "not-yet-observed",
+  "gfnHEVCNegotiated": false
+}
