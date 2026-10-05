@@ -1,0 +1,66 @@
+{
+  "date": "2026-10-05",
+  "sourceCommit": "8cbd88c",
+  "appImageSha256": "fb20a7f3086ecf99e7404d79b91177dfbb6c8738da9d9162ae880e18b450b18c",
+  "testMode": "Steam Non-Steam shortcut, temporary tracked nested Gamescope wrapper",
+  "steamAppId": 4274819213,
+  "focusProperty": "GAMESCOPE_FOCUSED_APP(CARDINAL) = 4274819213",
+  "nativeStreams": [
+    {
+      "codec": "video/H265",
+      "decoder": "ExternalDecoder (VaapiVideoDecoder)",
+      "powerEfficientDecoder": true,
+      "framesDecoded": 10299,
+      "framesDropped": 7,
+      "totalDecodeTime": 37.836687,
+      "frameWidth": 1920,
+      "frameHeight": 1080,
+      "framesPerSecond": 60,
+      "meanDecodeMs": 3.6738214389746577
+    }
+  ],
+  "videoDeviceOpen": [
+    {
+      "pid": 121528,
+      "device": "/dev/video0"
+    }
+  ],
+  "gpuSandboxDisabled": false,
+  "bundledDriverSha256": "d4708081ceacaafabd78194d3a27c48b86a097ac990140c411802d6b25484251",
+  "userConfirmation": "GFN visible and controller navigation works; window decorations and distortion remain",
+  "localWindow": {
+    "bounds": {
+      "x": 298,
+      "y": 161,
+      "width": 1324,
+      "height": 764
+    },
+    "contentBounds": {
+      "x": 320,
+      "y": 217,
+      "width": 1280,
+      "height": 683
+    },
+    "fullscreen": true,
+    "visible": true
+  },
+  "display": {
+    "bounds": {
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 1080
+    },
+    "size": {
+      "width": 1920,
+      "height": 1080
+    },
+    "scaleFactor": 1
+  },
+  "limitations": [
+    "Initial window is smaller than output; corrected borderless build requires separate test",
+    "No driver completion trace captured in this run",
+    "No zero-copy claim or latency comparison",
+    "Steam overlay not validated"
+  ]
+}

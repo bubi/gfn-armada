@@ -1,0 +1,84 @@
+{
+  "date": "2026-10-05",
+  "sourceCommit": "8fb071d",
+  "appImageSha256": "ab6d0d9f42f6c30d09a78fbed43a5ab7af18c24490eceda7e55fdf8725fb1713",
+  "launchMode": "AppImage target with GFN_ARMADA_GAMESCOPE=nested; no separate wrapper script",
+  "steamAppId": 4274819213,
+  "focusProperty": "GAMESCOPE_FOCUSED_APP(CARDINAL) = 4274819213",
+  "processChain": [
+    {
+      "pid": 124185,
+      "comm": "gfn-armada-elec"
+    },
+    {
+      "pid": 124183,
+      "comm": "gamescopereaper"
+    },
+    {
+      "pid": 124157,
+      "comm": "gamescope-wl"
+    },
+    {
+      "pid": 124137,
+      "comm": "gfn-armada-elec"
+    },
+    {
+      "pid": 124136,
+      "comm": "gfn-armada-0.1."
+    },
+    {
+      "pid": 124135,
+      "comm": "reaper"
+    },
+    {
+      "pid": 124134,
+      "comm": "pw-audio-namesp"
+    },
+    {
+      "pid": 113613,
+      "comm": "steam"
+    }
+  ],
+  "display": {
+    "bounds": {
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 1080
+    },
+    "size": {
+      "width": 1920,
+      "height": 1080
+    },
+    "scaleFactor": 1
+  },
+  "window": {
+    "bounds": {
+      "x": -16,
+      "y": -10,
+      "width": 1952,
+      "height": 1122
+    },
+    "contentBounds": {
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 1080
+    },
+    "fullscreen": true,
+    "visible": true
+  },
+  "requestedOzone": "wayland",
+  "hevcPreference": "H265",
+  "gpuSandboxDisabled": false,
+  "bundledDriverSelected": true,
+  "linuxArm64UnitTests": 72,
+  "appImageSmoke": "passed as uid 1000, including driver checksum/dlopen, synthetic catalogue and Steam backup/restore",
+  "visualAcceptance": "pending user confirmation",
+  "activeStream": "not yet validated in this final startup snapshot",
+  "limitations": [
+    "Nested compositor adds an unmeasured presentation stage",
+    "No zero-copy claim",
+    "Steam overlay remains unvalidated"
+  ]
+}

@@ -78,3 +78,21 @@ device shell wrapper used to validate the approach is replaced by the
 AppImage launcher implementation. No forced root focus properties are used.
 Steam overlay, focus stability during gameplay, actual HEVC selection and
 1080p stream dimensions still require validation in this final launch mode.
+
+The final AppImage startup from commit `8fb071d` is now measured: Steam reaper
+→ AppImage/launcher → nested Gamescope → Chromium; Gamescope focused AppID
+4274819213 and Chromium reported a 1920×1080 content area. Window outer bounds
+include compositor extents, so content bounds are the relevant geometry.
+HEVC preference and the bundled Iris adapter were selected; visual acceptance
+and the next actual stream remain separate checks. [Startup evidence](../experiments/packaging/validation-steam-client-borderless-odin-20261005.json).
+The preceding tracked-wrapper stream is [recorded separately](../experiments/vaapi-iris/validation-steam-shortcut-hevc-odin-20261005.json):
+H.265, 1920×1080/60, 10,299 native decoded frames, 7 drops, VaapiVideoDecoder,
+with `/dev/video0` open in the GPU process. It contains no driver completion
+trace and does not establish improved latency or zero-copy presentation.
+
+During failed launch experiments Steam's UI became unresponsive. Restarting
+only its webhelper did not recover it; restarting the existing
+`gamescope-session-plus@steam.service` restored the Gaming Mode session.
+Do not run unrestricted source enumeration/evaluation in Steam's UI context;
+use bounded, specific API calls. The recovery preserved the GFN profile and
+the shortcut, and no device reboot or Steam database rewrite was needed.
