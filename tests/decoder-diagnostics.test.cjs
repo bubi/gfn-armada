@@ -5,7 +5,30 @@ const os=require('node:os');
 const path=require('node:path');
 const {processVideo}=require('../launcher/process-video.cjs');
 const {decoderProperties}=require('../client/media-diagnostics.cjs');
-const {videoReports,softwareDecodeStatus}=require('../client/webrtc-internals.cjs');
+const {nativeStatsEnabled,videoReports,softwareDecodeStatus}=require('../client/webrtc-internals.cjs');
+test('native Chromium stats are enabled by default except catalog imports, with explicit opt-out',()=>{
+  for(const command of ['launch','login','map'])assert.equal(nativeStatsEnabled(command,{}),true);
+  assert.equal(nativeStatsEnabled('library',{}),false);
+  assert.equal(nativeStatsEnabled('launch',{GFN_ARMADA_MEDIA_DIAGNOSTICS:'0'}),false);
+});
+test('decode interval metrics reject resets and stream format changes without exporting identifiers',()=>{
+  const history=new Map();
+  const sample=(frames,time,timestamp,width=1920)=>videoReports([
+    ['private-stream',{type:'inbound-rtp',kind:'video',codecId:'c',framesDecoded:frames,totalDecodeTime:time,
+      timestamp,frameWidth:width,frameHeight:1080,jitterBufferDelay:0.4,jitterBufferEmittedCount:100}],
+    ['c',{mimeType:'video/H264'}]],history)[0];
+  const first=sample(100,0.4,1000);
+  assert.equal(first.meanDecodeMs,4);assert.equal(first.intervalMeanDecodeMs,null);
+  assert.equal(first.meanJitterBufferMs,4);
+  const next=sample(200,0.7,2000);
+  assert.ok(Math.abs(next.intervalMeanDecodeMs-3)<1e-10);
+  assert.equal(next.intervalFramesDecoded,100);assert.equal(next.intervalMs,1000);
+  assert.equal(sample(200,0.7,2000).intervalMeanDecodeMs,null);
+  assert.equal(sample(5,0.02,3000).intervalMeanDecodeMs,null);
+  assert.equal(sample(10,0.04,4000,1280).intervalMeanDecodeMs,null);
+  assert.equal(JSON.stringify(next).includes('private-stream'),false);
+  videoReports([],history);assert.equal(history.size,0);
+});
 test('software evidence can reject hardware without treating efficiency hints as a VPU proof',()=>{
   assert.equal(softwareDecodeStatus({status:'sampled',streams:[{decoder:'FFmpeg',framesDecoded:100}]}),'no');
   assert.equal(softwareDecodeStatus({status:'sampled',streams:[{decoder:'ExternalDecoder (V4L2VideoDecoder)',framesDecoded:100,powerEfficientDecoder:true}]}),'unknown');

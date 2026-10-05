@@ -120,7 +120,7 @@ if(cfg&&request?.resolved) {
           await shadow.prepare();
         }catch{shadow?.dispose();ipcMain.handle('native-shadow-bootstrap',()=>null);log('native-shadow-unavailable');}
       } else ipcMain.handle('native-shadow-bootstrap',()=>null);
-      if(process.env.GFN_ARMADA_MEDIA_DIAGNOSTICS==='1'&&request.command!=='library') {
+      if(require('./webrtc-internals.cjs').nativeStatsEnabled(request.command)) {
         const disposeInternals=require('./webrtc-internals.cjs').attachWebRTCInternals(BrowserWindow,data=>{
           runtime.nativeWebRTC=data;
           runtime.hardwareDecoderActive=require('./webrtc-internals.cjs').softwareDecodeStatus(data);
@@ -128,6 +128,9 @@ if(cfg&&request?.resolved) {
           save();log('native-webrtc-decoder',data);
         });
         win.on('closed',disposeInternals);
+      }
+      // CDP Media diagnostics stay opt-in; the catalog importer also uses CDP.
+      if(process.env.GFN_ARMADA_MEDIA_DIAGNOSTICS==='1'&&request.command!=='library') {
         require('./media-diagnostics.cjs').attachMediaDiagnostics(win.webContents,data=>{
           runtime.nativeMedia=runtime.nativeMedia||{};
           if(data.playerId) runtime.nativeMedia[data.playerId]=data.properties;

@@ -1,20 +1,41 @@
 // Native Chromium stats avoid the hardware-capability filter in page getStats.
 // Keep raw WebUI records inside the trusted chrome:// page; export no SDP/URLs.
-function videoReports(reports) {
+function nativeStatsEnabled(command,env=process.env) {
+  return command!=='library'&&env.GFN_ARMADA_MEDIA_DIAGNOSTICS!=='0';
+}
+function videoReports(reports,previous=new Map()) {
   if(!Array.isArray(reports)) return [];
   const map=new Map(reports.filter(p=>Array.isArray(p)&&p.length===2));
   const result=[];
-  for(const s of map.values()) {
+  const seen=new Set();
+  for(const [id,s] of map) {
     if(!s||s.type!=='inbound-rtp'||s.kind!=='video') continue;
     const codec=map.get(s.codecId);
     const text=v=>typeof v==='string'&&v.length<=128?v:'unknown';
     const number=v=>typeof v==='number'&&Number.isFinite(v)&&v>=0?v:null;
-    result.push({codec:text(codec?.mimeType),decoder:text(s.decoderImplementation),
+    const frames=number(s.framesDecoded),decodeTime=number(s.totalDecodeTime),timestamp=number(s.timestamp);
+    const mime=text(codec?.mimeType),width=number(s.frameWidth),height=number(s.frameHeight);
+    const old=previous.get(id);
+    const comparable=old&&old.codec===mime&&old.width===width&&old.height===height&&
+      timestamp!==null&&old.timestamp!==null&&timestamp>old.timestamp&&
+      frames!==null&&old.frames!==null&&frames>old.frames&&
+      decodeTime!==null&&old.decodeTime!==null&&decodeTime>=old.decodeTime;
+    const average=(total,count)=>total!==null&&count>0?1000*total/count:null;
+    result.push({codec:mime,decoder:text(s.decoderImplementation),
       powerEfficientDecoder:typeof s.powerEfficientDecoder==='boolean'?s.powerEfficientDecoder:null,
-      framesDecoded:number(s.framesDecoded),framesDropped:number(s.framesDropped),
-      totalDecodeTime:number(s.totalDecodeTime),statsTimestamp:number(s.timestamp)});
+      framesDecoded:frames,framesDropped:number(s.framesDropped),
+      totalDecodeTime:decodeTime,statsTimestamp:timestamp,
+      frameWidth:width,frameHeight:height,framesPerSecond:number(s.framesPerSecond),
+      meanDecodeMs:average(decodeTime,frames),
+      intervalMeanDecodeMs:comparable?average(decodeTime-old.decodeTime,frames-old.frames):null,
+      intervalFramesDecoded:comparable?frames-old.frames:null,
+      intervalMs:comparable?timestamp-old.timestamp:null,
+      meanJitterBufferMs:average(number(s.jitterBufferDelay),number(s.jitterBufferEmittedCount))});
+    // Keep identifiers only inside chrome://webrtc-internals, never in output.
+    seen.add(id);previous.set(id,{codec:mime,width,height,frames,decodeTime,timestamp});
     if(result.length===8) break;
   }
+  for(const id of previous.keys())if(!seen.has(id))previous.delete(id);
   return result;
 }
 function softwareDecodeStatus(data) {
@@ -29,15 +50,17 @@ async function installObserver(allowedOrigin,filter) {
   const {peerConnectionDataStore}=await import('chrome://webrtc-internals/dump_creator.js');
   window.__gfnArmadaNativeStats={status:'waiting',streams:[]};
   const latest=new Map();
+  const history=new Map();
   addWebUiListener('add-standard-stats',data=>{
     const id=data.rid+'-'+data.lid;
     const record=peerConnectionDataStore[id]?.toJSON();
     try{if(new URL(record?.url).origin!==allowedOrigin) return}catch{return}
-    latest.set(id,{timestamp:Date.now(),streams:filter(data.reports)});
+    if(!history.has(id))history.set(id,new Map());
+    latest.set(id,{timestamp:Date.now(),streams:filter(data.reports,history.get(id))});
     const now=Date.now();
     const streams=[];
     for(const [key,value] of latest) {
-      if(now-value.timestamp>15000){latest.delete(key);continue}
+      if(now-value.timestamp>15000){latest.delete(key);history.delete(key);continue}
       streams.push(...value.streams);
     }
     window.__gfnArmadaNativeStats={status:'sampled',timestamp:now,streams:streams.slice(0,8)};
@@ -69,4 +92,4 @@ function attachWebRTCInternals(BrowserWindow,report,allowedOrigin='https://play.
   }).catch(()=>{if(!disposed) report({status:'unavailable',streams:[]});dispose()});
   return dispose;
 }
-module.exports={videoReports,softwareDecodeStatus,installObserver,attachWebRTCInternals};
+module.exports={nativeStatsEnabled,videoReports,softwareDecodeStatus,installObserver,attachWebRTCInternals};

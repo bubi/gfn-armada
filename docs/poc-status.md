@@ -40,3 +40,9 @@ Catalog import retains original GFN login, reads all pages before updating mappi
 
 Some container inputs/download hashes are pinned, but package repositories remain mutable. Repeatable build workflow exists; bit-identical/offline reproducibility not demonstrated.
 Older notes retain historical failures/intermediate states; they do not establish that all experiments ship or negate the later bounded H.264 measurement.
+
+## Native Chromium statistics follow-up
+
+Normal launch/login/map now collect sanitized `chrome://webrtc-internals` statistics by default; library import is excluded. Optional `GFN_ARMADA_MEDIA_DIAGNOSTICS=0` disables observation; `=1` also enables CDP Media inspection. `runtime.json` and structured `native-webrtc-decoder` logs carry native decoder identity, codec, dimensions/FPS, frame counters, cumulative/interval mean decode time and cumulative mean jitter-buffer residence. These are distinct from end-to-end latency and VPU-only processing time. Counter resets, non-increasing timestamps and format changes invalidate interval comparisons. Hardware activity remains `unknown` based on platform decoder names alone.
+
+Implementation checks: 61 unit tests passed on macOS, including existing pending bridge tests; real Electron synthetic H.264 smoke passed with `ExternalDecoder (VideoToolboxVideoDecoder)`. This validates the observer on macOS, not the Iris path. New Linux build/device evidence will be recorded separately.
