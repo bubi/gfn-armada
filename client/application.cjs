@@ -1,4 +1,4 @@
-const {app,BrowserWindow,ipcMain,session,dialog}=require('electron');
+const {app,BrowserWindow,ipcMain,session,dialog,screen}=require('electron');
 const fs=require('node:fs');
 const path=require('node:path');
 const {paths,loadConfig}=require('../launcher/config.cjs');
@@ -112,6 +112,8 @@ if(cfg&&request?.resolved) {
         ses.setUserAgent(ua);
       }
       app.on('browser-window-created',(_e,w)=>secure(w));
+      const display=screen.getPrimaryDisplay();
+      runtime.display={bounds:display.bounds,size:display.size,scaleFactor:display.scaleFactor};
       win=new BrowserWindow({width:1280,height:720,title:'gfn-armada',backgroundColor:'#111111',fullscreen:cfg.fullscreen&&request.command==='launch',webPreferences:prefs});
       win.setMenu(null);
       ipcMain.on('browser-identity-status',(event,data)=>{
@@ -197,6 +199,7 @@ if(cfg&&request?.resolved) {
         runtime.hevcExperiment.events.push(clean);runtime.hevcExperiment.events=runtime.hevcExperiment.events.slice(-30);
         save();log('hevc-experiment',clean);
       });
+      win.on('resize',()=>{runtime.window={bounds:win.getBounds(),contentBounds:win.getContentBounds(),fullscreen:win.isFullScreen()};save()});
       ipcMain.on('rtc-observation',(event,data)=>{
         if(event.sender!==win.webContents||event.senderFrame?.url.startsWith(HOME)!==true) return;
         if(!data || !Array.isArray(data.streams)||!Array.isArray(data.codecs)||!Array.isArray(data.controllers)) return;

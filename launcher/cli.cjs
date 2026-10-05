@@ -50,7 +50,7 @@ function run(args=process.argv.slice(2)) {
   if(req.command==='steam-users') return console.log(JSON.stringify(require('../steam-integration/shortcuts.cjs').users(),null,2));
   if(req.command==='steam-restore') return console.log(JSON.stringify(require('../steam-integration/shortcuts.cjs').restore(path.resolve(req.backup)),null,2));
   const config=loadConfig();
-  if(req.command==='config') return console.log(JSON.stringify({path:path.join(paths().config,'config.toml'),preferences:config,applied:['hardware_decode','fullscreen','compatibility_user_agent'],streamSettings:'Set codec/resolution/fps/bitrate in the GFN UI; local preferences are not transmitted.'},null,2));
+  if(req.command==='config') return console.log(JSON.stringify({path:path.join(paths().config,'config.toml'),preferences:config,applied:['hardware_decode','fullscreen','compatibility_user_agent',...(config.codec==='hevc'?['codec: experimental WebRTC HEVC preference']:[])],streamSettings:'Set codec/resolution/fps/bitrate in the GFN UI; local preferences are not transmitted.'},null,2));
   if(req.command==='sync') {
     if(!config.steam_integration) throw new Error('Steam integration disabled in config');
     let manifest;
@@ -67,7 +67,9 @@ function run(args=process.argv.slice(2)) {
   }
   if(req.command!=='map') resolveGame(req.command==='login'?null:req.target);
   const executable=process.env.GFN_ARMADA_ELECTRON || require('electron');
-  const decoder=require('./bundled-decoder.cjs').select({hardwareDecode:config.hardware_decode});
+  const gaming=require('./gaming-mode.cjs');
+  const launchEnv=gaming.preferences(gaming.environment(),config);
+  const decoder=require('./bundled-decoder.cjs').select({env:launchEnv,hardwareDecode:config.hardware_decode});
   const env=decoder.env;delete env.ELECTRON_RUN_AS_NODE;
   if(env.GFN_ARMADA_LOG==='debug')console.error(JSON.stringify({event:'bundled-decoder',...decoder.report}));
   const appRoot=path.resolve(__dirname,'..');
