@@ -123,5 +123,6 @@
   "gamescope": false,
   "hardwareDecodeEvidence": "native H265/VaapiVideoDecoder plus HEVC Iris session openings, successful GPU-copy publications and GPU process holding qcom-iris-decoder",
   "visualCorrectness": "not independently confirmed",
-  "scope": "Live snapshots and counters differ in scope; resolution changed; not a fixed-resolution benchmark or long-term stability test; zero-copy not proven"
+  "scope": "Live snapshots and counters differ in scope; resolution changed; not a fixed-resolution benchmark or long-term stability test; zero-copy not proven",
+  "userOverlayObservation": "User confirms GFN overlay displays H.265"
 }

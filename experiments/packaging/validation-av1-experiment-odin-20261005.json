@@ -1,0 +1,24 @@
+{
+  "date": "2026-10-05",
+  "sourceCommit": "ed7e427",
+  "artifact": "gfn-armada-0.1.0-aarch64-av1-experiment.AppImage",
+  "sha256": "286755bb519f9d7b4e01760b844e24ed9df6b03c02537b0c6f88ab1f2b130f73",
+  "linuxArm64CleanTests": {"passed": 66, "failed": 0},
+  "localMacTests": {"passed": 67, "failed": 0, "note": "One pending bridge test excluded from clean build"},
+  "macSandboxedAv1PreloadSmoke": "passed; synthetic origin, no NVIDIA session",
+  "arm64AppImageSmoke": "passed UID 1000; driver loading, CLI and synthetic catalog/Steam checks",
+  "odinStartup": {
+    "runtimePid": 90325,
+    "preferred": "AV1",
+    "receivePreferred": true,
+    "experimentInstalled": true,
+    "experimentalDriverProfilesEnabled": true,
+    "identity": "windows",
+    "gpuSandboxDisabled": false,
+    "nativeStatsStatus": "waiting",
+    "initialOffer": ["H264"]
+  },
+  "av1Negotiated": false,
+  "av1HardwareDecode": "unknown",
+  "scope": "Startup only; await new game stream. Upstream AV1 hidden-frame VA timeout remains a known limitation. No raw logs or credentials included."
+}
