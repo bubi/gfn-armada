@@ -49,6 +49,15 @@ test('Steam-running and stale-plan guards leave the original file untouched',t=>
   const updated=Buffer.from(original);updated[updated.length-1]=0;fs.writeFileSync(f.file,updated);
   assert.throws(()=>steam.apply(p,stopped),/changed after review/);assert.deepEqual(fs.readFileSync(f.file),updated);
 });
+test('catalog mapping migration preserves an existing shortcut AppID and stays stable without store URLs',t=>{
+  const f=fixture(t),original=steam.apply(steam.plan([row],f),stopped);
+  const appid=original.changes[0].shortcutAppId;
+  const imported={...row,gfnVariantId:'123',mappingSource:'gfn-catalog'};
+  const migration=steam.plan([imported],f);assert.equal(migration.changes[0].action,'update');assert.equal(migration.changes[0].shortcutAppId,appid);steam.apply(migration,stopped);
+  const withoutId={...imported};delete withoutId.storeGameId;
+  assert.equal(steam.plan([withoutId],f).changed,false);
+  assert.throws(()=>steam.plan([row,imported],f),/Ambiguous|collision/);
+});
 test('restore refuses later user changes and restores absence of a previously missing file',t=>{
   const f=fixture(t);const result=steam.apply(steam.plan([row],f),stopped);
   steam.restore(result.backup,stopped);assert.equal(fs.existsSync(f.file),false);

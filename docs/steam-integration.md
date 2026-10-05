@@ -23,11 +23,12 @@ Unbekannte oder nicht mehr ausgewählte Spiele werden derzeit nicht gelöscht.
 
 ## Bibliothek vorbereiten
 
-Noch existiert kein verifizierter Import aus dem NVIDIA-Konto oder den vier
-Store-Konten. Lesezeichen allein beweisen keinen Besitz. Die Besitz- und
-Lesezeichenwerte müssen vorerst ausdrücklich in `~/.config/gfn-armada/games.json`
-bestätigt werden. Dies ist eine Benutzerangabe, keine unabhängige Kontoprüfung.
-Die neue Mapping-Erfassung erhält bereits vorhandene Metadaten.
+`gfn-armada library` liest inzwischen den Katalog mit der bestehenden NVIDIA-
+Sitzung. Favoriten und Besitz werden pro Store-Version übernommen; manuell
+bestätigter Besitz wird entsprechend gekennzeichnet. Schema und öffentlicher
+Katalog sind live geprüft; der authentifizierte Odin-Import ist noch ungetestet.
+Siehe [Katalogimport](catalog-import.md). Die folgenden Schritte bleiben als
+manuelle Alternative; deren Besitzwerte sind Benutzerangaben.
 
 ```sh
 ./gfn-armada-0.1.0-aarch64.AppImage --appimage-extract-and-run login
@@ -90,8 +91,8 @@ wurden für die Tests verändert.
 
 ## Noch offen
 
-1. Original-GFN-Bibliothek aus der angemeldeten Sitzung verifiziert einlesen:
-   Lesezeichen, konkrete Store-Version, Besitzstatus und tatsächliche Start-Route.
+1. Den implementierten Original-GFN-Katalogimport mit dem angemeldeten Odin-
+   Konto prüfen: Vollständigkeit, Favoriten, konkrete Store-Version und Direktstart.
    Fehlender Besitzstatus bleibt unbekannt; keine Passwort-/Token-Speicherung im Mapping.
 2. Grid/Cover/Hero/Logo anhand geprüfter Metadaten importieren, mit Backup und
    Erhalt eigener Benutzerbilder. Der aktuelle Importer lädt kein Artwork.

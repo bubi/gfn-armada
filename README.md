@@ -46,7 +46,11 @@ The ARM64 AppImage supports Steam, Epic, GOG and Xbox mapping keys. Packaged
 `gfn-armada sync` reviews real Steam shortcut changes; `--apply` writes them only
 with Steam stopped, preserving unrelated shortcuts and creating a restorable
 backup. Only mappings with `bookmarked=true` **and** `owned=true` are eligible.
-Automatic GFN account-library discovery and artwork import remain open.
+`gfn-armada library` reads the catalog through the existing signed-in GFN
+session and imports bookmarked editions with GFN-reported ownership. Store-sync
+and manual ownership are distinguished; unknown values are skipped. The API
+schema has been checked live; authenticated Odin import still needs a device test.
+See [catalog import](docs/catalog-import.md). Artwork download remains open.
 See [Steam integration](docs/steam-integration.md) for AppImage commands and restore.
 
 `GFN_ARMADA_LOG=debug gfn-armada launch` records codec/decoder observations,

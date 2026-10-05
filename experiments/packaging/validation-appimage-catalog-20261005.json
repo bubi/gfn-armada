@@ -1,0 +1,49 @@
+{
+  "date": "2026-10-05",
+  "artifact": "dist/gfn-armada-0.1.0-aarch64.AppImage",
+  "sha256": "e736cacdba65a4e8b4802fa84a666168343a310984b0dedbfbf7a20e99261b70",
+  "sizeBytes": 116079112,
+  "unitTests": {
+    "passed": 59,
+    "failed": 0,
+    "platforms": [
+      "darwin-arm64",
+      "linux-arm64"
+    ]
+  },
+  "runtimeSmoke": {
+    "architecture": "arm64",
+    "uid": 1000,
+    "appImage": "/work/dist/gfn-armada-0.1.0-aarch64.AppImage",
+    "driverSha256": "d4708081ceacaafabd78194d3a27c48b86a097ac990140c411802d6b25484251",
+    "driverDlopen": true,
+    "driverPatches": 4,
+    "help": true,
+    "diagnostics": true,
+    "config": true,
+    "unknownMappingRejected": true,
+    "catalogImportSynthetic": true,
+    "steamReviewApplyIdempotenceRestore": true,
+    "authenticatedCatalog": "not-tested",
+    "gui": "not-tested",
+    "gamescope": "not-tested",
+    "hardwareDecode": "unknown"
+  },
+  "publicCatalog": {
+    "scope": "public unauthenticated schema/pagination validation, not account import",
+    "complete": true,
+    "pages": 2,
+    "apps": 4,
+    "variants": 4,
+    "eligible": 0
+  },
+  "officialWebScript": {
+    "url": "https://play.geforcenow.com/mall/main.c2e839a18214e672.js",
+    "sha256": "5187f6884c1d1844487387c6b7d2871a4e115a234f343d8ce868afeb63c34c49",
+    "htmlSriMatches": true
+  },
+  "authenticatedAccountImport": "not-tested; requires signed-in original GFN session",
+  "deviceDeployment": false,
+  "steamData": "synthetic temporary userdata only",
+  "authTokensPersisted": false
+}

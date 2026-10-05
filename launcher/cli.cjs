@@ -4,8 +4,9 @@ const path=require('node:path');
 const {spawn}=require('node:child_process');
 const {paths,loadConfig}=require('./config.cjs');
 const {resolveGame,readMappings}=require('./mapping.cjs');
-const help=`gfn-armada launch [<steam|epic|gog|xbox>:<id>|<mapped name>]
+const help=`gfn-armada launch [<steam|epic|gog|xbox|gfn>:<id>|<mapped name>]
 gfn-armada login
+gfn-armada library
 gfn-armada map <steam|epic|gog|xbox>:<id> --name <name>
 gfn-armada diagnostics
 gfn-armada config
@@ -19,7 +20,7 @@ Set GFN_ARMADA_LOG=debug for runtime diagnostics. Ctrl+Shift+D opens diagnostics
 function parse(args) {
   const [command='launch',...rest]=args;
   if (['help','--help','-h'].includes(command)) return {command:'help'};
-  if (!['launch','login','diagnostics','config','sync','map','steam-users','steam-restore'].includes(command)) throw new Error('Unknown command');
+  if (!['launch','login','library','diagnostics','config','sync','map','steam-users','steam-restore'].includes(command)) throw new Error('Unknown command');
   if(command==='steam-restore') {if(rest.length!==1)throw new Error('steam-restore requires a backup path');return {command,backup:rest[0]};}
   if(command==='map') {
     if(rest.length!==3 || !/^(steam|epic|gog|xbox):[A-Za-z0-9._-]{1,128}$/.test(rest[0]) || rest[1]!=='--name' || !rest[2] || /[\r\n\0]/.test(rest[2])) throw new Error('map requires a store game identifier --name <name>');

@@ -10,7 +10,7 @@ let cfg,request;
 try {
   cfg=loadConfig();
   request=parse(clientArgs(process.argv,app.isPackaged));
-  if(!['launch','login','map'].includes(request.command)) throw new Error('Use the gfn-armada launcher for this command');
+  if(!['launch','login','library','map'].includes(request.command)) throw new Error('Use the gfn-armada launcher for this command');
   request.resolved=resolveGame(['login','map'].includes(request.command)?null:request.target);
 }catch(e){console.error(e.message);app.exit(1)}
 if(cfg&&request?.resolved) {
@@ -79,7 +79,10 @@ if(cfg&&request?.resolved) {
     });
     window.webContents.on('will-attach-webview',e=>e.preventDefault());
   }
-  if(!app.requestSingleInstanceLock()) app.quit();
+  if(!app.requestSingleInstanceLock()) {
+    if(request.command==='library'){console.error('Close the running GFN client before importing the library');app.exit(1)}
+    else app.quit();
+  }
   else {
     app.on('second-instance',(_e,argv)=>{
       try{const next=parse(clientArgs(argv,app.isPackaged));if(!['login','launch','map'].includes(next.command)) return;
@@ -99,6 +102,13 @@ if(cfg&&request?.resolved) {
       app.on('browser-window-created',(_e,w)=>secure(w));
       win=new BrowserWindow({width:1280,height:720,title:'gfn-armada',backgroundColor:'#111111',fullscreen:cfg.fullscreen&&request.command==='launch',webPreferences:prefs});
       win.setMenu(null);
+      if(request.command==='library'){
+        const dispose=require('./catalog-import.cjs').attachCatalogImport(win.webContents,{fetch:(...args)=>ses.fetch(...args),
+          onProgress:data=>{win.setTitle(data.status==='waiting-for-gfn-login'?'GFN Armada — Sign in to import your library':`GFN Armada — Reading library${data.apps!==undefined?' ('+data.apps+' games)':''}`);log('catalog-progress',data)},
+          onComplete:result=>{runtime.catalogImportComplete=true;runtime.catalogImport=result;save();log('catalog-imported',result);void dialog.showMessageBox(win,{type:'info',message:`Imported ${result.imported} bookmarked, owned store editions.`,detail:`${result.unknownOwnership} bookmarked editions have unknown ownership and were skipped. ${result.manualOwnership} imported editions use ownership manually confirmed in GFN. Close Steam, then run gfn-armada sync --apply to add shortcuts.`,buttons:['Close client']}).then(()=>app.quit())},
+          onError:data=>{log('catalog-import-failed',data);dialog.showErrorBox('Library import unavailable',data.message)}});
+        win.on('closed',dispose);
+      }
       if(process.env.GFN_ARMADA_NATIVE_SHADOW==='1') {
         let shadow;
         try {
@@ -110,7 +120,7 @@ if(cfg&&request?.resolved) {
           await shadow.prepare();
         }catch{shadow?.dispose();ipcMain.handle('native-shadow-bootstrap',()=>null);log('native-shadow-unavailable');}
       } else ipcMain.handle('native-shadow-bootstrap',()=>null);
-      if(process.env.GFN_ARMADA_MEDIA_DIAGNOSTICS==='1') {
+      if(process.env.GFN_ARMADA_MEDIA_DIAGNOSTICS==='1'&&request.command!=='library') {
         const disposeInternals=require('./webrtc-internals.cjs').attachWebRTCInternals(BrowserWindow,data=>{
           runtime.nativeWebRTC=data;
           runtime.hardwareDecoderActive=require('./webrtc-internals.cjs').softwareDecodeStatus(data);
@@ -135,7 +145,7 @@ if(cfg&&request?.resolved) {
           const answer=await dialog.showMessageBox(win,{type:'question',buttons:['Save mapping','Cancel'],defaultId:1,cancelId:1,title:'GFN game mapping',message:`Save the currently opened GFN stream as ${mappingRequest.name} (${mappingRequest.target})?`,detail:'Check that this is the correct game and matching store in GFN. Existing mappings are backed up.'});
           if(answer.response===0) {
             const [store,storeGameId]=mappingRequest.target.split(':');
-            saveMapping({store,storeGameId,...(store==='steam'?{steamAppId:storeGameId}:{}),name:mappingRequest.name,launchURL:url});
+            saveMapping({store,storeGameId,...(store==='steam'?{steamAppId:storeGameId}:{}),gfnVariantId:new URLSearchParams(new URL(url).hash.split('?')[1]).get('cmsId'),captureSource:'manual-webclient',name:mappingRequest.name,launchURL:url});
             log('mapping-saved',{gameKey:mappingRequest.target});
           }
         }catch(e){dialog.showErrorBox('Mapping not saved',e.message)}finally{capturing=false}
@@ -180,7 +190,7 @@ if(cfg&&request?.resolved) {
       void refreshGPU();
     }).catch(e=>{log('startup-failed',{message:e.message});app.quit()});
     app.on('child-process-gone',(_e,details)=>log('child-process-gone',{type:details.type,reason:details.reason}));
-    app.on('window-all-closed',()=>app.quit());
+    app.on('window-all-closed',()=>{if(request.command==='library'&&!runtime.catalogImportComplete)app.exit(1);else app.quit()});
     app.on('before-quit',()=>{runtime.active=false;save()});
   }
 }

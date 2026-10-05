@@ -61,15 +61,18 @@ function plan(rows,{user,executable}={}){
     if(id&&!appid)throw new Error('Managed shortcut missing AppID');
   }
   const changes=[],skipped=[];let index=shortcuts.reduce((n,e)=>Math.max(n,Number(e.key)+1),0);
-  const keys=new Set();
+  const keys=new Set(),usedFields=new Set();
   for(const row of rows){
     const key=gameKey(row);validatedURL(row.launchURL);if(keys.has(key))throw new Error('Duplicate game mapping');keys.add(key);
     if(typeof row.name!=='string'||!row.name||/[\r\n\0]/.test(row.name))throw new Error('Invalid game name');
     for(const flag of ['bookmarked','owned'])if(row[flag]!==undefined&&typeof row[flag]!=='boolean')throw new Error(`${flag} must be boolean`);
     if(row.bookmarked!==true||row.owned!==true){skipped.push({gameKey:key,reason:'bookmark-and-ownership-not-both-confirmed'});continue;}
-    const name=`${row.name} (GFN · ${key.split(':')[0].toUpperCase()})`;
+    const name=`${row.name} (GFN · ${(row.store||key.split(':')[0]).toUpperCase()})`;
     const exe=`"${executable}"`,launch=`${runtimeOptions}launch ${key}`;
-    let fields=managed.get(key);const existing=Boolean(fields);
+    const alias=row.storeGameId?`${row.store}:${row.storeGameId}`:row.steamAppId?`steam:${row.steamAppId}`:null;
+    if(managed.has(key)&&alias&&managed.has(alias)&&managed.get(key)!==managed.get(alias))throw new Error('Ambiguous existing catalog shortcut');
+    let fields=managed.get(key)||(alias?managed.get(alias):null);const existing=Boolean(fields);
+    if(fields){if(usedFields.has(fields))throw new Error('Ambiguous catalog shortcut alias');usedFields.add(fields);}
     if(!fields){
       fields=[];const appid=(crc32(exe+name)|0x80000000)>>>0;
       if(appids.has(appid))throw new Error('Steam shortcut AppID collision');appids.add(appid);
@@ -80,6 +83,7 @@ function plan(rows,{user,executable}={}){
       shortcuts.push({type:0,key:String(index++),value:fields});
     }
     const before=vdf.encode(fields);
+    if(existing&&row.mappingSource==='gfn-catalog'){const tag=vdf.get(fields,'tags').value.find(r=>r.type===1&&r.value.startsWith(TAG));tag.value=TAG+key;}
     vdf.set(fields,'appname',1,name);vdf.set(fields,'exe',1,exe);vdf.set(fields,'StartDir',1,`"${path.dirname(executable)}"`);vdf.set(fields,'LaunchOptions',1,launch);
     if(!existing||!before.equals(vdf.encode(fields)))changes.push({action:existing?'update':'add',gameKey:key,name,launchOptions:launch,shortcutAppId:vdf.get(fields,'appid').value.readUInt32LE()});
   }

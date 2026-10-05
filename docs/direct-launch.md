@@ -54,5 +54,7 @@ Die Suche über wechselnde DOM-Strukturen wurde bewusst noch nicht automatisiert
 Mappings unterstützen außerdem `epic:<id>`, `gog:<id>` und `xbox:<id>`.
 Der paketierte Client kann mit `sync --apply` echte Steam-Shortcuts kontrolliert
 importieren; Backups und Restore sind umgesetzt. Voraussetzung sind bestätigte
-Lesezeichen-/Besitzwerte und eine erfasste Start-Route. Automatischer NVIDIA-
-Bibliotheksimport und Artwork bleiben offen. Ablauf: [Steam-Integration](steam-integration.md).
+Lesezeichen-/Besitzwerte und eine erfasste oder katalogbasierte Start-Route.
+`gfn-armada library` kann diese Daten aus der originalen NVIDIA-Sitzung einlesen;
+der authentifizierte Gerätetest steht aus. Artwork bleibt offen.
+Ablauf: [Katalogimport](catalog-import.md) und [Steam-Integration](steam-integration.md).

@@ -6,9 +6,11 @@ const HOME = 'https://play.geforcenow.com/';
 function gameKey(row) {
   const store=row.store||'steam';
   const id=row.storeGameId||row.steamAppId;
-  if(!['steam','epic','gog','xbox'].includes(store)||typeof id!=='string'||!(/^[A-Za-z0-9._-]{1,128}$/).test(id)) throw new Error('Invalid store game identifier');
-  if(['steam','gog'].includes(store)&&!/^\d+$/.test(id)) throw new Error('Steam/GOG game identifiers must be numeric');
+  if(!['steam','epic','gog','xbox'].includes(store)||(id!==undefined&&(typeof id!=='string'||!(/^[A-Za-z0-9._-]{1,128}$/).test(id)))) throw new Error('Invalid store game identifier');
+  if(id!==undefined&&['steam','gog'].includes(store)&&!/^\d+$/.test(id)) throw new Error('Steam/GOG game identifiers must be numeric');
   if(store==='steam'&&row.steamAppId&&row.steamAppId!==id) throw new Error('Conflicting Steam identifiers');
+  if((row.mappingSource==='gfn-catalog'||!id)&&typeof row.gfnVariantId==='string'&&/^\d{1,20}$/.test(row.gfnVariantId))return `gfn:${row.gfnVariantId}`;
+  if(!id)throw new Error('Invalid store game identifier');
   return `${store}:${id}`;
 }
 function validatedURL(value) {
@@ -24,7 +26,9 @@ function validatedURL(value) {
 }
 function readMappings(file=path.join(paths().config,'games.json')) {
   if (!fs.existsSync(file)) return [];
-  const rows=JSON.parse(fs.readFileSync(file,'utf8'));
+  return validateMappings(JSON.parse(fs.readFileSync(file,'utf8')));
+}
+function validateMappings(rows) {
   if (!Array.isArray(rows)) throw new Error('games.json must contain an array');
   const ids=new Set();
   for (const row of rows) {
@@ -32,6 +36,7 @@ function readMappings(file=path.join(paths().config,'games.json')) {
     if (!row.name || typeof row.name !== 'string' || /[\r\n\0]/.test(row.name)) throw new Error('Invalid game mapping');
     if (ids.has(key)) throw new Error('Duplicate Steam AppID or store game identifier');
     ids.add(key);
+    if(row.gfnVariantId!==undefined&&(typeof row.gfnVariantId!=='string'||!/^\d{1,20}$/.test(row.gfnVariantId)))throw new Error('Invalid GFN variant identifier');
     for(const field of ['bookmarked','owned']) if(row[field]!==undefined&&typeof row[field]!=='boolean') throw new Error(`${field} must be boolean`);
     validatedURL(row.launchURL);
   }
@@ -39,9 +44,9 @@ function readMappings(file=path.join(paths().config,'games.json')) {
 }
 function resolveGame(target, rows=readMappings()) {
   if (!target) return {url:HOME,game:null};
-  const isKey=/^(steam|epic|gog|xbox):/.test(target);
-  const candidates=isKey ? rows.filter(r=>gameKey(r)===target) : rows.filter(r=>r.name.toLowerCase()===target.toLowerCase());
-  if (candidates.length!==1) throw new Error(`No unique verified mapping for ${target}. Add a captured launch URL to games.json; no GFN ID is guessed.`);
+  const isKey=/^(steam|epic|gog|xbox|gfn):/.test(target);
+  const candidates=target.startsWith('gfn:')?rows.filter(r=>r.gfnVariantId===target.slice(4)):isKey ? rows.filter(r=>gameKey(r)===target||`${r.store||'steam'}:${r.storeGameId||r.steamAppId}`===target) : rows.filter(r=>r.name.toLowerCase()===target.toLowerCase());
+  if (candidates.length!==1) throw new Error(`No unique verified mapping for ${target}. Run gfn-armada library or capture a launch URL; no GFN ID is guessed.`);
   return {url:validatedURL(candidates[0].launchURL),game:candidates[0].name};
 }
 function saveMapping(row,file=path.join(paths().config,'games.json')) {
@@ -51,13 +56,21 @@ function saveMapping(row,file=path.join(paths().config,'games.json')) {
   for(const field of ['bookmarked','owned']) if(row[field]!==undefined&&typeof row[field]!=='boolean') throw new Error(`${field} must be boolean`);
   fs.mkdirSync(path.dirname(file),{recursive:true,mode:0o700});
   const existing=readMappings(file);
-  const rows=existing.filter(r=>gameKey(r)!==key);
-  const old=existing.find(r=>gameKey(r)===key)||{};
+  const alias=r=>`${r.store||'steam'}:${r.storeGameId||r.steamAppId}`;
+  const matches=existing.filter(r=>gameKey(r)===key||((row.storeGameId||row.steamAppId)&&alias(r)===alias(row)));
+  if(matches.length>1)throw new Error('Ambiguous mapping update');
+  const old=matches[0]||{};
+  const rows=existing.filter(r=>r!==old);
   rows.push({...old,...row,name:row.name,launchURL:url});
+  return writeMappings(rows,file);
+}
+function writeMappings(rows,file=path.join(paths().config,'games.json')) {
+  validateMappings(rows);
+  fs.mkdirSync(path.dirname(file),{recursive:true,mode:0o700});
   if(fs.existsSync(file)) fs.copyFileSync(file,`${file}.backup-${Date.now()}-${randomUUID()}`,fs.constants.COPYFILE_EXCL);
   const temporary=`${file}.tmp-${process.pid}-${randomUUID()}`;
   fs.writeFileSync(temporary,JSON.stringify(rows,null,2)+'\n',{flag:'wx',mode:0o600});
   try {fs.renameSync(temporary,file)} finally {if(fs.existsSync(temporary))fs.unlinkSync(temporary)}
   return rows;
 }
-module.exports={HOME,validatedURL,readMappings,resolveGame,saveMapping,gameKey};
+module.exports={HOME,validatedURL,readMappings,resolveGame,saveMapping,gameKey,writeMappings,validateMappings};
