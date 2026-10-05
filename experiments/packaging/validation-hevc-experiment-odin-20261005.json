@@ -1,0 +1,24 @@
+{
+  "date": "2026-10-05",
+  "sourceCommit": "2d9ec5c",
+  "artifact": "gfn-armada-0.1.0-aarch64-hevc-experiment.AppImage",
+  "sha256": "63f08923c13fdf3199c0e89f8d61972ff7be3322ffde5fa0b9ed491520444093",
+  "linuxArm64CleanTests": {"passed": 65, "failed": 0},
+  "localMacTests": {"passed": 66, "failed": 0, "note": "Includes one pre-existing uncommitted bridge test; excluded from build"},
+  "macRealSandboxedPreloadSmoke": "passed on synthetic origin; no NVIDIA session",
+  "arm64AppImageSmoke": "passed as UID 1000; bundled driver dlopen, CLI and synthetic catalog/Steam tests",
+  "odin": {
+    "runtimePid": 85120,
+    "experimentInstalled": true,
+    "receiveHevc": true,
+    "identityMode": "windows",
+    "gpuSandboxDisabled": false,
+    "initialServerOfferCodecs": ["H264"],
+    "nativeStatsStatus": "waiting",
+    "gameSessionRequestHookObserved": false,
+    "gfnHEVCNegotiated": false,
+    "hevcHardwareDecode": "unknown",
+    "gamescope": "not tested"
+  },
+  "scope": "Startup snapshot only; initial offer is not attributed to a game stream. Await fresh user game launch. No raw bodies, SDP, ICE or credentials exported."
+}
