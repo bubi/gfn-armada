@@ -152,3 +152,22 @@ when Wayland is selected. It preserves explicit X11 preferences. Launch with
 this path. Keep GPU sandbox enabled. The active test instance uses the equivalent
 native argv via the dedicated diagnostic entry point; main installation remains
 untouched.
+
+## Shared Exp-Golomb guard (follow-up)
+
+`0004-bound-shared-exp-golomb-reader.patch` bounds `BitReader::ue()` itself:
+the 32nd leading zero throws before incrementing the count or evaluating the
+shift. Valid 31-zero codes remain unchanged. This closes the same undefined
+shift in the shared HEVC reader, rather than only guarding the H.264 caller.
+The original five-byte reproduction triggers UBSan's shift-by-32 diagnostic;
+the corrected boundary regression passes under UBSan on Mac and Linux ARM64.
+The complete ARM64 Meson suite passes **16/16**.
+
+Evidence: [`validation-bitreader-boundaries.json`](../experiments/vaapi-iris/validation-bitreader-boundaries.json).
+An isolated driver build is available at
+`~/.local/share/gfn-armada-tests/vaapi-ue-bound-20261005/dri`; the ongoing GFN
+session has **not** been restarted or switched to that module. The build recipe
+now applies all four patches. This changes neither the recorded H.264 live
+validation nor the unconfirmed HEVC status. An
+[upstream issue draft](../experiments/vaapi-iris/upstream-bitreader-report.md)
+includes the reproduction, scope and proposed patch; it has not been published.

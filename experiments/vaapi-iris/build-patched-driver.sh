@@ -14,11 +14,11 @@ PY
 mkdir -p "$root"
 git clone --no-checkout https://github.com/phxinyang/qualcomm-iris-vaapi "$root/src"
 git -C "$root/src" checkout --detach "$commit"
-for patch in "$recipe"/patches/000{1,2,3}-*.patch; do
+for patch in "$recipe"/patches/000{1,2,3,4}-*.patch; do
   git -C "$root/src" apply --check "$patch"
   git -C "$root/src" apply "$patch"
 done
-sha256sum "$recipe"/patches/000{1,2,3}-*.patch > "$root/patches.sha256"
+sha256sum "$recipe"/patches/000{1,2,3,4}-*.patch > "$root/patches.sha256"
 podman run --rm -v "$root/src:/src:z" -v "$root:/out:z" -w /src registry.fedoraproject.org/fedora:44 bash -ec '
   dnf -y --setopt=fedora.metalink= \
     --setopt=fedora.baseurl=https://dl.fedoraproject.org/pub/fedora/linux/releases/44/Everything/aarch64/os/ \

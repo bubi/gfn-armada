@@ -1,0 +1,65 @@
+--- a/src/codec/bitwriter.h
++++ b/src/codec/bitwriter.h
+@@ -4,6 +4,7 @@
+ 
+ #include <cstdint>
+ #include <initializer_list>
++#include <stdexcept>
+ #include <vector>
+ 
+ // H.264 and HEVC both synthesise parameter sets from VA metadata because the
+@@ -160,8 +161,11 @@
+     uint32_t ue()
+     {
+         unsigned zeros = 0;
+-        while (!bit() && zeros < 32)
++        while (!bit()) {
++            if (zeros >= 31)
++                throw std::runtime_error("Exp-Golomb prefix exceeds 31 zero bits");
+             ++zeros;
++        }
+         return ((1u << zeros) - 1) + bits(zeros);
+     }
+     int32_t se()
+--- a/test/meson.build
++++ b/test/meson.build
+@@ -61,3 +61,9 @@
+   'h264-parameter-sets-test', 'h264-parameter-sets-test.cc',
+   dependencies: [iris_core_dep], cpp_args: ['-Wall', '-Wextra', '-std=c++20'])
+ test('h264-parameter-sets', h264_parameter_sets_test)
++
++# Shared reader used by HEVC: reject oversized prefixes before a 32-bit shift.
++bitreader_boundaries_test = executable(
++  'bitreader-boundaries-test', 'bitreader-boundaries-test.cc',
++  cpp_args: ['-Wall', '-Wextra', '-std=c++20'])
++test('bitreader-boundaries', bitreader_boundaries_test)
+--- /dev/null
++++ b/test/bitreader-boundaries-test.cc
+@@ -0,0 +1,27 @@
++// SPDX-License-Identifier: MIT
++#include "../src/codec/bitwriter.h"
++#include <stdexcept>
++#include <iostream>
++#include <limits>
++static void check(bool value) { if (!value) throw std::runtime_error("BitReader boundary regression"); }
++int main() {
++    for (uint32_t value : {0u,1u,15u,255u,0x7fffffffu,0xfffffffeu}) {
++        BitWriter writer; writer.ue(value);
++        BitReader reader(writer.data().data(),writer.data().size(),0);
++        check(reader.ue()==value);
++    }
++    for (unsigned zeros : {32u,33u,40u,64u}) {
++        BitWriter writer;
++        for (unsigned i=0;i<zeros;++i) writer.bit(0);
++        writer.bit(1);
++        BitReader reader(writer.data().data(),writer.data().size(),0);
++        bool rejected=false;try { (void)reader.ue(); } catch (const std::runtime_error&) { rejected=true; }
++        check(rejected);
++    }
++    for (auto bytes : {std::vector<uint8_t>{},std::vector<uint8_t>{0,0,0,0}}) {
++        BitReader reader(bytes.data(),bytes.size(),0);
++        bool rejected=false;try { (void)reader.ue(); } catch (const std::runtime_error&) { rejected=true; }
++        check(rejected);
++    }
++    std::cout<<"BitReader UE: 31-zero boundary preserved; 32+ zero prefixes rejected before shift\n";
++}

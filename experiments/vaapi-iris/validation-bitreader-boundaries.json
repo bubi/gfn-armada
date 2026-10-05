@@ -1,0 +1,32 @@
+{
+  "date": "2026-10-05",
+  "scope": "Shared BitReader UE overflow boundary; no live stream restarted",
+  "unpatchedUBReproducedOnMac": true,
+  "unpatchedDiagnostic": "shift exponent 32 is too large for 32-bit type unsigned int",
+  "macUBSanRegression": "passed",
+  "linuxArm64UBSanRegression": "passed",
+  "linuxArm64MesonTests": {
+    "passed": 16,
+    "failed": 0
+  },
+  "testedValidValues": [
+    0,
+    1,
+    15,
+    255,
+    2147483647,
+    4294967294
+  ],
+  "testedRejectedZeroPrefixes": [
+    32,
+    33,
+    40,
+    64
+  ],
+  "emptyAndAllZeroInputRejected": true,
+  "driverModuleSha256": "89014d97fb2fe3f5f2cfac5d614b8dc13d4267e6f624f4dc618afaa8d3349396",
+  "deviceBuildDirectory": "~/.local/share/gfn-armada-tests/vaapi-ue-bound-20261005",
+  "newModuleActivatedInGFN": false,
+  "HEVCLiveValidated": false,
+  "upstreamIssuePublished": false
+}
