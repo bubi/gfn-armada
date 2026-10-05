@@ -141,6 +141,33 @@ Only bookmarked editions with GFN-reported ownership are eligible; manually conf
 
 Ordinary launch inherits the display/input environment. The tested Odin Steam shortcut opts into the integrated nested compositor with `GFN_ARMADA_GAMESCOPE=nested`; [exact Steam launch options](docs/steam-client-launch.md). Login lives outside the bundle under `~/.local/share/gfn-armada/chromium`; config: `~/.config/gfn-armada/config.toml`. `codec = "hevc"` enables the experimental WebRTC preference; resolution/FPS/bitrate are set in GFN's actual UI, not transmitted as invented NVIDIA options. `diagnostics` reports `unknown` when hardware use cannot be established. Native Chromium WebRTC statistics are collected automatically: codec, decoder implementation, frame counts/drops, resolution/FPS, cumulative and interval mean decode time, and mean jitter-buffer residence. These timings are not input-to-display latency. `GFN_ARMADA_MEDIA_DIAGNOSTICS=0` disables collection; `=1` additionally enables opt-in CDP Media diagnostics. Raw SDP, ICE addresses and stream identifiers are not exported. `GFN_ARMADA_LOG=debug` adds observations; inspect logs before sharing.
 
+## Launch from Steam with H.265
+
+Add the executable ARM64 AppImage as a **Non-Steam game**. Set **Target** to its
+absolute path and **Start In** to its containing directory. Disable Proton and
+enter these **Launch Options** for the tested Odin/ArmadaOS setup:
+
+```text
+GFN_ARMADA_GAMESCOPE=nested GFN_ARMADA_BROWSER_IDENTITY=windows %command% --appimage-extract-and-run launch
+```
+
+- `GFN_ARMADA_GAMESCOPE=nested` gives Steam a tracked Gamescope window for focus
+  and fullscreen presentation; Chromium uses Wayland inside it.
+- `GFN_ARMADA_BROWSER_IDENTITY=windows` selects the browser identity used in the
+  successful codec tests. It does not emulate Windows or provide a decoder.
+- `%command%` is replaced by Steam with the AppImage target.
+- `--appimage-extract-and-run` runs without FUSE; `launch` opens the GFN client.
+
+Set `codec = "hevc"` in `~/.config/gfn-armada/config.toml` to enable the experimental
+H.265 preference. Alternatively, add `GFN_ARMADA_HEVC_EXPERIMENT=1` before
+`%command%` in the launch options. H.264 remains a fallback; confirm H.265 in the
+active stream statistics, even if GFN's codec selector says Unsupported.
+
+Set Steam's **Game Resolution** to **1920×1080**, enabling the internal-display
+override. In GFN's own streaming settings, choose **1920×1080 / 60 FPS** for the
+verified setup; Steam's resolution setting does not configure the remote stream.
+[Full launch guide and test evidence](docs/steam-client-launch.md).
+
 ## Sources and publication
 
 [Provenance and patches](THIRD_PARTY_NOTICES.md) · [Evidence/open work](docs/poc-status.md) · [Publication checklist](docs/publication.md)

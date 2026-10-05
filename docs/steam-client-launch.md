@@ -18,7 +18,7 @@ Add the AppImage as a Non-Steam Game in Steam, named `GFN Armada`:
 
 - Target: absolute AppImage path, quoted if needed.
 - Start directory: containing directory.
-- Launch options: `GFN_ARMADA_BROWSER_IDENTITY=windows %command% --appimage-extract-and-run launch`
+- Launch options for the tested nested mode: `GFN_ARMADA_GAMESCOPE=nested GFN_ARMADA_BROWSER_IDENTITY=windows %command% --appimage-extract-and-run launch`
 - Compatibility: use native execution, not Proton. This is Linux ARM64.
 - Steam Game Resolution: `1920x1080`, with override for the internal display
   enabled. Odin's panel is physically portrait 1080×1920 and Gamescope rotates
