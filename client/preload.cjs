@@ -22,10 +22,11 @@ if(location.origin==='https://play.geforcenow.com') {
 }
 // Experimental HEVC negotiation; original login/UI remain in place.
 // Self-contained for synchronous execution in the page's main world.
-function installHevcExperiment() {
+function installHevcExperiment(preferred='H265') {
+  const wire=preferred==='AV1'?3:2;
   const emit=data=>window.postMessage({type:'gfn-armada-hevc-experiment',data},location.origin);
   const caps=()=>RTCRtpReceiver.getCapabilities('video')?.codecs||[];
-  const hasHevc=()=>caps().some(c=>c.mimeType.toLowerCase()==='video/h265');
+  const hasPreferred=()=>caps().some(c=>c.mimeType.toLowerCase()===('video/'+preferred).toLowerCase());
   function rewrite(url,method,body) {
     try {
       const u=new URL(url,location.href);
@@ -40,9 +41,9 @@ function installHevcExperiment() {
         !monitors.length||!monitors.every(m=>m.widthInPixels===1920&&m.heightInPixels===1080&&m.framesPerSecond===60)) {
         emit({event:'request-skipped-profile'});return body;
       }
-      if(!hasHevc()){emit({event:'request-skipped-capability'});return body;}
-      const previousCodec=f.codec;f.codec=2;
-      emit({event:'request-preferred',previousCodec,requestedCodec:2});
+      if(!hasPreferred()){emit({event:'request-skipped-capability'});return body;}
+      const previousCodec=f.codec;f.codec=wire;
+      emit({event:'request-preferred',previousCodec,requestedCodec:wire});
       return JSON.stringify(value);
     }catch{return body;}
   }
@@ -70,27 +71,29 @@ function installHevcExperiment() {
     return remote.call(this,description);
   };
   RTCPeerConnection.prototype.createAnswer=async function(...args) {
-    if(this.remoteDescription?.type==='offer'&&offered(this.remoteDescription.sdp).includes('H265')) {
+    if(this.remoteDescription?.type==='offer'&&offered(this.remoteDescription.sdp).includes(preferred)) {
       try {
         const codecs=caps();
-        const rank=c=>c.mimeType.toLowerCase()==='video/h265'?0:c.mimeType.toLowerCase()==='video/h264'?1:2;
-        if(hasHevc())for(const t of this.getTransceivers())if(t.receiver.track.kind==='video')
-          t.setCodecPreferences([...codecs].sort((a,b)=>rank(a)-rank(b)));
-        emit({event:'answer-preferred',fallback:'H264'});
+        const rank=c=>c.mimeType.toLowerCase()===('video/'+preferred).toLowerCase()?0:c.mimeType.toLowerCase()==='video/h265'?1:c.mimeType.toLowerCase()==='video/h264'?2:3;
+        let applied=false;
+        if(hasPreferred())for(const t of this.getTransceivers())if(t.receiver.track.kind==='video'){
+          t.setCodecPreferences([...codecs].sort((a,b)=>rank(a)-rank(b)));applied=true;
+        }
+        emit({event:applied?'answer-preferred':'answer-preference-failed',preferred,fallback:'H264'});
       }catch{emit({event:'answer-preference-failed'});}
     }
     const result=await answer.apply(this,args);
     emit({event:'answer-created',codecs:offered(result.sdp)});return result;
   };
-  emit({event:'installed',receiveHevc:hasHevc()});
+  emit({event:'installed',preferred,receivePreferred:hasPreferred(),receiveHevc:caps().some(c=>c.mimeType.toLowerCase()==='video/h265')});
 }
-if(location.origin==='https://play.geforcenow.com'&&process.argv.includes('--gfn-armada-hevc-experiment')) {
+if(location.origin==='https://play.geforcenow.com'&&(process.argv.includes('--gfn-armada-hevc-experiment')||process.argv.includes('--gfn-armada-av1-experiment'))) {
   let count=0;
   window.addEventListener('message',e=>{
     if(e.source===window&&e.origin===location.origin&&e.data?.type==='gfn-armada-hevc-experiment'&&count++<100)
       ipcRenderer.send('hevc-experiment-status',e.data.data);
   });
-  try{contextBridge.executeInMainWorld({func:installHevcExperiment});}
+  try{contextBridge.executeInMainWorld({func:installHevcExperiment,args:[process.argv.includes('--gfn-armada-av1-experiment')?'AV1':'H265']});}
   catch{ipcRenderer.send('hevc-experiment-status',{event:'install-failed'});}
 }
 // No Node API exposed to the remote page. Main-world observations are untrusted.

@@ -98,3 +98,22 @@ independent active-codec observation. Worker-originated requests are not hooked.
 Three unit tests cover request scope/preservation, capability/profile exclusions,
 XHR and offer-dependent preferences. A real sandboxed Electron synthetic-origin
 smoke confirms installation, existing identity and absence of page Node access.
+
+## Separate AV1 experiment
+
+After the verified HEVC stream, the user requested an AV1 test.
+`GFN_ARMADA_AV1_EXPERIMENT=1` selects AV1 in the same opt-in hook, taking
+precedence over the HEVC experiment flag. Real receiver capabilities are ordered
+AV1, HEVC, H.264, then other/auxiliary codecs; the matched CloudMatch field uses
+3. No fabricated SDP payloads. Runtime `hevcExperiment.preferred` distinguishes
+AV1 from HEVC for compatibility with the existing diagnostic channel.
+
+The pinned Iris adapter does not normally advertise AV1. Its upstream
+[README](https://github.com/phxinyang/qualcomm-iris-vaapi/blob/f587b14e6b22955c7250a45ff5f43588bbce2114/README.md)
+documents VA timeouts for hidden AV1 frames, which produce no CAPTURE buffer.
+A device qualification run explicitly sets `V4L2_VA_EXPERIMENTAL_PROFILES=1`;
+this is never set by the ordinary launcher. This upstream opt-in exposes an
+implemented but unqualified profile, not a validated capability. The old probe
+reported AV1 decodable but not power-efficient. Success, software fallback and
+VA/V4L2 failure must therefore be distinguished in live statistics/traces.
+Retain the verified HEVC AppImage for recovery; AV1 has no success claim yet.

@@ -19,7 +19,8 @@ if(cfg&&request?.resolved) {
   fs.mkdirSync(profile,{recursive:true,mode:0o700});
   app.setName('gfn-armada');app.setPath('userData',profile);app.setPath('sessionData',profile);
   const backend=ozonePlatform();
-  const hevcExperiment=process.env.GFN_ARMADA_HEVC_EXPERIMENT==='1';
+  const av1Experiment=process.env.GFN_ARMADA_AV1_EXPERIMENT==='1';
+  const hevcExperiment=av1Experiment||process.env.GFN_ARMADA_HEVC_EXPERIMENT==='1';
   const browserIdentity=require('./browser-identity.cjs').identity({chrome:process.versions.chrome});
   if(backend) app.commandLine.appendSwitch('ozone-platform',backend);
   if(!cfg.hardware_decode) app.commandLine.appendSwitch('disable-accelerated-video-decode');
@@ -70,11 +71,11 @@ if(cfg&&request?.resolved) {
     vaapiDevicePath:vaapiNode??null,gpuSandboxDisabled,
     bundledDecoder:process.env.GFN_ARMADA_BUNDLED_DECODER_REPORT?JSON.parse(process.env.GFN_ARMADA_BUNDLED_DECODER_REPORT):null,
     browserIdentity:browserIdentity?{mode:browserIdentity.mode,experimental:true,workerIdentity:'not-overridden'}:null,
-    hevcExperiment:hevcExperiment?{enabled:true,events:[]}:null,
+    hevcExperiment:hevcExperiment?{enabled:true,preferred:av1Experiment?'AV1':'H265',events:[]}:null,
     source:'page-reported; diagnostic evidence only',active:false};
   function save() {runtime.timestamp=new Date().toISOString();const f=path.join(root.state,'runtime.json');fs.writeFileSync(f+'.tmp',JSON.stringify(runtime,null,2),{mode:0o600});fs.renameSync(f+'.tmp',f)}
   const prefs={nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true,preload:path.join(__dirname,'preload.cjs'),partition:'persist:gfn',
-    additionalArguments:[...(browserIdentity?[`--gfn-armada-identity=${JSON.stringify(browserIdentity)}`]:[]),...(hevcExperiment?['--gfn-armada-hevc-experiment']:[])]};
+    additionalArguments:[...(browserIdentity?[`--gfn-armada-identity=${JSON.stringify(browserIdentity)}`]:[]),...(hevcExperiment?[av1Experiment?'--gfn-armada-av1-experiment':'--gfn-armada-hevc-experiment']:[])]};
   function secure(window) {
     window.webContents.on('will-navigate',(event,url)=>{if(!allowed(url)){event.preventDefault();log('navigation-blocked',{origin:origin(url)})}});
     window.webContents.on('will-redirect',(event,url)=>{if(!allowed(url)){event.preventDefault();log('redirect-blocked',{origin:origin(url)})}});
@@ -189,7 +190,9 @@ if(cfg&&request?.resolved) {
         const clean={event:data.event};
         if(typeof data.receiveHevc==='boolean')clean.receiveHevc=data.receiveHevc;
         if([0,1,2,3].includes(data.previousCodec))clean.previousCodec=data.previousCodec;
-        if(data.requestedCodec===2)clean.requestedCodec=2;
+        if([2,3].includes(data.requestedCodec))clean.requestedCodec=data.requestedCodec;
+        if(['AV1','H265'].includes(data.preferred))clean.preferred=data.preferred;
+        if(typeof data.receivePreferred==='boolean')clean.receivePreferred=data.receivePreferred;
         if(Array.isArray(data.codecs))clean.codecs=[...new Set(data.codecs.filter(c=>['H264','H265','AV1'].includes(c)))];
         runtime.hevcExperiment.events.push(clean);runtime.hevcExperiment.events=runtime.hevcExperiment.events.slice(-30);
         save();log('hevc-experiment',clean);
