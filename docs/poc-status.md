@@ -1,5 +1,19 @@
 # PoC results and open work — 2026-10-05
 
+## Current consolidated status: real Steam AppImage launch
+
+[Project summary](project-summary-2026-10-05.md) is the current entry point.
+Final code snapshot `8fb071d`: AppImage runs under Steam's reaper with an
+integrated nested Gamescope; user confirms correct borderless display.
+Measured content and stream: 1920×1080, H.265 at 60 FPS, VaapiVideoDecoder,
+9,979 decoded frames / 6 drops and GPU process holding the Iris video device.
+No new driver completion trace or controlled latency comparison in this run.
+[Final evidence](../experiments/packaging/validation-steam-client-borderless-odin-20261005.json),
+[Steam instructions](steam-client-launch.md). Clean Linux ARM64 tests: 72/72;
+AppImage runtime smoke passed as UID 1000. Steam overlay, long-term stability
+and real authenticated catalog/per-game integration remain open.
+The dated entries below retain earlier results and their then-current limits.
+
 ## Research conclusion and Gamescope output test
 
 [Consolidated codec handover](codec-findings-2026-10-05.md): codec experimentation

@@ -1,5 +1,11 @@
 # Codec research handover — 2026-10-05
 
+Subsequent client integration: [consolidated project summary](project-summary-2026-10-05.md).
+The final real Steam AppImage launch has user-confirmed correct display and
+native H.265/VA-API at 1920×1080/60 with the Iris device open. It uses nested
+Gamescope; this later run has no new driver completion trace. The earlier
+temporary-focus Gamescope experiment below is a distinct test.
+
 **AI-generated project-specific implementation and documentation, human-guided,
 unmaintained PoC.** Existing upstream code retains its authorship and licenses.
 Codec experimentation is concluded for this project snapshot at the user's
