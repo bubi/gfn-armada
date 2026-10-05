@@ -145,3 +145,21 @@ HEVC/H.264 or end-to-end latency. Long-term stability, hidden-frame coverage,
 pixel accuracy, zero-copy and Gamescope remain open. No decoder/source patch
 was needed for this AV1 trial; existing adapter opt-in and codec preference
 were sufficient for the observed stream. Keep AV1 experimental.
+
+
+### AV1 visual limitation reported by user
+
+The user reports intermittent picture flicker in the AV1 run. Hardware frames
+are established, but visual acceptance fails; do not describe AV1 as reliably
+playable. Later trace counters are 16,890 GPU-copy publications and 45 drops,
+without actual sync-timeout markers. The observer subsequently reports stale
+statistics; that alone does not establish whether the stream or client crashed.
+
+Three AV01 session opens reflect 1920×1080 → 1680×1050 → 1920×1080. These switches
+are candidates for discontinuities, not a proven explanation for flicker.
+The pinned translator defers each AV1 picture until its successor and reconstructs
+reference refresh information; vaEndPicture resolves the previously held surface.
+Incorrect reference/surface association or presentation is another candidate,
+requiring a fixed-resolution reproducer and comparison of VPU output before
+presentation. No speculative decoder patch or automatic restart applied.
+Retain HEVC as the better-supported fallback; AV1 remains a diagnostic option.

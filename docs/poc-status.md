@@ -8,7 +8,7 @@ Iris GPU-copy returns over ~278 seconds. Overlay agrees, GPU process holds
 reported driver timeout counters zero. [Evidence](../experiments/packaging/validation-av1-live-odin-20261005.json).
 The upstream experimental-profile flag was explicitly enabled; normal AV1
 advertisement remains disabled due to the upstream hidden-frame limitation.
-Keep AV1 experimental. Resolution changed; ~2.76 ms mean decode is not a fair
+**User reports intermittent AV1 flicker; visual acceptance failed.** Keep AV1 experimental. Resolution changed; ~2.76 ms mean decode is not a fair
 codec comparison. Prolonged stability, pixel accuracy, Gamescope and zero-copy
 remain unverified. Earlier statements below reflect earlier measurements.
 

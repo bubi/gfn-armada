@@ -151,5 +151,18 @@
       0
     ],
     "note": "Broad substring matches included configuration and timeouts=0 diagnostic fields; no sync timeout or surface sync timeout marker."
+  },
+  "visualCorrectness": "User reports intermittent picture flicker; visual acceptance failed",
+  "followUp": {
+    "nativeStatsStatus": "stale; no streams in later observer snapshot, does not prove process crash",
+    "irisCopyGpuReturns": 16890,
+    "irisDropReturns": 45,
+    "actualSyncTimeoutMarkers": 0,
+    "observedSessionSizes": [
+      "1920x1080",
+      "1680x1050",
+      "1920x1080"
+    ],
+    "flickerCause": "unknown; resolution changes, deferred AV1 surface/reference handling and presentation are candidates, not demonstrated causes"
   }
 }
