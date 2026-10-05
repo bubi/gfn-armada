@@ -199,7 +199,10 @@ if(cfg&&request?.resolved) {
         runtime.hevcExperiment.events.push(clean);runtime.hevcExperiment.events=runtime.hevcExperiment.events.slice(-30);
         save();log('hevc-experiment',clean);
       });
-      win.on('resize',()=>{runtime.window={bounds:win.getBounds(),contentBounds:win.getContentBounds(),fullscreen:win.isFullScreen()};save()});
+      const saveWindow=()=>{runtime.window={bounds:win.getBounds(),contentBounds:win.getContentBounds(),fullscreen:win.isFullScreen(),visible:win.isVisible()};save()};
+      win.on('resize',saveWindow);
+      win.on('show',saveWindow);
+      saveWindow();
       ipcMain.on('rtc-observation',(event,data)=>{
         if(event.sender!==win.webContents||event.senderFrame?.url.startsWith(HOME)!==true) return;
         if(!data || !Array.isArray(data.streams)||!Array.isArray(data.codecs)||!Array.isArray(data.controllers)) return;

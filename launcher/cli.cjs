@@ -78,9 +78,11 @@ function run(args=process.argv.slice(2)) {
   const platformArgs=backend?[`--ozone-platform=${backend}`]:[];
   const child=spawn(executable,[...platformArgs,...(process.env.GFN_ARMADA_ELECTRON?launchArgs:[appRoot,...launchArgs])],{stdio:'inherit',env});
   child.on('error',e=>{console.error(e.message);process.exitCode=1});
-  child.on('exit',(code,signal)=>{
+  child.on('close',(code,signal)=>{
     if(signal||code) console.error(JSON.stringify({timestamp:new Date().toISOString(),event:'client-exit',code,signal}));
-    process.exitCode=code ?? (signal?1:0);
+    // Steam tracks the launcher too. Injected native libraries can retain
+    // handles after Chromium exits; do not leave a phantom running game.
+    process.exit(code ?? (signal?1:0));
   });
   for(const signal of ['SIGINT','SIGTERM']) process.on(signal,()=>child.kill(signal));
 }
