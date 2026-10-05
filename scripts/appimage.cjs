@@ -26,6 +26,10 @@ async function run(){
   fs.rmSync(appdir,{recursive:true,force:true});
   fs.mkdirSync(path.join(appdir,'usr/lib'),{recursive:true});
   fs.cpSync(bundle,path.join(appdir,'usr/lib/gfn-armada'),{recursive:true});
+  const driver=path.join(root,'dist/iris-driver');
+  const manifest=JSON.parse(fs.readFileSync(path.join(driver,'manifest.json'),'utf8'));
+  if(hash(fs.readFileSync(path.join(driver,'dri/v4l2_drv_video.so')))!==manifest.moduleSha256)throw new Error('Bundled Iris module checksum mismatch');
+  fs.cpSync(driver,path.join(appdir,'usr/lib/gfn-armada/iris-driver'),{recursive:true});
   fs.mkdirSync(path.join(appdir,'usr/bin'),{recursive:true});
   fs.symlinkSync('../lib/gfn-armada/gfn-armada',path.join(appdir,'usr/bin/gfn-armada'));
   fs.writeFileSync(path.join(appdir,'AppRun'),`#!/bin/sh

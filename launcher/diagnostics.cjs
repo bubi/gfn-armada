@@ -32,6 +32,7 @@ function diagnostics() {
     ffmpeg:probe('ffmpeg',['-hide_banner','-decoders']),ffmpegHwaccels:probe('ffmpeg',['-hide_banner','-hwaccels']),
     gstreamer:probe('gst-inspect-1.0',['video4linux2']),
     h264HardwareDecode:'unknown',hevcHardwareDecode:'unknown',av1HardwareDecode:'unknown',dmabuf:'unknown',
+    bundledDecoder:require('./bundled-decoder.cjs').select({hardwareDecode:require('./config.cjs').loadConfig().hardware_decode}).report,
     runtimeSnapshot:runtime,runtimeSnapshotFile:runtimeFile,
     note:'Device presence, compiled FFmpeg decoders, GPU feature status and page-reported RTC statistics do not prove Qualcomm hardware decoding. Runtime snapshot is historical; check timestamp and session.'};
 }

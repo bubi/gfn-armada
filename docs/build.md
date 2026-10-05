@@ -79,7 +79,9 @@ Byte-identische AppImage-Ausgaben sind nicht nachgewiesen.
 Start ohne FUSE: `./gfn-armada-0.1.0-aarch64.AppImage --appimage-extract-and-run help`.
 Steam-Sync setzt diesen Runtimeparameter selbst. Profil und Cookies bleiben
 außerhalb des Pakets, das Basissystem wird nicht verändert. Der Iris-VA-API-Treiber
-ist nicht enthalten; das AppImage löst keinen Hardwaredecode-Pfad von selbst.
+ist inzwischen enthalten und wird für die erkannte Zielhardware unter Wayland
+ausgewählt; siehe [Decoder-Paketierung](appimage-decoder.md). Die Auswahl meldet
+keinen erfolgreichen Hardwaredecode. Der neue Build muss am Gerät geprüft werden.
 Flatpak bietet Runtimeverteilung, braucht aber sorgfältige
 Video-/DRM-/Controller- und Wayland-Berechtigungen und ein passendes ARM64-SDK.
 Ein Armada-RPM verändert das bootc-System und ist für das erste Experiment

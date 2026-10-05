@@ -1,0 +1,45 @@
+{
+  "date": "2026-10-05",
+  "artifact": "dist/gfn-armada-0.1.0-aarch64.AppImage",
+  "sha256": "356e16cc4265c5f6346737f56647735fa16d4b29ae6bd11ed19a190d4b0d6edf",
+  "sizeBytes": 116075016,
+  "driverSourceCommit": "f587b14e6b22955c7250a45ff5f43588bbce2114",
+  "driverModuleSha256": "d4708081ceacaafabd78194d3a27c48b86a097ac990140c411802d6b25484251",
+  "driverPatches": 4,
+  "driverMesonTests": {
+    "passed": 16,
+    "failed": 0
+  },
+  "unitTests": {
+    "passed": 51,
+    "failed": 0,
+    "platforms": [
+      "darwin-arm64",
+      "linux-arm64"
+    ]
+  },
+  "runtimeSmoke": {
+    "architecture": "arm64",
+    "uid": 1000,
+    "appImage": "/work/dist/gfn-armada-0.1.0-aarch64.AppImage",
+    "driverSha256": "d4708081ceacaafabd78194d3a27c48b86a097ac990140c411802d6b25484251",
+    "driverDlopen": true,
+    "driverPatches": 4,
+    "help": true,
+    "diagnostics": true,
+    "config": true,
+    "unknownMappingRejected": true,
+    "steamReviewApplyIdempotenceRestore": true,
+    "gui": "not-tested",
+    "gamescope": "not-tested",
+    "hardwareDecode": "unknown"
+  },
+  "driverBundled": true,
+  "patchedSourceAndLicensesBundled": true,
+  "automaticSelection": "Odin Portal + Iris + Wayland only; respects external overrides",
+  "compilerWarnings": "GCC 12 emitted vector insertion stringop warnings; build and tests passed; no new device validation",
+  "hardwareDecode": "unknown-for-this-rebuilt-artifact",
+  "deviceDeployment": false,
+  "hevcValidated": false,
+  "zeroCopyValidated": false
+}

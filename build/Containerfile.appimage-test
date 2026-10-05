@@ -1,6 +1,6 @@
 FROM gfn-armada-appimage-builder:latest
 # Runtime smoke environment only. These remain system libraries on ArmadaOS.
-RUN apt-get update && apt-get install -y --no-install-recommends libgtk-3-0 libnss3 libasound2 libgbm1 libxss1 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends libgtk-3-0 libnss3 libasound2 libgbm1 libxss1 libva2 libegl1 libgles2 python3 && rm -rf /var/lib/apt/lists/*
 COPY tests/smoke-appimage.cjs /work/tests/smoke-appimage.cjs
 USER 1000:1000
 ENV HOME=/tmp

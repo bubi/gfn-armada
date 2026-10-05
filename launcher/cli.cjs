@@ -66,7 +66,9 @@ function run(args=process.argv.slice(2)) {
   }
   if(req.command!=='map') resolveGame(req.command==='login'?null:req.target);
   const executable=process.env.GFN_ARMADA_ELECTRON || require('electron');
-  const env={...process.env};delete env.ELECTRON_RUN_AS_NODE;
+  const decoder=require('./bundled-decoder.cjs').select({hardwareDecode:config.hardware_decode});
+  const env=decoder.env;delete env.ELECTRON_RUN_AS_NODE;
+  if(env.GFN_ARMADA_LOG==='debug')console.error(JSON.stringify({event:'bundled-decoder',...decoder.report}));
   const appRoot=path.resolve(__dirname,'..');
   const launchArgs=[req.command,...(req.target?[req.target]:[]),...(req.name?['--name',req.name]:[])];
   const backend=ozonePlatform(env);

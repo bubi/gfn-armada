@@ -97,9 +97,11 @@ wurden für die Tests verändert.
    Erhalt eigener Benutzerbilder. Der aktuelle Importer lädt kein Artwork.
 3. AppImage-Direktstart, Prozessende, Steam Input, Overlay-Zugang und Bildausgabe
    unter ArmadaOS/Gamescope am Gerät testen.
-4. Den experimentellen Iris-VA-API-Treiber separat paketieren und aktivieren.
-   Er ist nicht im AppImage enthalten. H.264-Hardwaredecode wurde mit dem
-   separat installierten Treiber belegt; HEVC, Bildprüfung und Zero-Copy bleiben offen.
+4. Den neu gebauten, im AppImage enthaltenen Iris-VA-API-Treiber am Gerät testen.
+   Quellcommit und alle vier Patches entsprechen dem experimentellen Stand.
+   H.264-Hardwaredecode wurde mit dem früher separat gebauten Modul belegt;
+   HEVC, Bildprüfung und Zero-Copy bleiben offen. Aktivierung und Abschaltung:
+   [AppImage-Decoder](appimage-decoder.md).
 
 Formatreferenz für den konservativen binären KeyValues-Reader:
 [ValvePython/vdf](https://github.com/ValvePython/vdf/blob/master/vdf/__init__.py).

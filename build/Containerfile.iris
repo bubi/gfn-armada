@@ -1,0 +1,10 @@
+FROM --platform=linux/arm64 node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d
+RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates g++ meson ninja-build pkg-config libva-dev libdrm-dev libegl1-mesa-dev libgles2-mesa-dev libgbm-dev && rm -rf /var/lib/apt/lists/*
+WORKDIR /driver
+COPY experiments/vaapi-iris/sources.json /recipe/sources.json
+COPY experiments/vaapi-iris/patches /recipe/patches
+RUN git clone --no-checkout https://github.com/phxinyang/qualcomm-iris-vaapi . && git checkout --detach "$(node -p 'require("/recipe/sources.json").commit')"
+RUN for patch in /recipe/patches/000[1-4]-*.patch; do git apply --check "$patch" && git apply "$patch" || exit 1; done
+RUN sh test/run-static-checks.sh && meson setup build --buildtype=release --prefix=/usr && ninja -C build && meson test -C build --print-errorlogs
+COPY scripts/iris-build-manifest.cjs /recipe/manifest.cjs
+RUN mkdir -p /out/dri /out/licenses && cp build/src/v4l2_drv_video.so /out/dri/ && cp COPYING* AUTHORS CREDITS /out/licenses/ && tar --exclude=.git --exclude=build -czf /out/patched-source.tar.gz . && node /recipe/manifest.cjs && ldd /out/dri/v4l2_drv_video.so

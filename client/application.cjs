@@ -66,6 +66,7 @@ if(cfg&&request?.resolved) {
   let win;let runtime={timestamp:new Date().toISOString(),pid:process.pid,versions:process.versions,
     hardwareDecoderActive:'unknown',dmabuf:'unknown',requestedOzone:backend||'default',
     vaapiDevicePath:vaapiNode??null,gpuSandboxDisabled,
+    bundledDecoder:process.env.GFN_ARMADA_BUNDLED_DECODER_REPORT?JSON.parse(process.env.GFN_ARMADA_BUNDLED_DECODER_REPORT):null,
     source:'page-reported; diagnostic evidence only',active:false};
   function save() {runtime.timestamp=new Date().toISOString();const f=path.join(root.state,'runtime.json');fs.writeFileSync(f+'.tmp',JSON.stringify(runtime,null,2),{mode:0o600});fs.renameSync(f+'.tmp',f)}
   const prefs={nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true,preload:path.join(__dirname,'preload.cjs'),partition:'persist:gfn'};

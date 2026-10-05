@@ -2,8 +2,10 @@
 
 Experimental GeForce NOW Electron launcher for Linux ARM64 / ArmadaOS.
 Experimental native Chromium H.264 decoding on Qualcomm Iris has been measured
-with a separately installed patched VA-API driver. The AppImage does not include
-that driver; HEVC, visual verification and zero-copy remain open.
+with a patched VA-API driver. The AppImage now includes a rebuild of that pinned
+source with all four fixes, licenses and patched source archive. It selects the
+experimental driver on a detected Odin Portal under Wayland; HEVC, visual
+verification and zero-copy remain open. This rebuilt artifact needs a device test.
 
 ```sh
 ./scripts/bootstrap

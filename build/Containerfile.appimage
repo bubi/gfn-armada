@@ -2,4 +2,5 @@ FROM gfn-armada-builder:latest
 WORKDIR /work
 RUN apt-get update && apt-get install -y --no-install-recommends file=1:5.44-3 && rm -rf /var/lib/apt/lists/*
 COPY . .
+COPY --from=gfn-armada-iris-builder:latest /out /work/dist/iris-driver
 RUN node scripts/appimage.cjs && chmod -R a+rX dist

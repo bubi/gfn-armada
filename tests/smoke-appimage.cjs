@@ -15,7 +15,14 @@ function invoke(args,success=true){
 try{
   assert.equal(process.arch,'arm64');assert.equal(process.platform,'linux');assert.notEqual(process.getuid(),0);
   assert.match(invoke(['help']),/steam-restore/);
-  assert.equal(JSON.parse(invoke(['diagnostics'])).architecture,'arm64');
+  const diagnostics=JSON.parse(invoke(['diagnostics']));assert.equal(diagnostics.architecture,'arm64');assert.equal(diagnostics.bundledDecoder.bundled,true);assert.equal(diagnostics.bundledDecoder.selected,false);
+  const extracted=spawnSync(file,['--appimage-extract'],{cwd:root,encoding:'utf8',timeout:60000});assert.equal(extracted.status,0,extracted.stderr);
+  const driverRoot=path.join(root,'squashfs-root/usr/lib/gfn-armada/iris-driver'),driver=path.join(driverRoot,'dri/v4l2_drv_video.so');
+  const manifest=JSON.parse(fs.readFileSync(path.join(driverRoot,'manifest.json')));
+  assert.equal(manifest.patches.length,4);assert.equal(manifest.gpuCopyCompiled,true);
+  assert.equal(require('node:crypto').createHash('sha256').update(fs.readFileSync(driver)).digest('hex'),manifest.moduleSha256);
+  const deps=spawnSync('ldd',[driver],{encoding:'utf8'});assert.equal(deps.status,0,deps.stderr);assert.doesNotMatch(deps.stdout,/not found/);
+  const load=spawnSync('python3',['-c','import ctypes,sys; ctypes.CDLL(sys.argv[1])',driver],{encoding:'utf8'});assert.equal(load.status,0,load.stderr);
   assert.match(invoke(['config']),/gfn-armada/);
   invoke(['launch','steam:999999999'],false);
   fs.mkdirSync(path.join(config,'gfn-armada'),{recursive:true});fs.mkdirSync(path.join(user,'config'),{recursive:true});
@@ -31,5 +38,5 @@ try{
   assert.equal(JSON.parse(invoke(args)).changes.length,0);
   assert.equal(JSON.parse(invoke(['steam-restore',applied.backup])).restored,true);
   assert.equal(fs.existsSync(path.join(user,'config/shortcuts.vdf')),false);
-  console.log(JSON.stringify({architecture:process.arch,uid:process.getuid(),appImage:file,help:true,diagnostics:true,config:true,unknownMappingRejected:true,steamReviewApplyIdempotenceRestore:true,gui:'not-tested',gamescope:'not-tested'}));
+  console.log(JSON.stringify({architecture:process.arch,uid:process.getuid(),appImage:file,driverSha256:manifest.moduleSha256,driverDlopen:true,driverPatches:4,help:true,diagnostics:true,config:true,unknownMappingRejected:true,steamReviewApplyIdempotenceRestore:true,gui:'not-tested',gamescope:'not-tested',hardwareDecode:'unknown'}));
 }finally{fs.rmSync(root,{recursive:true,force:true});}
