@@ -48,15 +48,16 @@ function appImage(file){
 function clientLaunchPrefix(shortcuts,executable){
   const prefixes=new Set();
   // Reuse only known compatibility settings from a client-only shortcut for
-  // this exact executable. Never copy arbitrary shell commands or arguments.
-  const pattern=/^((?:GFN_ARMADA_(?:GAMESCOPE=nested|BROWSER_IDENTITY=(?:windows|macos|chromeos|linux)|HEVC_EXPERIMENT=[01])\s+)*)%command%\s+(?:--appimage-extract-and-run\s+)?launch\s*$/;
+  // this exact executable. Allow the exact ArmadaOS launcher wrapper; never copy arbitrary commands.
+  const pattern=/^((?:GFN_ARMADA_(?:GAMESCOPE=nested|BROWSER_IDENTITY=(?:windows|macos|chromeos|linux)|HEVC_EXPERIMENT=[01])\s+)*)(\/usr\/libexec\/armada\/armada-game-launch\s+)?%command%\s+(?:--appimage-extract-and-run\s+)?launch\s*$/;
   for(const entry of shortcuts){
     const exe=vdf.get(entry.value,'exe'),options=vdf.get(entry.value,'LaunchOptions');
     if(exe?.type!==1||exe.value!==`"${executable}"`||options?.type!==1)continue;
     const match=pattern.exec(options.value);if(!match)continue;
     const assignments=match[1].trim().split(/\s+/).filter(Boolean);
     if(new Set(assignments.map(x=>x.split('=')[0])).size!==assignments.length)throw new Error('Duplicate client compatibility setting');
-    if(assignments.length)prefixes.add(assignments.join(' ')+' %command% ');
+    const wrapper=match[2]?'/usr/libexec/armada/armada-game-launch ':'';
+    if(assignments.length||wrapper)prefixes.add((assignments.length?assignments.join(' ')+' ':'')+wrapper+'%command% ');
   }
   if(prefixes.size>1)throw new Error('Conflicting GFN client launch settings; reconcile client shortcuts before sync');
   return [...prefixes][0]||'';

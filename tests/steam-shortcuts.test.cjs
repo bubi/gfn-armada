@@ -111,3 +111,14 @@ test('client shortcut inheritance does not propagate arbitrary shell options or 
   }
   assert.throws(()=>vdf.get([{key:'Exe'},{key:'exe'}],'exe'),/Duplicate Steam field/);
 });
+
+test('ArmadaOS-injected launcher wrapper retains compatibility settings across sync',t=>{
+  const f=fixture(t),tree=unmanaged(),fields=tree[0].value[0].value;
+  vdf.set(fields,'Exe',1,`"${f.executable}"`);
+  const prefix='GFN_ARMADA_GAMESCOPE=nested GFN_ARMADA_BROWSER_IDENTITY=windows /usr/libexec/armada/armada-game-launch %command% ';
+  vdf.set(fields,'LaunchOptions',1,prefix+'launch');fs.writeFileSync(f.file,vdf.encode(tree));
+  const p=steam.plan([row],f);assert.equal(p.changes[0].launchOptions,prefix+'launch steam:1091500');
+  steam.apply(p,stopped);assert.equal(steam.plan([row],f).changed,false);
+  vdf.get(fields,'LaunchOptions').value=prefix.replace('/usr/libexec/armada/armada-game-launch','/tmp/other-wrapper')+'launch';
+  fs.writeFileSync(f.file,vdf.encode(tree));assert.equal(steam.plan([row],f).changes[0].launchOptions,'launch steam:1091500');
+});
