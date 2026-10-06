@@ -84,3 +84,30 @@ test('sync parsing distinguishes review/apply and refuses ambiguous output or fl
   assert.equal(parse(['steam-restore','/tmp/backup']).backup,'/tmp/backup');
   assert.equal(parse(['map','epic:example','--name','Test']).target,'epic:example');
 });
+
+test('real Steam field spelling preserves client settings and stays idempotent after Steam rewrites',t=>{
+  const f=fixture(t),header=Buffer.alloc(11);header.set([0x7f,0x45,0x4c,0x46]);header.set([0x41,0x49,2],8);fs.writeFileSync(f.executable,header);
+  const original=unmanaged(),client=original[0].value[0].value;
+  vdf.set(client,'AppName',1,'GFN Armada');vdf.set(client,'Exe',1,`"${f.executable}"`);
+  vdf.set(client,'LaunchOptions',1,'GFN_ARMADA_GAMESCOPE=nested GFN_ARMADA_BROWSER_IDENTITY=windows %command% --appimage-extract-and-run launch');
+  const bytes=vdf.encode(original);fs.writeFileSync(f.file,bytes);
+  const p=steam.plan([row],f);
+  assert.equal(p.changes[0].launchOptions,'GFN_ARMADA_GAMESCOPE=nested GFN_ARMADA_BROWSER_IDENTITY=windows %command% --appimage-extract-and-run launch steam:1091500');
+  const applied=steam.apply(p,stopped),tree=vdf.decode(fs.readFileSync(f.file));
+  assert.deepEqual(tree[0].value[0],original[0].value[0]);
+  const game=tree[0].value[1].value;vdf.get(game,'appname').key='AppName';vdf.get(game,'exe').key='Exe';
+  fs.writeFileSync(f.file,vdf.encode(tree));
+  assert.equal(steam.plan([row],f).changed,false);
+  const renamed=steam.plan([{...row,name:'Renamed'}],f);
+  assert.equal(renamed.changes[0].shortcutAppId,applied.changes[0].shortcutAppId);
+  assert.equal(vdf.get(vdf.decode(renamed.output)[0].value[1].value,'appname').key,'AppName');
+});
+test('client shortcut inheritance does not propagate arbitrary shell options or another executable',t=>{
+  const f=fixture(t);
+  for(const [exe,options] of [[f.executable,'GFN_ARMADA_GAMESCOPE=nested %command% launch; echo unsafe'],[f.executable,'GFN_ARMADA_GAMESCOPE=nested %command% --no-sandbox launch'],[f.executable+'-other','GFN_ARMADA_GAMESCOPE=nested %command% launch']]){
+    const tree=unmanaged(),fields=tree[0].value[0].value;
+    vdf.set(fields,'Exe',1,`"${exe}"`);vdf.set(fields,'LaunchOptions',1,options);fs.writeFileSync(f.file,vdf.encode(tree));
+    assert.equal(steam.plan([row],f).changes[0].launchOptions,'launch steam:1091500');
+  }
+  assert.throws(()=>vdf.get([{key:'Exe'},{key:'exe'}],'exe'),/Duplicate Steam field/);
+});

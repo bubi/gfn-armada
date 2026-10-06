@@ -2,7 +2,8 @@
 
 For the later successful client shortcut and nested Gamescope mode, see
 [Steam client launch](steam-client-launch.md). The account/per-game importer
-below remains a separate validation target.
+below was subsequently tested on the signed-in Odin account; see
+[library sync validation and corrections](library-sync-2026-10-06.md).
 
 ## Implemented
 
@@ -30,7 +31,8 @@ deleted.
 `gfn-armada library` now reads the catalog through the existing NVIDIA session.
 Favorites and ownership are imported per store edition; manually confirmed
 ownership is marked accordingly. The schema and public catalog were checked
-live; authenticated Odin import remains untested. See [catalog import](catalog-import.md).
+live; authenticated Odin import and guarded VDF apply/restore passed on
+2026-10-06. Per-game launch remains a separate check. See [catalog import](catalog-import.md).
 The following steps remain a manual alternative; ownership values are user supplied.
 
 ```sh

@@ -45,6 +45,22 @@ function appImage(file){
   try{return fs.readSync(fd,header,0,header.length,0)===header.length&&header.subarray(0,4).equals(Buffer.from([0x7f,0x45,0x4c,0x46]))&&header.subarray(8,11).equals(Buffer.from([0x41,0x49,2]));}
   finally{fs.closeSync(fd);}
 }
+function clientLaunchPrefix(shortcuts,executable){
+  const prefixes=new Set();
+  // Reuse only known compatibility settings from a client-only shortcut for
+  // this exact executable. Never copy arbitrary shell commands or arguments.
+  const pattern=/^((?:GFN_ARMADA_(?:GAMESCOPE=nested|BROWSER_IDENTITY=(?:windows|macos|chromeos|linux)|HEVC_EXPERIMENT=[01])\s+)*)%command%\s+(?:--appimage-extract-and-run\s+)?launch\s*$/;
+  for(const entry of shortcuts){
+    const exe=vdf.get(entry.value,'exe'),options=vdf.get(entry.value,'LaunchOptions');
+    if(exe?.type!==1||exe.value!==`"${executable}"`||options?.type!==1)continue;
+    const match=pattern.exec(options.value);if(!match)continue;
+    const assignments=match[1].trim().split(/\s+/).filter(Boolean);
+    if(new Set(assignments.map(x=>x.split('=')[0])).size!==assignments.length)throw new Error('Duplicate client compatibility setting');
+    if(assignments.length)prefixes.add(assignments.join(' ')+' %command% ');
+  }
+  if(prefixes.size>1)throw new Error('Conflicting GFN client launch settings; reconcile client shortcuts before sync');
+  return [...prefixes][0]||'';
+}
 function plan(rows,{user,executable}={}){
   if(!executable||!path.isAbsolute(executable)||/[\r\n\0"]/.test(executable))throw new Error('Steam requires an absolute executable path without quotes');
   fs.accessSync(executable,fs.constants.X_OK);
@@ -60,6 +76,7 @@ function plan(rows,{user,executable}={}){
     const appid=vdf.get(entry.value,'appid');if(appid){if(appid.type!==2)throw new Error('Invalid Steam AppID field');const n=appid.value.readUInt32LE();if(appids.has(n))throw new Error('Duplicate Steam shortcut AppID');appids.add(n);}
     if(id&&!appid)throw new Error('Managed shortcut missing AppID');
   }
+  const prefix=clientLaunchPrefix(shortcuts,executable);
   const changes=[],skipped=[];let index=shortcuts.reduce((n,e)=>Math.max(n,Number(e.key)+1),0);
   const keys=new Set(),usedFields=new Set();
   for(const row of rows){
@@ -68,7 +85,7 @@ function plan(rows,{user,executable}={}){
     for(const flag of ['bookmarked','owned'])if(row[flag]!==undefined&&typeof row[flag]!=='boolean')throw new Error(`${flag} must be boolean`);
     if(row.bookmarked!==true||row.owned!==true){skipped.push({gameKey:key,reason:'bookmark-and-ownership-not-both-confirmed'});continue;}
     const name=`${row.name} (GFN · ${(row.store||key.split(':')[0]).toUpperCase()})`;
-    const exe=`"${executable}"`,launch=`${runtimeOptions}launch ${key}`;
+    const exe=`"${executable}"`,launch=`${prefix}${runtimeOptions}launch ${key}`;
     const alias=row.storeGameId?`${row.store}:${row.storeGameId}`:row.steamAppId?`steam:${row.steamAppId}`:null;
     if(managed.has(key)&&alias&&managed.has(alias)&&managed.get(key)!==managed.get(alias))throw new Error('Ambiguous existing catalog shortcut');
     let fields=managed.get(key)||(alias?managed.get(alias):null);const existing=Boolean(fields);

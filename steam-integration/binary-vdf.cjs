@@ -32,7 +32,9 @@ function encode(entries){
   function object(rows){for(const row of rows){chunks.push(Buffer.from([row.type]),string(row.key));if(row.type===0)object(row.value);else if(row.type===1)chunks.push(string(row.value));else chunks.push(row.value);}chunks.push(Buffer.from([8]));}
   object(entries);return Buffer.concat(chunks);
 }
-function get(rows,key){const fields=rows.filter(r=>r.key===key);if(fields.length>1) throw new Error(`Duplicate Steam field ${key}`);return fields[0];}
+// Steam writes AppName/Exe even when an importer used appname/exe. KeyValues
+// field lookup is case-insensitive; retain original spelling when updating.
+function get(rows,key){const fields=rows.filter(r=>r.key.toLowerCase()===key.toLowerCase());if(fields.length>1) throw new Error(`Duplicate Steam field ${key}`);return fields[0];}
 function set(rows,key,type,value){const entry=get(rows,key);if(entry){entry.type=type;entry.value=value;}else rows.push({key,type,value});}
 function uint32(value){const b=Buffer.alloc(4);b.writeUInt32LE(value>>>0);return b;}
 module.exports={decode,encode,get,set,uint32};

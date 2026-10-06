@@ -1,0 +1,34 @@
+{
+  "date": "2026-10-06",
+  "accountImport": {
+    "apps": 6094,
+    "pages": 61,
+    "imported": 6,
+    "stores": {
+      "steam": 6
+    },
+    "manualOwnership": 1,
+    "notOwnedExcluded": 11,
+    "unknownOwnership": 0
+  },
+  "applyPassed": true,
+  "idempotentApplyPassed": true,
+  "restoreByteExact": true,
+  "finalApplyPassed": true,
+  "beforeSha256": "ffad5da5e2ac0dc1ab6572f7b44489f5f0b1c78c3369ca62eba47483974e3f11",
+  "afterSha256": "936642a2bfea1bb69587fb5902bbebed96037101da78c893e0b68c4c9bbf0319",
+  "backupCreated": true,
+  "originalShortcuts": 1,
+  "totalShortcuts": 7,
+  "managedGames": 6,
+  "originalEntriesPreserved": true,
+  "baseAppImageSha256": "ab6d0d9f42f6c30d09a78fbed43a5ab7af18c24490eceda7e55fdf8725fb1713",
+  "syncRuntime": "isolated extraction of released AppImage with only binary-vdf.cjs and shortcuts.cjs replaced",
+  "steamRunningWriteRefused": true,
+  "steamRestarted": true,
+  "visibleImportedLabelsInSteamDOM": 2,
+  "targetedTestsPassed": 19,
+  "perGameLaunch": "not-tested",
+  "otherStoreAccountImports": "not-tested",
+  "credentialsExported": false
+}

@@ -94,11 +94,14 @@ secret data, atomic import, and shortcut migration. The AppImage test exercises
 the packaged parser with synthetic account data through the actual Steam VDF
 writer and restore.
 
-**Not yet demonstrated:** complete import from the real signed-in Odin
-account. At this snapshot Odin was unreachable. No successful account import
-is claimed. Artwork downloads and automatic periodic reconciliation remain
-open. NVIDIA has not documented this catalog API as a stable public library
-API; schema changes must be checked.
+**Update 2026-10-06:** complete authenticated Odin import succeeded: 6,094
+catalog applications across 61 pages, six eligible Steam editions, including
+one manually confirmed ownership. Eleven bookmarked unowned editions were
+excluded. Real Steam apply, idempotence, backup and byte-exact restore passed.
+See [device test and sync corrections](library-sync-2026-10-06.md). Other stores
+and per-game launch remain unvalidated on this account. Artwork downloads and
+automatic periodic reconciliation remain open. NVIDIA has not documented this
+catalog API as a stable public library API; schema changes must be checked.
 
 NVIDIA separately documents official game-detail links:
 [GFN SDK Deep Linking](https://github.com/NVIDIAGameWorks/GeForceNOW-SDK/blob/master/doc/GfnSdk-Deep-Linking.md).
