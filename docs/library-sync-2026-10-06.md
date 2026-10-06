@@ -21,8 +21,14 @@ compatibility assignments from a client-only shortcut pointing to the exact
 same executable. On this Odin the resulting launch options are:
 
 ```text
-GFN_ARMADA_GAMESCOPE=nested GFN_ARMADA_BROWSER_IDENTITY=windows %command% --appimage-extract-and-run launch gfn:<catalog-variant-id>
+GFN_ARMADA_GAMESCOPE=nested GFN_ARMADA_BROWSER_IDENTITY=windows /usr/libexec/armada/armada-game-launch %command% --appimage-extract-and-run launch gfn:<catalog-variant-id>
 ```
+
+After restarting Steam, ArmadaOS inserted its exact
+`/usr/libexec/armada/armada-game-launch` wrapper into the client template.
+Sync now recognizes and retains this known wrapper too; otherwise a subsequent
+sync would drop the compatibility settings. A separate regression test covers
+this form. Other wrappers are not inherited.
 
 Arbitrary shell commands, extra arguments, or settings from another executable
 are not inherited. Conflicting templates are rejected. With no matching client
@@ -48,10 +54,30 @@ isolated CLI. Generated shortcuts target the permanent installed AppImage.
 - A bounded read of Steam's Big Picture DOM found two visible imported GFN game
   labels after restart. The VDF contains six managed games and seven total
   shortcuts. This does not establish that all six games have been launched.
-- Nineteen targeted catalog/Steam tests passed on the development Mac.
+- Twenty targeted catalog/Steam tests passed on the development Mac.
 
 See [sanitized evidence](../experiments/packaging/validation-library-sync-odin-20261006.json).
-The published `v0.1.0-poc` download predates these two sync corrections.
+The published `v0.1.0-poc` download predates these sync corrections.
+
+A clean Linux ARM64 AppImage built from commit `7786ef7` was subsequently
+installed at the existing permanent Steam target, retaining an exact backup of
+the original AppImage. It updated all six game shortcuts with another VDF backup.
+After restarting Steam, the packaged review reported zero changes and zero writes.
+The final bounded DOM read found three visible imported GFN game labels.
+All 75 unit tests passed in the Linux ARM64 build; the dedicated non-root runtime
+container passed the actual AppImage CLI, driver loading and synthetic
+apply/idempotence/restore smoke tests. The builder-only image lacks Electron's
+system runtime libraries and cannot run this smoke test; use
+`build/Containerfile.appimage-test`.
+
+The second packaged apply was safely refused when Steam appeared again; no
+write occurred from that attempt. Idempotent apply had already been verified
+with the isolated CLI while Steam remained closed. The final packaged review
+also confirms idempotence after Steam's normalization.
+
+Installed AppImage SHA256:
+`5aa7be576960507da65bae32515888252478089bd6e5c79a7b803c34fa90c93b`.
+No unrelated pending decoder experiments were included in this build.
 
 ## Remaining limits
 

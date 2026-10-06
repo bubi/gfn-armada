@@ -27,8 +27,43 @@
   "steamRunningWriteRefused": true,
   "steamRestarted": true,
   "visibleImportedLabelsInSteamDOM": 2,
-  "targetedTestsPassed": 19,
+  "targetedTestsPassed": 20,
   "perGameLaunch": "not-tested",
   "otherStoreAccountImports": "not-tested",
-  "credentialsExported": false
+  "credentialsExported": false,
+  "finalPackagedValidation": {
+    "packagedApplyPassed": true,
+    "updatedGames": 6,
+    "backupCreated": true,
+    "postRestartReviewChanges": 0,
+    "postRestartReviewWrites": false,
+    "packagedAppImageSha256": "5aa7be576960507da65bae32515888252478089bd6e5c79a7b803c34fa90c93b",
+    "codeCommit": "7786ef7",
+    "linuxArm64UnitTestsPassed": 75,
+    "runtimeSmoke": {
+      "architecture": "arm64",
+      "uid": 1000,
+      "appImage": "/work/dist/gfn-armada-0.1.0-aarch64.AppImage",
+      "driverSha256": "d4708081ceacaafabd78194d3a27c48b86a097ac990140c411802d6b25484251",
+      "driverDlopen": true,
+      "driverPatches": 4,
+      "help": true,
+      "diagnostics": true,
+      "config": true,
+      "unknownMappingRejected": true,
+      "catalogImportSynthetic": true,
+      "steamReviewApplyIdempotenceRestore": true,
+      "authenticatedCatalog": "not-tested",
+      "gui": "not-tested",
+      "gamescope": "not-tested",
+      "hardwareDecode": "unknown"
+    },
+    "originalAppImageBackupRetained": true,
+    "finalSteamDOM": {
+      "ready": "complete",
+      "visibleImportedGameLabels": 3
+    },
+    "secondPackagedApplyRefusedBecauseSteamRunning": true,
+    "unrelatedPendingDecoderChangesIncluded": false
+  }
 }

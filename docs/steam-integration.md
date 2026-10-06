@@ -92,7 +92,13 @@ The `--apply` JSON output contains the exact backup path:
 Restore refuses to overwrite a file changed by Steam in the meantime. Backups
 are retained. Tests did not modify real Steam files on the development Mac.
 
-## Outstanding at the importer snapshot
+Sync reuses known compatibility settings from an existing client-only shortcut
+for the same executable, including the exact ArmadaOS `armada-game-launch`
+wrapper. This preserves the tested nested Gamescope/Windows identity setup.
+It does not copy arbitrary shell commands or configure remote video settings.
+See [real-account validation](library-sync-2026-10-06.md).
+
+## Outstanding at the importer snapshot (historical; see 2026-10-06 update above)
 
 1. Test original GFN catalog import with the signed-in Odin account:
    completeness, favorites, exact store edition, and direct launch. Missing
