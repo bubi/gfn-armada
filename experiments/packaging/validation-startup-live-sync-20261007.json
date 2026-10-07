@@ -1,0 +1,26 @@
+{
+  "date": "2026-10-07",
+  "scope": "source only; synthetic local runtime and unit tests",
+  "unitTests": {
+    "passed": 88,
+    "failed": 0,
+    "source": "isolated tree excluding unrelated pending decoder changes"
+  },
+  "electronSmoke": {
+    "electron": "44.5.1",
+    "platform": "darwin-arm64",
+    "synthetic": true,
+    "realElectronCDP": true,
+    "automaticAuthenticatedImport": true,
+    "liveShortcutVisible": true,
+    "repeatWithoutDuplicate": true,
+    "vdfUntouched": true,
+    "deviceSteam": "not-tested"
+  },
+  "realOdinLiveSync": "not-tested; SSH connection to prior device address timed out",
+  "appImageBuilt": false,
+  "deviceDeployment": false,
+  "realSteamFilesModified": false,
+  "realCredentialsUsed": false,
+  "codeCommit": "d18046b"
+}

@@ -26,6 +26,7 @@ Thank you to all the authors and contributors below for making their work and re
 | [OpenCloudGaming/OpenNOW](https://github.com/OpenCloudGaming/OpenNOW), [clarkarch/nextclient](https://github.com/clarkarch/nextclient) | Alternative streamer/API research only; their clients and auth/streamer implementations are not used. |
 | [NVIDIAGameWorks/GeForceNOW-SDK](https://github.com/NVIDIAGameWorks/GeForceNOW-SDK) | Official integration/deep-link research reference; not a bundled streaming SDK. |
 | [ValvePython/vdf](https://github.com/ValvePython/vdf) | Steam binary-VDF format reference; our parser is independently generated. |
+| [SteamDeckHomebrew/decky-frontend-lib](https://github.com/SteamDeckHomebrew/decky-frontend-lib), [FrogTheFrog/moondeck](https://github.com/FrogTheFrog/moondeck) | Thanks for internal Steam API definitions and shortcut verification research; independently generated live adapter. |
 | [AppImage/appimagetool](https://github.com/AppImage/appimagetool), [AppImage/type2-runtime](https://github.com/AppImage/type2-runtime) | ARM64 AppImage tooling and embedded runtime. |
 | [electron/packager](https://github.com/electron/packager), [iarna/iarna-toml](https://github.com/iarna/iarna-toml) | Packaging dependency and runtime TOML parser. |
 
@@ -46,7 +47,7 @@ Snapshot **2026-10-05**. [Evidence and remaining work](docs/poc-status.md).
 | Steam Non-Steam client launch | Tracked nested Gamescope: user confirmed GFN UI and controller navigation; native stats show H.265 / VaapiVideoDecoder / 1920×1080 at 60 FPS, 10,299 decoded frames, 7 drops, VPU device open. Initial decorated window distorted output. Final AppImage has confirmed Steam focus and 1920×1080 content bounds; user confirmed correct display without disturbing frame/distortion. No driver completion trace in this run. [Stream evidence](experiments/vaapi-iris/validation-steam-shortcut-hevc-odin-20261005.json), [final startup](experiments/packaging/validation-steam-client-borderless-odin-20261005.json), [launch instructions](docs/steam-client-launch.md). |
 | AV1 | **First original GFN hardware stream verified with experimental profiles:** native AV1/VA-API and 16,639 Iris GPU-copy returns over ~278 seconds. **User reports intermittent flicker; not visually qualified.** No observed Iris sync timeouts in this run; upstream hidden-frame limitation remains. [Evidence](experiments/packaging/validation-av1-live-odin-20261005.json). |
 | ARM64 AppImage | Built with pinned Electron and patched Iris driver, notices and modified driver source. Container smoke tests passed. Tested on Odin KDE/Wayland and, subsequently, as a real Steam Non-Steam client with nested Gamescope, HEVC and user-confirmed display. See the separate evidence above. |
-| Catalog → Steam | Steam/Epic/GOG/Xbox import and guarded shortcut sync implemented. Real signed-in Odin import: 6,094 catalog apps, six eligible Steam editions; backed-up apply, idempotence and byte-exact restore passed. Steam restarted with imported entries visible. Per-game launch and other stores remain unvalidated. [Sync evidence](docs/library-sync-2026-10-06.md). The single GFN client shortcut's Gaming Mode launch is tested separately above. |
+| Catalog → Steam | Steam/Epic/GOG/Xbox import and guarded shortcut sync implemented. Real signed-in Odin import: 6,094 catalog apps, six eligible Steam editions; backed-up apply, idempotence and byte-exact restore passed. Steam restarted with imported entries visible. New background startup/live-Steam sync passes synthetic Electron/CDP tests; real Odin live visibility remains unverified and is not in published packages. [Startup sync](docs/startup-library-sync.md). Per-game launch and other stores remain unvalidated. [Sync evidence](docs/library-sync-2026-10-06.md). The single GFN client shortcut's Gaming Mode launch is tested separately above. |
 
 ```text
 Original GFN web app → Chromium WebRTC → VA-API adapter
@@ -126,18 +127,21 @@ npm test
 ./scripts/build-appimage
 ```
 
-On the target, keep the AppImage at a stable absolute path:
+On the target, keep the launcher at a stable absolute path. Current source opens
+GFN normally and imports/syncs the library in the background on `launch` without
+a target or `login`. Running Steam is updated through its local shortcut API;
+there is no automatic Steam restart or live VDF edit. A direct game launch such
+as `launch steam:1091500` skips sync. [Implementation and validation limits](docs/startup-library-sync.md).
+**This new workflow has synthetic runtime validation; published/installed
+AppImages still use the earlier manual workflow. No new AppImage was built.**
 
-```sh
-chmod +x ./gfn-armada-0.1.0-aarch64.AppImage
-./gfn-armada-0.1.0-aarch64.AppImage --appimage-extract-and-run login
-./gfn-armada-0.1.0-aarch64.AppImage --appimage-extract-and-run library
-./gfn-armada-0.1.0-aarch64.AppImage --appimage-extract-and-run sync
-# Review the plan, then close Steam completely before applying:
-./gfn-armada-0.1.0-aarch64.AppImage --appimage-extract-and-run sync --apply
-```
-
-Only bookmarked editions with GFN-reported ownership are eligible; manually confirmed ownership is identified separately. Sync backs up `shortcuts.vdf` and preserves unrelated shortcuts. Artwork download and automatic controller layouts are not implemented. Direct launch requires a verified mapping, e.g. `launch steam:1091500`; unknown IDs fail. Login/store dialogs may still appear. The observed NVIDIA route is not a guaranteed stable API.
+Only bookmarked editions with GFN-reported ownership are eligible; manually
+confirmed ownership is identified separately. Existing AppIDs are retained,
+unrelated shortcuts preserved and mutations backed up. Artwork download and
+automatic controller layouts remain open. Direct launch requires a verified
+mapping; unknown IDs fail. Login/store dialogs may still appear. The observed
+NVIDIA route is not a guaranteed stable API. The optional offline `sync --apply`
+fallback still requires Steam stopped.
 
 Ordinary launch inherits the display/input environment. The tested Odin Steam shortcut opts into the integrated nested compositor with `GFN_ARMADA_GAMESCOPE=nested`; [exact Steam launch options](docs/steam-client-launch.md). Login lives outside the bundle under `~/.local/share/gfn-armada/chromium`; config: `~/.config/gfn-armada/config.toml`. `codec = "hevc"` enables the experimental WebRTC preference; resolution/FPS/bitrate are set in GFN's actual UI, not transmitted as invented NVIDIA options. `diagnostics` reports `unknown` when hardware use cannot be established. Native Chromium WebRTC statistics are collected automatically: codec, decoder implementation, frame counts/drops, resolution/FPS, cumulative and interval mean decode time, and mean jitter-buffer residence. These timings are not input-to-display latency. `GFN_ARMADA_MEDIA_DIAGNOSTICS=0` disables collection; `=1` additionally enables opt-in CDP Media diagnostics. Raw SDP, ICE addresses and stream identifiers are not exported. `GFN_ARMADA_LOG=debug` adds observations; inspect logs before sharing.
 

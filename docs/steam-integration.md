@@ -5,6 +5,14 @@ For the later successful client shortcut and nested Gamescope mode, see
 below was subsequently tested on the signed-in Odin account; see
 [library sync validation and corrections](library-sync-2026-10-06.md).
 
+## Current source workflow (2026-10-07)
+
+Normal client startup now performs background import and live Steam shortcut
+reconciliation; direct game launch skips sync. No Steam restart is requested.
+This path uses Steam's local CEF interface and has synthetic Electron validation,
+with real Odin validation still pending. Published/installed packages remain on
+the earlier offline path below. See [startup library sync](startup-library-sync.md).
+
 ## Implemented
 
 The Linux ARM64 client keeps the original NVIDIA web application. Steam

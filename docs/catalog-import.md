@@ -4,7 +4,16 @@ Snapshot 2026-10-05. The client retains the original NVIDIA web application.
 The new `gfn-armada library` command reads its catalog using the existing
 signed-in session and creates validated local mappings for `sync`.
 
-## Workflow on Odin
+## Current source workflow (2026-10-07)
+
+Normal client startup now imports in the background and reconciles shortcuts
+through running Steam. Direct game launch skips this work. No completion dialog
+or Steam restart is part of the normal source workflow. See
+[startup sync and its real-device validation limits](startup-library-sync.md).
+The previously published/installed AppImages still use the manual workflow
+below; no replacement package was built for this change.
+
+## Earlier packaged workflow on Odin
 
 Close an already running GFN client first. Then:
 
