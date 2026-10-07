@@ -66,7 +66,7 @@ if(cfg&&request?.resolved) {
     app.commandLine.appendSwitch('vmodule','*video_decoder*=3,*v4l2*=3,*rtc_video_decoder*=3,*webrtc_video_decoder*=3,*vaapi*=3');
   }
   const log=(event,data={})=>console.log(JSON.stringify({timestamp:new Date().toISOString(),event,...data}));
-  let win;let runtime={timestamp:new Date().toISOString(),pid:process.pid,versions:process.versions,
+  let win,disposeLibrarySync=()=>{},startLibrarySync=()=>{};let runtime={timestamp:new Date().toISOString(),pid:process.pid,versions:process.versions,
     hardwareDecoderActive:'unknown',dmabuf:'unknown',requestedOzone:backend||'default',
     vaapiDevicePath:vaapiNode??null,gpuSandboxDisabled,
     bundledDecoder:process.env.GFN_ARMADA_BUNDLED_DECODER_REPORT?JSON.parse(process.env.GFN_ARMADA_BUNDLED_DECODER_REPORT):null,
@@ -94,6 +94,7 @@ if(cfg&&request?.resolved) {
       try{const next=parse(clientArgs(argv,app.isPackaged));if(!['login','launch','map'].includes(next.command)) return;
         const target=resolveGame(['login','map'].includes(next.command)?null:next.target);
         request= {...next,resolved:target};
+        disposeLibrarySync();startLibrarySync();
         if(win&&!win.isDestroyed()){win.loadURL(target.url).catch(()=>log('load-failed'));win.show();win.focus()}
       }catch(e){log('launch-error',{message:e.message})}
     });
@@ -124,13 +125,20 @@ if(cfg&&request?.resolved) {
           failed:data?.failed===true};
         save();log('browser-identity-status',runtime.browserIdentity.observation);
       });
-      if(request.command==='library'){
-        const dispose=require('./catalog-import.cjs').attachCatalogImport(win.webContents,{fetch:(...args)=>ses.fetch(...args),
-          onProgress:data=>{win.setTitle(data.status==='waiting-for-gfn-login'?'GFN Armada — Sign in to import your library':`GFN Armada — Reading library${data.apps!==undefined?' ('+data.apps+' games)':''}`);log('catalog-progress',data)},
-          onComplete:result=>{runtime.catalogImportComplete=true;runtime.catalogImport=result;save();log('catalog-imported',result);void dialog.showMessageBox(win,{type:'info',message:`Imported ${result.imported} bookmarked, owned store editions.`,detail:`${result.unknownOwnership} bookmarked editions have unknown ownership and were skipped. ${result.manualOwnership} imported editions use ownership manually confirmed in GFN. Close Steam, then run gfn-armada sync --apply to add shortcuts.`,buttons:['Close client']}).then(()=>app.quit())},
-          onError:data=>{log('catalog-import-failed',data);dialog.showErrorBox('Library import unavailable',data.message)}});
-        win.on('closed',dispose);
-      }
+      startLibrarySync=()=>{
+        disposeLibrarySync=require('./library-sync.cjs').attachLibrarySync(win.webContents,{
+          request,config:cfg,fetch:(...args)=>ses.fetch(...args),state:root.state,
+          executable:process.env.GFN_ARMADA_APPIMAGE||process.env.APPIMAGE||(process.env.GFN_ARMADA_ELECTRON?path.join(path.dirname(process.env.GFN_ARMADA_ELECTRON),'gfn-armada'):null),
+          report:data=>{
+            runtime.librarySync=data;
+            if(data.phase==='catalog'&&data.status==='imported'){
+              runtime.catalogImportComplete=true;runtime.catalogImport=data;
+            }
+            save();log('library-sync',data);
+          }
+        });
+      };
+      startLibrarySync();win.on('closed',()=>disposeLibrarySync());
       if(process.env.GFN_ARMADA_NATIVE_SHADOW==='1') {
         let shadow;
         try {
@@ -152,7 +160,7 @@ if(cfg&&request?.resolved) {
         win.on('closed',disposeInternals);
       }
       // CDP Media diagnostics stay opt-in; the catalog importer also uses CDP.
-      if(process.env.GFN_ARMADA_MEDIA_DIAGNOSTICS==='1'&&request.command!=='library') {
+      if(process.env.GFN_ARMADA_MEDIA_DIAGNOSTICS==='1'&&!require('./library-sync.cjs').shouldImport(request,cfg)) {
         require('./media-diagnostics.cjs').attachMediaDiagnostics(win.webContents,data=>{
           runtime.nativeMedia=runtime.nativeMedia||{};
           if(data.playerId) runtime.nativeMedia[data.playerId]=data.properties;

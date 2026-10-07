@@ -14,7 +14,8 @@ gfn-armada sync [--steam-user <userdata/id>] [--executable <AppImage>] [--apply]
 gfn-armada steam-users
 gfn-armada steam-restore <backup>
 
-sync reviews changes by default; --apply writes backed-up shortcuts with Steam stopped.
+Normal client launch imports the library and syncs through running Steam. Direct game launch skips it.
+sync reviews changes by default; --apply is the offline backed-up writer requiring Steam stopped.
 Only mapped games with bookmarked=true and owned=true are eligible for import.
 Set GFN_ARMADA_LOG=debug for runtime diagnostics. Ctrl+Shift+D opens diagnostics.`;
 function parse(args) {

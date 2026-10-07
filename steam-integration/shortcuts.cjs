@@ -62,6 +62,11 @@ function clientLaunchPrefix(shortcuts,executable){
   if(prefixes.size>1)throw new Error('Conflicting GFN client launch settings; reconcile client shortcuts before sync');
   return [...prefixes][0]||'';
 }
+function launchKey(options){
+  if(typeof options!=='string')return null;
+  const pattern=/^(?:(?:GFN_ARMADA_(?:GAMESCOPE=nested|BROWSER_IDENTITY=(?:windows|macos|chromeos|linux)|HEVC_EXPERIMENT=[01])\s+)*(?:\/usr\/libexec\/armada\/armada-game-launch\s+)?%command%\s+)?(?:--appimage-extract-and-run\s+)?launch ((?:gfn|steam|epic|gog|xbox):[A-Za-z0-9._-]{1,128})\s*$/;
+  return pattern.exec(options)?.[1]||null;
+}
 function plan(rows,{user,executable}={}){
   if(!executable||!path.isAbsolute(executable)||/[\r\n\0"]/.test(executable))throw new Error('Steam requires an absolute executable path without quotes');
   fs.accessSync(executable,fs.constants.X_OK);
@@ -73,7 +78,8 @@ function plan(rows,{user,executable}={}){
   for(const entry of shortcuts){
     if(entry.type!==0||!/^\d+$/.test(entry.key))throw new Error('Invalid Steam shortcut entry');
     const index=Number(entry.key);if(!Number.isSafeInteger(index)||index>100000||indices.has(index))throw new Error('Invalid or duplicate Steam shortcut index');indices.add(index);
-    const id=identifier(entry.value);if(id){if(managed.has(id))throw new Error('Duplicate managed shortcut');managed.set(id,entry.value);}
+    const tagged=identifier(entry.value),exe=vdf.get(entry.value,'exe'),options=vdf.get(entry.value,'LaunchOptions');
+    const id=tagged||(exe?.type===1&&exe.value===`"${executable}"`?launchKey(options?.value):null);if(id){if(managed.has(id))throw new Error('Duplicate managed shortcut');managed.set(id,entry.value);}
     const appid=vdf.get(entry.value,'appid');if(appid){if(appid.type!==2)throw new Error('Invalid Steam AppID field');const n=appid.value.readUInt32LE();if(appids.has(n))throw new Error('Duplicate Steam shortcut AppID');appids.add(n);}
     if(id&&!appid)throw new Error('Managed shortcut missing AppID');
   }
@@ -101,7 +107,13 @@ function plan(rows,{user,executable}={}){
       shortcuts.push({type:0,key:String(index++),value:fields});
     }
     const before=vdf.encode(fields);
-    if(existing&&row.mappingSource==='gfn-catalog'){const tag=vdf.get(fields,'tags').value.find(r=>r.type===1&&r.value.startsWith(TAG));tag.value=TAG+key;}
+    if(existing){
+      let tags=vdf.get(fields,'tags');if(!tags){vdf.set(fields,'tags',0,[]);tags=vdf.get(fields,'tags');}
+      if(tags.type!==0)throw new Error('Invalid Steam shortcut tags');
+      const tag=tags.value.find(r=>r.type===1&&r.value.startsWith(TAG));
+      if(tag){if(row.mappingSource==='gfn-catalog')tag.value=TAG+key;}
+      else {const index=tags.value.reduce((n,r)=>/^\d+$/.test(r.key)?Math.max(n,Number(r.key)+1):n,0);tags.value.push({type:1,key:String(index),value:TAG+key});}
+    }
     vdf.set(fields,'appname',1,name);vdf.set(fields,'exe',1,exe);vdf.set(fields,'StartDir',1,`"${path.dirname(executable)}"`);vdf.set(fields,'LaunchOptions',1,launch);
     if(!existing||!before.equals(vdf.encode(fields)))changes.push({action:existing?'update':'add',gameKey:key,name,launchOptions:launch,shortcutAppId:vdf.get(fields,'appid').value.readUInt32LE()});
   }
@@ -141,4 +153,4 @@ function restore(backup,{isSteamRunning=steamRunning}={}){
     return {restored:true,file:metadata.file};
   }finally{fs.closeSync(fd);fs.unlinkSync(lock);}
 }
-module.exports={plan,publicPlan,apply,restore,users,steamRunning,crc32};
+module.exports={plan,publicPlan,apply,restore,users,steamRunning,crc32,launchKey,clientLaunchPrefix,appImage};
